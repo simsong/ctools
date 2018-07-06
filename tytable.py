@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ttable.py:
+tytable.py:
 Module for typesetting tables in ASCII, LaTeX, and HTML.  Perhaps even CSV!
 Also creates LaTeX variables.
 

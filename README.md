@@ -1,2 +1,4 @@
-# blue
-A collection of useful Python utilities
+ctools
+
+A collection of utility programs for working with paths, Amazon S3, and Spark
+
