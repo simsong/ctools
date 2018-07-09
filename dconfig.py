@@ -22,6 +22,7 @@ This module also supports opening files on Amazon S3, with the s3:// notation.
 """
 
 from configparser import ConfigParser
+from subprocess import run,PIPE,Popen
 import os
 import os.path
 import logging
@@ -60,9 +61,11 @@ def get_config(pathname=None,filename=None):
                 filename = CONFIG_FILENAME
             pathname = os.path.join(SRC_DIRECTORY, filename ) 
         assert os.path.exists(pathname)
-        config_file = ConfigParser()
+        config_file = ConfigParser(interpolation=None)
         config_file.read(pathname)
         # Add our source directory to the paths
+        if SECTION_PATHS not in config_file:
+            config_file.add_section(SECTION_PATHS)
         config_file[SECTION_PATHS][OPTION_SRC] = SRC_DIRECTORY 
     return config_file
 
@@ -102,7 +105,6 @@ def s3open(path, mode="r", encoding=None):
     """
 
     logging.info(f"s3open({path},{mode},{encoding})")
-    from subprocess import run,PIPE,Popen
     if "b" in mode:
         assert encoding == None # binary can't encode
     else:
@@ -121,8 +123,13 @@ def s3open(path, mode="r", encoding=None):
     else:
         raise RuntimeError("invalid mode:{}".format(mode))
 
+def s3exists(path):
+    out = Popen(['aws','s3','ls','--page-size','10',path],stdout=PIPE,encoding='utf-8').communicate()[0]
+    return len(out) > 0
 
-var_re = re.compile(r"(\$[A-Z]+)")
+
+
+var_re = re.compile(r"(\$[A-Z_0-9]+)")
 def dpath_expand(path):
     """Find and replace all of the dollar-sign variables with names drawn from the config file.
     A future version could also look in the environment variables or on the command line, but it is
@@ -137,13 +144,17 @@ def dpath_expand(path):
         # See if the variable with my hostname is present. If so, use that one
         if varname_hostname in config_file[SECTION_PATHS]:
             varname = varname_hostname
-        path = path.replace(m.group(1), config_file[SECTION_PATHS][varname])
+        try:
+            path = path.replace(m.group(1), config_file[SECTION_PATHS][varname])
+        except KeyError as e:
+            print("Unknown variable: {}".format(varname))
+            raise e
     return path
 
 def dpath_exists(path):
     path = dpath_expand(path)
     if path[0:5]=='s3://':
-        raise RuntimeError("dpath_exists doesn't work with s3 paths")
+        return s3exists(path)
     return os.path.exists(path)
 
 
