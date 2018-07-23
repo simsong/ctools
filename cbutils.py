@@ -88,32 +88,6 @@ def detach( logdir=os.getcwd() ):
 
     # Most daemon implementaitons close all FDs. But that is not what we want, so just return
 
-# read and write files from Amazno S3
-# We could use boto
-# http://boto.cloudhackers.com/en/latest/s3_tut.html
-# but it is easier to use the aws cli, since it's configured to work.
-
-def s3open(path, mode="r", encoding=None):
-    from subprocess import run,PIPE,Popen
-    if "b" in mode:
-        assert encoding == None
-    else:
-        if encoding==None:
-            encoding="utf-8"
-    assert 'a' not in mode
-    assert '+' not in mode
-    
-    if "r" in mode:
-        p = Popen(['aws','s3','cp',path,'-'],stdout=PIPE,encoding=encoding)
-        return p.stdout
-
-    elif "w" in mode:
-        p = Popen(['aws','s3','cp','-',path],stdin=PIPE,encoding=encoding)
-        return p.stdin
-    else:
-        raise RuntimeError("invalid mode:{}".format(mode))
-
-
 def spark_submit_cmd(*,pyfiles=[], pydirs=[], num_executors=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args"""

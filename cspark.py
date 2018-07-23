@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# spark --- tools for running spark more easily from Python
+# cspark --- tools for running spark more easily from Python
 #
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -53,7 +53,7 @@ def detach( logdir=os.getcwd() ):
     #
     # Don't detach if we are running under spark; we already detached, and spark may not handle detaching
     if spark_running():
-        print("Spark is running; will not detach")
+        print("Spark is running; will not detach",file=sys.stderr)
         return
 
     pid = os.fork()
@@ -164,7 +164,7 @@ def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, con
 
 def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},
                   properties_file=None):
-    """If spark is running, return to te Spark Context.
+    """If spark is running, return the Spark Context.
     If spark is not running, rerun the program under spark and to get to this same point.
     Notice that we find all current python files and add them.
     This should be called early in a program's life, immediately after arguments are parsed
@@ -179,7 +179,7 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
         conf = SparkConf()
         sc = SparkContext(conf=conf)
         return sc
-    exit(0)                     # do not return; we are in the driver
+    exit(0)                     # spark-submit successfully submitted, so exit from the caller.
 
 if __name__=="__main__":
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
