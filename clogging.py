@@ -1,5 +1,5 @@
 #
-# clogger.py:
+# clogging.py:
 # 
 # Census logging methods
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 #
-# clogger_test.py:
+# clogging_test.py:
 #
-# various test functions for the logger
+# various test functions for the logging
 
 
 import sys
@@ -13,11 +13,12 @@ import logging
 import time
 
 sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
 
-import ctools.clogger 
+import ctools.clogging 
 
 def test_logging_to_syslog():
-    ctools.clogger.setup(level='INFO',syslog=True)
+    ctools.clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
     logging.info("Logging at t={}".format(nonce))
     # Wait a few miliseconds for the nonce to appear in the logfile
@@ -29,6 +30,6 @@ def test_logging_to_syslog():
             print(line)
             count += 1
     assert count==1
-    ctools.clogger.shutdown()
+    ctools.clogging.shutdown()
 
     

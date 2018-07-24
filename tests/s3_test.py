@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Test S3 code
 
+sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
+
 from cbutils import *
 
 def test_s3open():

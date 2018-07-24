@@ -86,9 +86,10 @@ def detach( logdir=os.getcwd() ):
 
     # Most daemon implementaitons close all FDs. But that is not what we want, so just return
 
-def spark_submit_cmd(*,pyfiles=[], pydirs=[], num_executors=None,
+def spark_submit_cmd(*, pyfiles=[], pydirs=[], num_executors=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args"""
+    print("pyfiles:",pyfiles)
     for dirname in pydirs:
         for pathname in glob.glob( os.path.join( dirname, '*.py' )):
             pyfiles.append( pathname )
@@ -104,6 +105,7 @@ def spark_submit_cmd(*,pyfiles=[], pydirs=[], num_executors=None,
         cmd += ['--conf', '{}={}'.format(key,value)]
     if properties_file:
         cmd += ['--properties-file',properties_file]
+    print("cmd:",cmd)
     return cmd
 
 SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
@@ -156,6 +158,9 @@ def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, con
     assert type(argv) == list
     cmd += argv
 
+    print("=== RUNNING SPARK ===")
+    print("$ {}".format(" ".join(cmd)))
+    
     r = subprocess.run(cmd)
     if r.returncode !=0:
         raise RuntimeError("spark-submit failed r={}".format(r))
@@ -170,7 +175,7 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
     This should be called early in a program's life, immediately after arguments are parsed
     and before logging is started."""
 
-    if spark_submit(pydirs=pydirs,num_executors=num_executors,
+    if spark_submit(pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
                         conf=conf,configdict=configdict,properties_file=properties_file,
                         argv = sys.argv):
         # Running inside spark

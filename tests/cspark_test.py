@@ -2,6 +2,10 @@ import py.test
 from cspark import *
 import io
 
+sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
+
+
 
 fh_config = io.StringIO("""
 [spark]
