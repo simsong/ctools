@@ -1,10 +1,12 @@
-import py.test
-from cspark import *
-import io
+import sys
+import os
 
 sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
 
+import py.test
+import cspark
+import io
 
 
 fh_config = io.StringIO("""
@@ -17,7 +19,7 @@ def test_spark_submit_cmd():
     from configparser import ConfigParser
     config = ConfigParser()
     config.readfp(fh_config)
-    cmd = spark_submit_cmd(configdict=config['spark'])
+    cmd = cspark.spark_submit_cmd(configdict=config['spark'])
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
     
@@ -28,7 +30,7 @@ def test_run_spark():
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
 
-    if not spark_available():
+    if not cspark.spark_available():
         return                  # don't test if no spark is available
 
     if TEST_RUN_SPARK_FILENAME not in os.environ:
@@ -38,7 +40,7 @@ def test_run_spark():
         f.close()
         
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
-        if spark_submit(script=__file__, loglevel='error'):
+        if cspark.spark_submit(loglevel='error',pyfiles=['../cspark.py'], argv=[__file__]):
             from pyspark import SparkContext, SparkConf
             from pyspark.sql import SparkSession
             import operator
