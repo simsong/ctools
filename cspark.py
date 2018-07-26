@@ -159,6 +159,8 @@ def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, con
     cmd += argv
 
     print("=== RUNNING SPARK ===")
+    print("$ pwd")
+    print(os.getcwd())
     print("$ {}".format(" ".join(cmd)))
     
     r = subprocess.run(cmd)

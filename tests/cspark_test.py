@@ -40,7 +40,8 @@ def test_run_spark():
         f.close()
         
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
-        if cspark.spark_submit(loglevel='error',pyfiles=['../cspark.py'], argv=[__file__]):
+        cspark_fn = os.path.join( os.path.dirname(__file__), "../cspark.py")
+        if cspark.spark_submit(loglevel='error',pyfiles=[cspark_fn], argv=[__file__]):
             from pyspark import SparkContext, SparkConf
             from pyspark.sql import SparkSession
             import operator
