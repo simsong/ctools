@@ -10,6 +10,12 @@ import tempfile
 # but it is easier to use the aws cli, since it's configured to work.
 
 def s3open(path, mode="r", encoding=None):
+    """
+    Open an s3 file for reading or writing. Can handle any size, but cannot seek.
+    We could use boto.
+    http://boto.cloudhackers.com/en/latest/s3_tut.html
+    but it is easier to use the aws cli, since it is present and more likely to work.
+    """
     from subprocess import run,PIPE,Popen
     if "b" in mode:
         assert encoding == None
@@ -30,10 +36,19 @@ def s3open(path, mode="r", encoding=None):
         raise RuntimeError("invalid mode:{}".format(mode))
 
 
+def s3exists(path):
+    """Return True if the S3 file exists"""
+    out = Popen(['aws','s3','ls','--page-size','10',path],stdout=PIPE,encoding='utf-8').communicate()[0]
+    return len(out) > 0
+
+
+
+
 CACHE_SIZE=4096                 # big enough for front and back caches
 MAX_READ=65536*16
 debug=False
 class S3File:
+    """Open an S3 file that can be seeked. This is done by caching to the local file system."""
     def __init__(self,name,mode='rb'):
         self.name   = name
         self.url    = urlparse(name)
