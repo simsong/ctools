@@ -60,9 +60,11 @@ def get_config(pathname=None,filename=None):
             if not filename:
                 filename = CONFIG_FILENAME
             pathname = os.path.join(SRC_DIRECTORY, filename ) 
-        assert os.path.exists(pathname)
         config_file = ConfigParser(interpolation=None)
-        config_file.read(pathname)
+        if os.path.exists(pathname):
+            config_file.read(pathname)
+        else:
+            print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
         # Add our source directory to the paths
         if SECTION_PATHS not in config_file:
             config_file.add_section(SECTION_PATHS)

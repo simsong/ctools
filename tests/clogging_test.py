@@ -29,7 +29,8 @@ def test_logging_to_syslog():
         if nonce in line:
             print(line)
             count += 1
-    assert count==1
+    if count!=1:
+        raise RuntimeError("Logging to LOCAL1.INFO is not putting messages in /var/log/local1.log. Check SYSLOG config")
     ctools.clogging.shutdown()
 
     
