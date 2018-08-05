@@ -56,3 +56,9 @@ def setup(level='INFO',
 
     if syslog:
         setup_syslog(facility=facility)
+
+
+if __name__=="__main__":
+    setup_syslog()
+    assert added_syslog==True
+    logging.error("By default, error gets logged but info doesn't")

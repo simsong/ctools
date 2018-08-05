@@ -8,6 +8,7 @@ import py.test
 import cspark
 import io
 
+CSPARK_PATH = os.path.join(os.path.dirname(__file__), "../cspark.py")
 
 fh_config = io.StringIO("""
 [spark]
@@ -40,7 +41,7 @@ def test_run_spark():
         f.close()
         
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
-        if cspark.spark_submit(loglevel='error',pyfiles=['../cspark.py'], argv=[__file__]):
+        if cspark.spark_submit(loglevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark import SparkContext, SparkConf
             from pyspark.sql import SparkSession
             import operator
