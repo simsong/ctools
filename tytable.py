@@ -9,6 +9,7 @@ Simson Garfinkel, 2010-
 This is really bad python. Let me clean it up before you copy it.
 ttable is the main typesetting class. It builds an abstract representation of a table and then typesets with output in Text, HTML or LateX. 
 It can do fancy things like add commas to numbers and total columns.
+All of the formatting specifications need to be redone so that they are more flexbile
 """
 
 TEXT  = 'text'
