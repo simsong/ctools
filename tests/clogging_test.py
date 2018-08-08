@@ -11,6 +11,7 @@ import os
 import os.path
 import logging
 import time
+import platform
 
 sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
@@ -18,6 +19,9 @@ sys.path.append( os.path.join(os.path.dirname(__file__), "../.."))
 import ctools.clogging 
 
 def test_logging_to_syslog():
+    if platform.system()=='Windows':
+        return
+
     ctools.clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
     logging.info("Logging at t={}".format(nonce))
