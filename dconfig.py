@@ -67,7 +67,7 @@ def get_config(pathname=None,filename=None):
         if os.path.exists(pathname):
             config_file.read(pathname)
         else:
-            print("Config file does not exist: {}".format(pathname),file=sys.stderr)
+            print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
         # Add our source directory to the paths
         if SECTION_PATHS not in config_file:
             config_file.add_section(SECTION_PATHS)

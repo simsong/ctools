@@ -24,7 +24,7 @@ def test_logging_to_syslog():
 
     ctools.clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
-    logging.info("Logging at t={}".format(nonce))
+    logging.error("Logging at t={}; by default, error gets logged but info doesn't".format(nonce))
     # Wait a few miliseconds for the nonce to appear in the logfile
     time.sleep(.01)
     # Look for the nonce
@@ -33,7 +33,8 @@ def test_logging_to_syslog():
         if nonce in line:
             print(line)
             count += 1
-    assert count==1
+    if count!=1:
+        raise RuntimeError("Logging to LOCAL1.INFO is not putting messages in /var/log/local1.log. Check SYSLOG config")
     ctools.clogging.shutdown()
 
     
