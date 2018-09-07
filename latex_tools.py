@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Some tools for using LaTeX. This modules provides:
-* Manipulating PDF files with LaTeX (rather than a Python module)
-* Running LaTeX
-""" 
+# Some tools for manipulating PDF files
 
 import py.test
 import sys
@@ -14,12 +10,8 @@ from subprocess import call,Popen,PIPE,DEVNULL
 import subprocess
 import glob
 import tempfile
-
-__version__="0.1.1"
-
 ERROR_LINES=30
-PORTRAIT = 'PORTRAIT'
-LANDSCAPE = 'LANDSCAPE'
+
 DEBUG=False
 
 if sys.platform=='win32':
@@ -202,13 +194,13 @@ def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
             outlines = r.stdout.split("\n")
-            print("="*75)
+            print("***************************")
             print("First {} lines of error:".format(ERROR_LINES))
             print("\n".join(outlines[:ERROR_LINES]))
             print("")
             print("Last {} lines of error:".format(ERROR_LINES))
             print("\n".join(outlines[-ERROR_LINES:]))
-            print("="*75)
+            print("***************************")
             exit(1)
         if r.returncode and DEBUG:
             print("r.returncode=",r.returncode)
@@ -275,6 +267,8 @@ def extract_pdf_pages(target,source,pagelist="-"):
     run_latex(target_latex,repeat=1,delete_tempfiles=True)
         
     
+PORTRAIT = 'PORTRAIT'
+LANDSCAPE = 'LANDSCAPE'
 def get_pdf_pages_and_orientation(pdf_fname):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and detemrine each page's orientation and size.
     Returns an array of (page_number, orientation, width, height)
@@ -328,7 +322,7 @@ def count_pdf_pages(pdf_fname):
     return len( get_pdf_pages_and_orientation( pdf_fname ))
         
 if __name__=="__main__":
-    print("This is for little test scripts")
-
-    
+    m = get_pdf_pages_and_orientation("Government Hacking.pdf")
+    for line in m:
+        print(line)
     
