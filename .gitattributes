@@ -1,0 +1,11 @@
+*.xlsx binary
+*.docx binary
+*.py text eol=crlf
+*.ini text eol=crlf
+*.md text eol=crlf
+*.tex text eol=crlf
+*.txt text eol=crlf
+*.bat text eol=crlf
+*.log text eol=crlf
+.gitattributes text eol=crlf
+.gitignore text eol=crlf
