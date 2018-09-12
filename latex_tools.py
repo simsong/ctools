@@ -190,7 +190,7 @@ def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
     assert repeat>=1
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,filename, '-interaction=nonstopmode']
-        print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)))
+        print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
             outlines = r.stdout.split("\n")
@@ -228,7 +228,7 @@ def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
 
     # Delete the temp files if requested
     if delete_tempfiles:
-        delete_temp_files("*")
+        delete_temp_files(infile)
     # If we changed the current directory, change back
     if dirname:
         os.chdir(cwd)           
@@ -276,7 +276,7 @@ def get_pdf_pages_and_orientation(pdf_fname):
     """
 
     assert os.path.exists(pdf_fname)
-    assert pdf_fname.endswith(".pdf")
+    assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")
     page_pat = re.compile(r"^Page (\d+), (\w+), ([0-9.]+)pt, ([0-9.]+)pt, depth ([0-9.]+)pt")
     ret = []
