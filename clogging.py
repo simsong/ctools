@@ -13,6 +13,7 @@ added_syslog = False
 called_basicConfig = False
 DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
+SYSLOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 LOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 
 def shutdown():
@@ -36,7 +37,7 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1):
             handler = logging.handlers.SysLogHandler(address=DEVLOG_MAC, facility=facility)
         else:
             return              # no dev log
-        formatter = logging.Formatter(LOG_FORMAT)
+        formatter = logging.Formatter(SYSLOG_FORMAT)
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
         added_syslog = True
