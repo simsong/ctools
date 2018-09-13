@@ -48,7 +48,7 @@ def setup(level='INFO',
           filename=None,
           facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
           format=LOG_FORMAT):
-    """Set up logging as specified by ArgumentParser"""
+    """Set up logging as specified by ArgumentParse. Checks to see if it was previously called and, if so, does a fast return."""
     global called_basicConfig
     if not called_basicConfig:
         loglevel = logging.getLevelName(level)
