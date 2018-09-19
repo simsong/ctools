@@ -38,6 +38,9 @@ import atexit
 import re
 import socket
 
+from ctools.s3 import s3open,s3exists
+
+
 SECTION_PATHS='paths'
 SECTION_RUN='run'
 OPTION_NAME='NAME'
@@ -60,9 +63,11 @@ def get_config(pathname=None,filename=None):
             if not filename:
                 filename = CONFIG_FILENAME
             pathname = os.path.join(SRC_DIRECTORY, filename ) 
-        assert os.path.exists(pathname)
         config_file = ConfigParser(interpolation=None)
-        config_file.read(pathname)
+        if os.path.exists(pathname):
+            config_file.read(pathname)
+        else:
+            print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
         # Add our source directory to the paths
         if SECTION_PATHS not in config_file:
             config_file.add_section(SECTION_PATHS)
@@ -96,37 +101,6 @@ def argparse_add_logging(parser):
     parser.add_argument('--loglevel', help='Set logging level',
                         choices=['CRITICAL','ERROR','WARNING','INFO','DEBUG'],
                         default='INFO')    
-
-def s3open(path, mode="r", encoding=None):
-    """read and write files from Amazon S3
-    We could use boto.
-    http://boto.cloudhackers.com/en/latest/s3_tut.html
-    but it is easier to use the aws cli, since it is present and more likely to work.
-    """
-
-    logging.info(f"s3open({path},{mode},{encoding})")
-    if "b" in mode:
-        assert encoding == None # binary can't encode
-    else:
-        if encoding==None:      # default encoding is utf-8
-            encoding="utf-8"
-    assert 'a' not in mode      # s3 can't append
-    assert '+' not in mode      # + also means append
-    
-    if "r" in mode:
-        p = Popen(['aws','s3','cp',path,'-'],stdout=PIPE,encoding=encoding)
-        return p.stdout
-
-    elif "w" in mode:
-        p = Popen(['aws','s3','cp','-',path],stdin=PIPE,encoding=encoding)
-        return p.stdin
-    else:
-        raise RuntimeError("invalid mode:{}".format(mode))
-
-def s3exists(path):
-    out = Popen(['aws','s3','ls','--page-size','10',path],stdout=PIPE,encoding='utf-8').communicate()[0]
-    return len(out) > 0
-
 
 
 var_re = re.compile(r"(\$[A-Z_0-9]+)")

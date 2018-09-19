@@ -129,7 +129,9 @@ def spark_make_loglevel_file(loglevel="error"):
 def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, conf=[], configdict={},
                  properties_file=None, argv ):
     """Provides support for the --spark command. To the caller, it looks
-    like we just returned.  However, it reruns this program with
+    like we just returned.  At that point, you can then import your pyspark libraries
+    and use SparkContext() to get a spark context.
+    However, it reruns this program with
     spark-submit. It also takes all files and sends them to the
     executor. So basically, calling spark_submit() in a program engages spark and returns 0 if success and an error code if not.
     @param pyfiles - a list of files that should be added to the --py-files argument
@@ -159,6 +161,8 @@ def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, con
     cmd += argv
 
     print("=== RUNNING SPARK ===")
+    print("$ pwd")
+    print(os.getcwd())
     print("$ {}".format(" ".join(cmd)))
     
     r = subprocess.run(cmd)

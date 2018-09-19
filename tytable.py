@@ -9,6 +9,7 @@ Simson Garfinkel, 2010-
 This is really bad python. Let me clean it up before you copy it.
 ttable is the main typesetting class. It builds an abstract representation of a table and then typesets with output in Text, HTML or LateX. 
 It can do fancy things like add commas to numbers and total columns.
+All of the formatting specifications need to be redone so that they are more flexbile
 """
 
 TEXT  = 'text'
@@ -332,16 +333,22 @@ class ttable:
         " Add totals for the specified cols"
         self.cols = self.ncols()
         totals = [0] * self.cols
-        for r in self.data:
-            if self.should_omit_row(r):
-                continue
-            if r==HR:
-                continue        # can't total HRs
-            for col in col_totals:
-                totals[col] += r[col]
+        try:
+            for r in self.data:
+                if self.should_omit_row(r):
+                    continue
+                if r==self.HR:
+                    continue        # can't total HRs
+                for col in self.col_totals:
+                    totals[col] += r[col]
+        except ValueError as e:
+            print("*** Table cannot be totaled",file=sys.stderr)
+            for row in self.data:
+                print(row,file=sys.stderr)
+            raise e
         row = ["Total"]
         for col in range(1,self.cols):
-            if col in col_totals:
+            if col in self.col_totals:
                 row.append(totals[col])
             else:
                 row.append("")
