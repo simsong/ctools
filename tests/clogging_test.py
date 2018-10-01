@@ -24,7 +24,7 @@ def test_logging_to_syslog():
 
     ctools.clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
-    logging.error("Logging at t={}; by default, error gets logged but info doesn't".format(nonce))
+    logging.error("Logging at t={}.".format(nonce))
     # Wait a few miliseconds for the nonce to appear in the logfile
     time.sleep(.01)
     # Look for the nonce

@@ -13,6 +13,8 @@ added_syslog = False
 called_basicConfig = False
 DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
+SYSLOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+LOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 
 def shutdown():
     global added_syslog, called_basicConfig
@@ -35,6 +37,8 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1):
             handler = logging.handlers.SysLogHandler(address=DEVLOG_MAC, facility=facility)
         else:
             return              # no dev log
+        formatter = logging.Formatter(SYSLOG_FORMAT)
+        handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
         added_syslog = True
     
@@ -43,8 +47,8 @@ def setup(level='INFO',
           syslog=False,
           filename=None,
           facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
-          format="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"):
-    """Set up logging as specified by ArgumentParser"""
+          format=LOG_FORMAT):
+    """Set up logging as specified by ArgumentParse. Checks to see if it was previously called and, if so, does a fast return."""
     global called_basicConfig
     if not called_basicConfig:
         loglevel = logging.getLevelName(level)

@@ -133,7 +133,7 @@ def dpath_exists(path):
 
 
 def dopen(path, mode='r', encoding='utf-8'):
-    """open data relatively to ROOT. Check for S3"""
+    """open data relatively to ROOT. Allows opening UFS files or S3 files."""
     logging.info("dopen: path:{} mode:{} encoding:{}".format(path,mode,encoding))
     path = dpath_expand(path)
 
