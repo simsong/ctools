@@ -23,6 +23,11 @@ __version__ = "0.1.0"
 
 #
 # Some basic functions
+#
+import sys
+import os
+import traceback
+
 def line_end(mode):
     if mode==TEXT:
         return "\n"
@@ -91,7 +96,7 @@ class ttable:
        ## Data building functions:
        ttable() - Constructor. 
        .set_title(title) 
-       .compute_col_totals(col_totals) - adds columns for specified columns
+       .compute_and_add_col_totals() - adds columns for specified columns / run automatically
        .add_head([row]) to one or more heading rows. 
        .add_data([row]) to append data rows. 
        .add_data(ttable.HR) - add a horizontal line
@@ -325,11 +330,10 @@ class ttable:
 
     def should_omit_row(self,row):
         for (a,b) in self.omit_row:
-            if r[a]==b: 
-                return True
+            if row[a]==b: return True
         return False
 
-    def compute_col_totals(self,col_totals):
+    def compute_and_add_col_totals(self):
         " Add totals for the specified cols"
         self.cols = self.ncols()
         totals = [0] * self.cols
@@ -340,12 +344,14 @@ class ttable:
                 if r==self.HR:
                     continue        # can't total HRs
                 for col in self.col_totals:
+                    if r[col]=='': continue
                     totals[col] += r[col]
-        except ValueError as e:
+        except (ValueError,TypeError) as e:
             print("*** Table cannot be totaled",file=sys.stderr)
             for row in self.data:
-                print(row,file=sys.stderr)
-            raise e
+                print(row.data,file=sys.stderr)
+            traceback.print_tb()
+            return
         row = ["Total"]
         for col in range(1,self.cols):
             if col in self.col_totals:
@@ -354,6 +360,8 @@ class ttable:
                 row.append("")
         self.add_data(self.HR)
         self.add_data(row)
+        self.add_data(self.HR)
+        self.add_data(self.HR)
 
     ################################################################
     def typeset_headings(self):
@@ -391,10 +399,15 @@ class ttable:
 
         ret = [""]              # array of strings that will be concatenatted
 
+        # If we need column totals, compute them
+        if hasattr(self,"col_totals"):
+            self.compute_and_add_col_totals()
+
         # Precalc any table widths if necessary 
         if self.mode==TEXT:
             self.calculate_col_formatted_widths()
-            if self.title: ret.append(self.title + ":" + "\n")
+            if self.title:
+                ret.append(self.title + ":" + "\n")
 
         #
         # Start of the table 
@@ -456,12 +469,6 @@ class ttable:
                 continue
 
             ret.append(self.typeset_row(row))
-
-            # If we need to calculate col totals, do that.
-            # This should be redone elsewhere
-            if hasattr(self,"col_totals"):
-                for col in self.col_totals:
-                    totals[col] += row[col]
 
         if self.mode==LATEX:
             if LONGTABLE not in self.options:
