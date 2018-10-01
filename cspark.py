@@ -90,9 +90,9 @@ def spark_submit_cmd(*, pyfiles=[], pydirs=[], num_executors=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args"""
     print("pyfiles:",pyfiles)
-    for dirname in pydirs:
-        for pathname in glob.glob( os.path.join( dirname, '*.py' )):
-            pyfiles.append( pathname )
+    #for zipname in pydirs:
+    #    pyfiles.append( zipname )
+    pyfiles = ["census_etl.zip", "census_etl/ctools.zip", "census_etl/dfxml/python.zip"]
     cmd = ['spark-submit']
     if pyfiles:
         cmd += ['--py-files', ",".join(pyfiles)]
@@ -147,7 +147,7 @@ def spark_submit(*, loglevel=None, pyfiles=[],pydirs=[], num_executors=None, con
     import subprocess
     if spark_running():
         return True             # running inside Spark
-
+    
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs, 
                            num_executors=num_executors, conf=conf, 
                            configdict=configdict, properties_file=properties_file)
@@ -179,6 +179,13 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
     This should be called early in a program's life, immediately after arguments are parsed
     and before logging is started."""
 
+    #import subprocess
+    #zipdirs = []
+    #for dirname in pydirs:
+    #    zipfile = "{}.zip".format(dirname)
+    #    x = subprocess.run("zip -r {} {}".format(zipfile, dirname))
+    #    zipdirs.append(zipfile)
+
     if spark_submit(pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
                         conf=conf,configdict=configdict,properties_file=properties_file,
                         argv = sys.argv):
@@ -187,6 +194,14 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
         from pyspark import SparkContext
         conf = SparkConf()
         sc = SparkContext(conf=conf)
+        
+        #for zipfile in zipdirs:
+        # need to use zip files or a whole bunch of import statement will be broken
+        sc.addPyFile("census_etl.zip")
+        sc.addPyFile("census_etl/ctools.zip")
+        sc.addPyFile("census_etl/dfxml/python.zip")
+        
+
         return sc
     exit(0)                     # spark-submit successfully submitted, so exit from the caller.
 
