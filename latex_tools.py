@@ -292,6 +292,9 @@ def get_pdf_pages_and_orientation(pdf_fname):
                 height = float(m.group(2))
             m = page_pat.search(line)
             if m:
+                if width==None or height==None:
+                    print("************  CANNOT COUNT PAGES IN '{}' **************".format(pdf_name))
+                    exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
                 val = (pageno, orientation, width,  height)
@@ -311,7 +314,7 @@ def get_pdf_pages_and_orientation(pdf_fname):
         tmp.flush()             # Make sure contents are written out
         tmp.close()             # Windows compatiability 
         run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True)
-        os.unlink(tmp.name)
+        os.unlink( tmp.name)
     return ret
 
 def count_pdf_pages(pdf_fname):
