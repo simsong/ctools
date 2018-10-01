@@ -196,6 +196,7 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
         sc = SparkContext(conf=conf)
         
         #for zipfile in zipdirs:
+        # need to use zip files or a whole bunch of import statement will be broken
         sc.addPyFile("census_etl.zip")
         sc.addPyFile("census_etl/ctools.zip")
         sc.addPyFile("census_etl/dfxml/python.zip")
