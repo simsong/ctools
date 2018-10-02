@@ -11,23 +11,25 @@ import subprocess
 import glob
 import tempfile
 import logging
+import hashlib
 ERROR_LINES=30
 
 DEBUG=False
 
-PAGE="page"
-ORIENTATION="orientation"
-WIDTH="width"
-HEIGHT="height"
-PORTRAIT = 'PORTRAIT'
+HEIGHT='height'
 LANDSCAPE = 'LANDSCAPE'
-VERSION='VERSION'
+ORIENTATION='orientation'
+PAGE='page'
 PAGES='pages'
-UNITS='units'
 POINTS='points'
+PORTRAIT = 'PORTRAIT'
+UNITS='units'
+VERSION='VERSION'
+WIDTH='width'
+SHA256='sha256'
 
 if sys.platform=='win32':
-    LATEX_EXE="pdflatex.exe"
+    LATEX_EXE='pdflatex.exe'
 else:
     LATEX_EXE='pdflatex'
 
@@ -211,11 +213,14 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         if r.returncode and not ignore_ret:
             outlines = r.stdout.split("\n")
             print("***************************")
-            print("First {} lines of error:".format(ERROR_LINES))
-            print("\n".join(outlines[:ERROR_LINES]))
-            print("")
-            print("Last {} lines of error:".format(ERROR_LINES))
-            print("\n".join(outlines[-ERROR_LINES:]))
+            if len(outlines)<100:
+                print("\n".join(outlines))
+            else:
+                print("First {} lines of error:".format(ERROR_LINES))
+                print("\n".join(outlines[:ERROR_LINES]))
+                print("")
+                print("Last {} lines of error:".format(ERROR_LINES))
+                print("\n".join(outlines[-ERROR_LINES:]))
             print("***************************")
             exit(1)
         if r.returncode and DEBUG:
@@ -283,16 +288,23 @@ def extract_pdf_pages(target,source,pagelist="-"):
     run_latex(target_latex,repeat=1,delete_tempfiles=True)
         
     
+def inspect_json_all_pages_have_same_orientation(info):
+    orientations = set([pageinfo[ORIENTATION] for pageinfo in info[PAGES]])
+    if len(orientations)==1:
+        return info[PAGES][0][ORIENTATION]
+    return None
+
 def inspect_pdf(pdf_fname):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and detemrine each page's orientation and size.
     Returns a dictionary containing the following properties:
     [FILENAME] - filename
     [SHA256]   - sha256
-    [PAGES]    - #pages
-    [N] = {pageinfo}  - Information about each page is stored in its own dictonary.
-    [N][ORIENTATION] = PORTRAIT or LANDSCAPE
-    [N][WIDTH] = width (in pt)
-    [N][HEIGHT]  = height (in pt)
+    [PAGES][{pageinfo},pageinfo,...}    - #pages
+        {pageinfo}  - Information about each page is stored in its own dictonary.
+          ORIENTATION: = PORTRAIT or LANDSCAPE
+          WIDTH: = width (in pt)
+          HEIGHT:  = height (in pt)
+          PAGE:   = page number
 an array of (page_number, orientation, width, height)
     Where orientation is PORTRAIT or LANDSCAPE
     """
@@ -303,7 +315,8 @@ an array of (page_number, orientation, width, height)
     page_pat = re.compile(r"^Page (\d+), (\w+), ([0-9.]+)pt, ([0-9.]+)pt, depth ([0-9.]+)pt")
     ret = {VERSION:1,
            UNITS:POINTS,
-           PAGES:{}}
+           SHA256:hashlib.sha256( open(pdf_fname,"rb").read() ).hexdigest(),
+           PAGES:[]}
 
     def cb(auxfile):
         """Callback to search for orientation information in the logfile and extract it"""
@@ -321,7 +334,7 @@ an array of (page_number, orientation, width, height)
                     exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
-                ret[PAGES][pageno] = {ORIENTATION:orientation, WIDTH:width,  HEIGHT:height}
+                ret[PAGES].append({ORIENTATION:orientation, WIDTH:width,  HEIGHT:height, PAGE:pageno})
 
     # Unfortunately, NamedTemporaryFile is not portable to windows, because when the file is open,
     # it cannot be used by other processes, as NamedTemporaryFile opens with exclusive access.
@@ -339,8 +352,10 @@ an array of (page_number, orientation, width, height)
 
 def count_pdf_pages(pdf_fname):
     """Use pdfpages.sty to count how many pages in a pdf_fname"""
-    assert os.path.exists(pdf_fname)
-    assert pdf_fname.endswith(".pdf")
+    if not os.path.exists(pdf_fname):
+        raise RuntimeError("count_pdf_pages: {} does not exist".format(pdf_fname))
+    if not pdf_fname.endswith(".pdf"):
+        raise RuntimeError("count_pdf_pages: {} must end with a .pdf".format(pdf_fname))
     return len( inspect_pdf( pdf_fname )[PAGES])
         
 if __name__=="__main__":
