@@ -10,9 +10,21 @@ from subprocess import call,Popen,PIPE,DEVNULL
 import subprocess
 import glob
 import tempfile
+import logging
 ERROR_LINES=30
 
 DEBUG=False
+
+PAGE="page"
+ORIENTATION="orientation"
+WIDTH="width"
+HEIGHT="height"
+PORTRAIT = 'PORTRAIT'
+LANDSCAPE = 'LANDSCAPE'
+VERSION='VERSION'
+PAGES='pages'
+UNITS='units'
+POINTS='points'
 
 if sys.platform=='win32':
     LATEX_EXE="pdflatex.exe"
@@ -179,15 +191,19 @@ def delete_temp_files(latex_source,verbose=False):
                 print("Deleting {}".format(nfn))
             os.unlink(nfn)
 
-def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
-              callback_aux=None,callback_log=None,callback_out=None,ignore_ret=False):
+def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
+              callback_aux=None,callback_log=None,ignore_ret=False,chdir=True):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
-    cwd = os.getcwd()
-    (dirname,filename) = os.path.split(infile)
-    if dirname:
-        os.chdir(dirname)       # change to the directory where the file exists
-    assert os.path.exists(filename)
+    assert os.path.exists(pathname)
     assert repeat>=1
+    filename = pathname
+    dirname  = os.getcwd()
+    if chdir:
+        cwd = os.getcwd()
+        (dirname,filename) = os.path.split(pathname)
+        if dirname:
+            os.chdir(dirname)       # change to the directory where the file exists
+        assert os.path.exists(filename)
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,filename, '-interaction=nonstopmode']
         print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
@@ -209,16 +225,15 @@ def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
             print("STDERR")
             print(r.stderr)
     #
-    logfile = os.path.splitext(filename)[0] + ".log"
-    auxfile = os.path.splitext(filename)[0] + ".aux"
-    outfile = os.path.splitext(filename)[0] + ".aux"
-    if callback_log: callback_log(open(logfile,"r"))
-    if callback_aux: callback_aux(open(auxfile,"r"))
-    if callback_out: callback_aux(open(outfile,"r"))
+    # The logfile and auxfile get written to the current directory
+    logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
+    auxfilename = os.path.splitext( os.path.basename(filename))[0] + ".aux"
+    if callback_log: callback_log(open(logfilename,"r"))
+    if callback_aux: callback_aux(open(auxfilename,"r"))
         
     # Read the log file to determine the number of pages
     # This should be done with the callback
-    log     = open(logfile).read().replace("\n","")
+    log = open(logfilename).read().replace("\n","")
     pat = re.compile('Output written on .*[^\d](\d+) pages?')
     m = pat.search(log)
     if m:
@@ -228,11 +243,12 @@ def run_latex(infile,repeat=1,start_run=1,delete_tempfiles=False,
 
     # Delete the temp files if requested
     if delete_tempfiles:
-        delete_temp_files(infile)
+        delete_temp_files(pathname)
+    # Figure out the PDF filename. It's in the current directory...
+    pdffile = os.path.join( os.getcwd(), os.path.basename(os.path.splitext(filename)[0])) + ".pdf"
     # If we changed the current directory, change back
-    if dirname:
+    if chdir and dirname:
         os.chdir(cwd)           
-    pdffile = os.path.join(dirname,os.path.splitext(filename)[0] + ".pdf")
     return (pdffile,pages)
 
 def extract_pdf_pages(target,source,pagelist="-"):
@@ -267,11 +283,17 @@ def extract_pdf_pages(target,source,pagelist="-"):
     run_latex(target_latex,repeat=1,delete_tempfiles=True)
         
     
-PORTRAIT = 'PORTRAIT'
-LANDSCAPE = 'LANDSCAPE'
-def get_pdf_pages_and_orientation(pdf_fname):
+def inspect_pdf(pdf_fname):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and detemrine each page's orientation and size.
-    Returns an array of (page_number, orientation, width, height)
+    Returns a dictionary containing the following properties:
+    [FILENAME] - filename
+    [SHA256]   - sha256
+    [PAGES]    - #pages
+    [N] = {pageinfo}  - Information about each page is stored in its own dictonary.
+    [N][ORIENTATION] = PORTRAIT or LANDSCAPE
+    [N][WIDTH] = width (in pt)
+    [N][HEIGHT]  = height (in pt)
+an array of (page_number, orientation, width, height)
     Where orientation is PORTRAIT or LANDSCAPE
     """
 
@@ -279,7 +301,9 @@ def get_pdf_pages_and_orientation(pdf_fname):
     assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")
     page_pat = re.compile(r"^Page (\d+), (\w+), ([0-9.]+)pt, ([0-9.]+)pt, depth ([0-9.]+)pt")
-    ret = []
+    ret = {VERSION:1,
+           UNITS:POINTS,
+           PAGES:{}}
 
     def cb(auxfile):
         """Callback to search for orientation information in the logfile and extract it"""
@@ -297,17 +321,13 @@ def get_pdf_pages_and_orientation(pdf_fname):
                     exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
-                val = (pageno, orientation, width,  height)
-                if DEBUG:
-                    print(val)
-                ret.append(val )
+                ret[PAGES][pageno] = {ORIENTATION:orientation, WIDTH:width,  HEIGHT:height}
 
     # Unfortunately, NamedTemporaryFile is not portable to windows, because when the file is open,
     # it cannot be used by other processes, as NamedTemporaryFile opens with exclusive access.
     # The code below fixes this problem
     # See https://bugs.python.org/issue14243
-    if DEBUG:
-        print("get_pdf_pages_and_orientation({})".format(pdf_fname))
+    logging.info("inspect_pdf(%s)",format(pdf_fname))
     with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',suffix='.tex',delete=False,
                                      dir=os.path.dirname( os.path.abspath(pdf_fname))) as tmp:
         tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
@@ -321,11 +341,11 @@ def count_pdf_pages(pdf_fname):
     """Use pdfpages.sty to count how many pages in a pdf_fname"""
     assert os.path.exists(pdf_fname)
     assert pdf_fname.endswith(".pdf")
-
-    return len( get_pdf_pages_and_orientation( pdf_fname ))
+    return len( inspect_pdf( pdf_fname )[PAGES])
         
 if __name__=="__main__":
-    m = get_pdf_pages_and_orientation("Government Hacking.pdf")
-    for line in m:
-        print(line)
+    import sys
+    m = inspect_pdf(sys.argv[1])
+    for info in sorted(m[PAGES].keys()):
+        print('page ',info, m[PAGES][info])
     
