@@ -64,23 +64,18 @@ def convert_document_to_pdf(infile):
     """
     import os.path
     if not os.path.exists(infile):
-        raise RuntimeError("{} does not exist".format(infile))
+        raise FileNotFoundError(infile)
 
     outfile = os.path.splitext(infile)[0] + ".pdf"
     if os.path.exists(outfile):
-        # Calculate the age of the PDF. Because of Windows errors, sometimes the PDF will be a few seconds
-        # younger than the .docx. In those cases, just ignore it.
-        pdf_age = int(os.path.getmtime(outfile)-os.path.getmtime(infile))
-        print("{} already exists (age={}s)".format(outfile,pdf_age))
-        if pdf_age > -30:
-            return
+        raise FileExistsError
     
     print("CONVERT {}".format(infile))
     print("    --> {}".format(outfile))
-    import sys
+    import sys                  # this shouldn't be needed, but it is...?
     if sys.platform=='win32':
         try:
-            import sys,os,win32com.client,pywintypes
+            import os,win32com.client,pywintypes
         except ModuleNotFoundError as e:
             print(e)
             print("Cannot convert {} --- please convert it manually".format(infile))
@@ -119,6 +114,7 @@ def convert_document_to_pdf(infile):
                 return outfile
             time.sleep(.01)
         raise RuntimeError("{}: {} not created".format(" ".join(cmd),outfile))
+    raise RuntimeError("unknown how to do PDF conversion on {}".format(sys.platform))
 
 #
 # soffice --headless --convert-to pdf filename.doc
