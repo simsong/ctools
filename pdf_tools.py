@@ -120,6 +120,11 @@ def convert_document_to_pdf(infile):
         raise RuntimeError("{}: {} not created".format(" ".join(cmd),outfile))
     raise RuntimeError("unknown how to do PDF conversion on {}".format(sys.platform))
 
+#
+# soffice --headless --convert-to pdf filename.doc
+# libreoffice --headless --convert-to pdf filename.doc
+#    raise RuntimeError("Please manually convert {}".format(infile))
+
 if __name__=="__main__":
     #
     # Command to test the conversion
