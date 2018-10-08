@@ -97,6 +97,7 @@ class ttable:
        ttable() - Constructor. 
        .set_title(title) 
        .compute_and_add_col_totals() - adds columns for specified columns / run automatically
+       .compute_col_totals(col_totals) - adds columns for specified columns
        .add_head([row]) to one or more heading rows. 
        .add_data([row]) to append data rows. 
        .add_data(ttable.HR) - add a horizontal line
@@ -350,8 +351,7 @@ class ttable:
             print("*** Table cannot be totaled",file=sys.stderr)
             for row in self.data:
                 print(row.data,file=sys.stderr)
-            traceback.print_tb()
-            return
+            raise e
         row = ["Total"]
         for col in range(1,self.cols):
             if col in self.col_totals:
@@ -408,6 +408,7 @@ class ttable:
             self.calculate_col_formatted_widths()
             if self.title:
                 ret.append(self.title + ":" + "\n")
+
 
         #
         # Start of the table 

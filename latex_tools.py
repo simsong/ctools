@@ -193,19 +193,32 @@ def delete_temp_files(latex_source,verbose=False):
                 print("Deleting {}".format(nfn))
             os.unlink(nfn)
 
+TEXINPUTS='TEXINPUTS'
 def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
+              texinputs=None,
               callback_aux=None,callback_log=None,ignore_ret=False,chdir=True):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
+
+    # Are we setting TEXINPUTS? If so, remember old value.
+    oldenv   = os.environ.get(TEXINPUTS,None)
+    if texinputs:
+        os.environ[TEXINPUTS] = texinputs
+    
+
+    # Are we changing the directory? If so, remember old value
     assert os.path.exists(pathname)
     assert repeat>=1
-    filename = pathname
-    dirname  = os.getcwd()
+
+    (dirname,filename) = os.path.split(pathname)
+
     if chdir:
         cwd = os.getcwd()
-        (dirname,filename) = os.path.split(pathname)
         if dirname:
             os.chdir(dirname)       # change to the directory where the file exists
-        assert os.path.exists(filename)
+        dirname="."                 # now it is the current directory
+        assert os.path.exists(filename) # make sure we can still reach it
+
+
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,filename, '-interaction=nonstopmode']
         print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
@@ -213,7 +226,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         if r.returncode and not ignore_ret:
             outlines = r.stdout.split("\n")
             print("***************************")
-            if len(outlines)<100:
+            if len(outlines)<ERROR_LINES*2:
                 print("\n".join(outlines))
             else:
                 print("First {} lines of error:".format(ERROR_LINES))
@@ -229,6 +242,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print(r.stdout)
             print("STDERR")
             print(r.stderr)
+
     #
     # The logfile and auxfile get written to the current directory
     logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
@@ -251,9 +265,18 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         delete_temp_files(pathname)
     # Figure out the PDF filename. It's in the current directory...
     pdffile = os.path.join( os.getcwd(), os.path.basename(os.path.splitext(filename)[0])) + ".pdf"
+
     # If we changed the current directory, change back
-    if chdir and dirname:
+    if chdir:
         os.chdir(cwd)           
+
+    # Restore enviornment
+    if texinputs:
+        if oldenv:
+            os.environ[TEXINPUTS] = oldenv
+        else:
+            del os.environ[TEXINPUTS]
+
     return (pdffile,pages)
 
 def extract_pdf_pages(target,source,pagelist="-"):
@@ -305,8 +328,6 @@ def inspect_pdf(pdf_fname):
           WIDTH: = width (in pt)
           HEIGHT:  = height (in pt)
           PAGE:   = page number
-an array of (page_number, orientation, width, height)
-    Where orientation is PORTRAIT or LANDSCAPE
     """
 
     assert os.path.exists(pdf_fname)
@@ -341,6 +362,9 @@ an array of (page_number, orientation, width, height)
     # The code below fixes this problem
     # See https://bugs.python.org/issue14243
     logging.info("inspect_pdf(%s)",format(pdf_fname))
+
+    if DEBUG:
+        print("get_pdf_pages_and_orientation({})".format(pdf_fname))
     with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',suffix='.tex',delete=False,
                                      dir=os.path.dirname( os.path.abspath(pdf_fname))) as tmp:
         tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
@@ -363,4 +387,5 @@ if __name__=="__main__":
     m = inspect_pdf(sys.argv[1])
     for info in sorted(m[PAGES].keys()):
         print('page ',info, m[PAGES][info])
+        
     

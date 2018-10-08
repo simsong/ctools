@@ -8,8 +8,7 @@ import os
 import os.path
 import sys
 
-sys.path.append( os.path.join(os.path.dirname(__file__),".."))
-from latex_tools import *
+from ctools.latex_tools import *
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")
@@ -63,8 +62,9 @@ def test_run_latex():
     assert os.path.exists(HELLO_PDF)
     assert not os.path.exists(HELLO_AUX)
 
-    # Finally, delete HELLO_TEX
+    # Finally, delete HELLO_TEX and HELLO_PDF
     os.unlink(HELLO_TEX)
+    os.unlink(HELLO_PDF)
 
 def test_count_pdf_pages():
     assert os.path.exists(FIVEPAGES_PDF) # we need this file
