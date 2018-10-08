@@ -62,8 +62,9 @@ def test_run_latex():
     assert os.path.exists(HELLO_PDF)
     assert not os.path.exists(HELLO_AUX)
 
-    # Finally, delete HELLO_TEX
+    # Finally, delete HELLO_TEX and HELLO_PDF
     os.unlink(HELLO_TEX)
+    os.unlink(HELLO_PDF)
 
 def test_count_pdf_pages():
     assert os.path.exists(FIVEPAGES_PDF) # we need this file

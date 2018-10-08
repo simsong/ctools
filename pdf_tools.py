@@ -1,5 +1,5 @@
 #
-# pdftools
+# pdf_tools
 # Simson Garfinkel
 # US Census Bureau
 
@@ -100,6 +100,10 @@ def convert_document_to_pdf(infile):
         word.Quit()
         return outfile
     if sys.platform=='darwin':
+        #
+        # soffice --headless --convert-to pdf filename.doc
+        # libreoffice --headless --convert-to pdf filename.doc
+
         if not os.path.exists(SOFFICE_DARWIN):
             print("{} not found.".format(SOFFICE_DARWIN),file=sys.stderr)
             raise RuntimeError("DOCX conversion on MacOS requires LibreOffice to be installed")
@@ -115,12 +119,6 @@ def convert_document_to_pdf(infile):
             time.sleep(.01)
         raise RuntimeError("{}: {} not created".format(" ".join(cmd),outfile))
     raise RuntimeError("unknown how to do PDF conversion on {}".format(sys.platform))
-
-#
-# soffice --headless --convert-to pdf filename.doc
-# libreoffice --headless --convert-to pdf filename.doc
-    raise RuntimeError("Please manually convert {}".format(infile))
-
 
 if __name__=="__main__":
     #
