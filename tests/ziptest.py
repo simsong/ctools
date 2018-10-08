@@ -8,6 +8,9 @@ import os.path
 import tempfile
 import sys
 
+sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+
+
 from ctools.s3 import S3File
 
 if __name__=="__main__":

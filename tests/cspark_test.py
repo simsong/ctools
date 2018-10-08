@@ -3,7 +3,9 @@ import os
 import py.test
 import io
 
-from ctools.cspark import *
+sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+
+from cspark import *
 
 CSPARK_PATH = os.path.join(os.path.dirname(__file__), "../cspark.py")
 

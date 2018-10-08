@@ -14,13 +14,15 @@ import time
 import platform
 import warnings
 
-import ctools.clogging 
+sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+
+import clogging 
 
 def test_logging_to_syslog():
     if platform.system()=='Windows':
         return
 
-    ctools.clogging.setup(level='INFO',syslog=True)
+    clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
     logging.error("Logging at t={}.".format(nonce))
     # Wait a few miliseconds for the nonce to appear in the logfile
@@ -34,7 +36,7 @@ def test_logging_to_syslog():
     if count==0:
         warnings.warn("local1 is not logging to /var/log/local1.log")
     assert count in [0,1,2]
-    ctools.clogging.shutdown()
+    clogging.shutdown()
 
     
 

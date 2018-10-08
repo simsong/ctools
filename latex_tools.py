@@ -215,12 +215,14 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         cwd = os.getcwd()
         if dirname:
             os.chdir(dirname)       # change to the directory where the file exists
-        dirname="."                 # now it is the current directory
+        # change dirname and pathname to reflect current directory
+        dirname="."                 
+        pathname=filename
         assert os.path.exists(filename) # make sure we can still reach it
 
 
     for i in range(start_run,start_run+repeat):
-        cmd = [LATEX_EXE,filename, '-interaction=nonstopmode']
+        cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
         print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
@@ -247,6 +249,9 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     # The logfile and auxfile get written to the current directory
     logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
     auxfilename = os.path.splitext( os.path.basename(filename))[0] + ".aux"
+    assert os.path.exists(logfilename)
+    assert os.path.exists(auxfilename)
+
     if callback_log: callback_log(open(logfilename,"r"))
     if callback_aux: callback_aux(open(auxfilename,"r"))
         
