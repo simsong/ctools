@@ -196,7 +196,7 @@ def delete_temp_files(latex_source,verbose=False):
 TEXINPUTS='TEXINPUTS'
 def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
               texinputs=None,
-              callback_aux=None,callback_log=None,ignore_ret=False,chdir=True):
+              callback_aux=None,callback_log=None,ignore_ret=False,chdir=True,verbose=False):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
 
     # Are we setting TEXINPUTS? If so, remember old value.
@@ -223,7 +223,8 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
 
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
-        print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
+        if verbose:
+            print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
             outlines = r.stdout.split("\n")
