@@ -10,6 +10,9 @@ import sys
 import time
 import glob
 
+SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
+AWS_PATH = 'AWS_PATH'
+
 LOG4J_ERRORS_TO_CONSOLE="""<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
 
@@ -109,13 +112,15 @@ def spark_submit_cmd(*, pyfiles=[], pydirs=[], num_executors=None,
     print("cmd:",cmd)
     return cmd
 
-SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
 def spark_running():
     """Return True if we are running inside Spark"""
     return SPARK_ENV_LOADED in os.environ
 
 def spark_available():
     """Returns True if spark is available"""
+    # Right now, only allow spark on amazon
+    if AWS_PATH not in os.environ:
+        return False
     import distutils.spawn
     return distutils.spawn.find_executable("spark-submit") and True
 
