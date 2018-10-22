@@ -26,7 +26,7 @@ def s3open(path, mode="r", encoding=None):
     assert '+' not in mode
     
     if "r" in mode:
-        p = Popen(['aws','s3','cp',path,'-'],stdout=PIPE,stderr=PIPE,encoding=encoding)
+        p = Popen(['aws','s3','cp',path,'-'],stdout=PIPE,encoding=encoding)
         return p.stdout
 
     elif "w" in mode:
