@@ -123,8 +123,6 @@ def concat_downloaded_objects(obj1, obj2):
     return
 
 
-
-
 class S3File:
     """Open an S3 file that can be seeked. This is done by caching to the local file system."""
     def __init__(self,name,mode='rb'):
