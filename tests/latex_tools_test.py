@@ -8,9 +8,9 @@ import os
 import os.path
 import sys
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 
-from latex_tools import *
+from ctools.latex_tools import *
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")

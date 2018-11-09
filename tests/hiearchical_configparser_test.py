@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 #
-from ctools.hiearchical_configparser import HiearchicalConfigParser
 
 import os
+
+from ctools.hiearchical_configparser import HiearchicalConfigParser
+
 
 MYDIR=os.path.dirname(__file__)
 

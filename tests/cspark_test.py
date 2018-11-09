@@ -3,9 +3,9 @@ import os
 import py.test
 import io
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 
-import cspark
+import ctools.cspark as cspark
 
 CSPARK_PATH = os.path.join(os.path.dirname(__file__), "../cspark.py")
 assert os.path.exists(CSPARK_PATH)

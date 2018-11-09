@@ -14,12 +14,12 @@ import time
 import platform
 import warnings
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 
-import clogging 
+import ctools.clogging as clogging
 
 def test_logging_to_syslog():
-    if platform.system()=='Windows':
+    if platform.system()=='Windows' or platform.system()=='Darwin':
         return
 
     clogging.setup(level='INFO',syslog=True)
