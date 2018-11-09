@@ -28,7 +28,6 @@ class HiearchicalConfigParser(ConfigParser):
         cf = ConfigParser()
         cf.read(filename)
 
-        #print(filename,"BUILDING CONFIG STRUCTURE FOR FILE")
         sections = set(cf.sections())
         read_files_default = copy(read_files)
         # If there is an INCLUDE in the default section, see if the included file
@@ -39,7 +38,6 @@ class HiearchicalConfigParser(ConfigParser):
                 default_include_file = cf[DEFAULT][INCLUDE]
                 if default_include_file not in read_files_default:
                     read_files_default.add(default_include_file)
-                    #print(filename,"READING STRUCTURE FROM DEFAULT INCLUDE FILE",default_include_file)
                     cp = HiearchicalConfigParser()
                     cp.read(default_include_file, read_files=read_files_default)
                     for section in cp.sections():
@@ -64,33 +62,20 @@ class HiearchicalConfigParser(ConfigParser):
 
             section_include_file = cf[section].get(INCLUDE,None)
             for include_file in [default_include_file, section_include_file]:
-                #print(filename,"SECTION=",section,"INCLUDE_FILE=",include_file)
                 if include_file and (include_file not in section_include_files_read):
                     section_include_files_read.add(include_file) # note that we have read it
-                    #print(filename,"READING ",include_file,'for section',section)
                     cp = HiearchicalConfigParser()
                     cp.read(include_file, read_files=section_include_files_read)
-                    #print(filename,"CP has been read. Here it is:")
-                    #cp.write(open('/dev/stdout','w'))
                     if section in cp:
-                        #print(filename,"++++++++  now copy out the keys in section",section)
                         for option in cp[section]:
                             self.set(section,option, cp[section][option])
-                            #print(filename,"set ",section,option,cp[section][option])
-                    #else:
-                    #   print(filename,"++++++++  no section",section)
 
             # Now, copy over all of the options for this section in the file that we were 
             # actually asked to read, rather than the include file
-            #print(filename,"COPYING OVER OPTIONS FROM",filename,"FOR SECTION",section)
             for option in cf[section]:
                 self.set(section,option, cf[section][option])
-                #print(filename,"set2 ",section,option,cf[section][option])
 
         # All done
-        #print(filename,"Current file:")
-        #self.write(open("/dev/stdout","w"))
-        #print(filename,"----------------")
 
     def read_string(self,string,source=None):
         raise RuntimeError("read_string not implemented")
