@@ -35,6 +35,10 @@ import logging.handlers
 import os
 import os.path
 
+__author__ = "Simson L. Garfinkel"
+__version__ = "0.0.1"
+
+
 added_syslog = False
 called_basicConfig = False
 DEVLOG = "/dev/log"

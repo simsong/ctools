@@ -82,7 +82,6 @@ class subhead(row):
 class raw(row):
     def __init__(self,data):
         self.data = data
-    
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -150,7 +149,7 @@ class ttable:
     ## Data adding functions
 
     ## User specified formatting functions:
-        
+
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
@@ -174,7 +173,7 @@ class ttable:
                 continue
             else:
                 raise RuntimeError("Invalid format string '{}' in '{}'".format(fmt,ch))
-                
+
     def set_col_totals(self,totals): self.col_totals = totals
     def set_col_fmt(self,col,fmt):
         """Set the formatting for colum COL. Format is specified with a Python format string.
@@ -318,7 +317,6 @@ class ttable:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
         return "".join(ret)
-        
 
     ################################################################
 
@@ -501,3 +499,4 @@ class ttable:
     def save_table(self,fname,mode=LATEX,option=None):
         with open(fname,"w") as f:
             f.write(self.typeset(mode=mode,option=option))
+

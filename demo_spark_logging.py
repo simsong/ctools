@@ -10,9 +10,13 @@ sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
 
 import socket
 import logging
-import cspark
-import clogging
 import json
+import ctools.cspark as cspark
+import ctools.clogging as clogging
+
+__author__ = "Simson L. Garfinkel"
+__version__ = "0.0.1"
+
 
 def applicationId():
     # This only works within a Yarn container, which means in a mapper or reducer
@@ -37,6 +41,10 @@ def myadder(x,y):
 
 
 if __name__=="__main__":
+    import argparse
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    args = parser.parse_args()
+
     print("Running spark with 16 executors.... My PID is {}".format(os.getpid()))
     sc = cspark.spark_context(num_executors=16, pyfiles=['clogging.py'])
     print("Spark Context Obtained. sc={}  My PID is now {}".format(sc, os.getpid()))
