@@ -42,27 +42,27 @@ class HiearchicalConfigParser(ConfigParser):
         cf.read(filename)
 
         sections = set(cf.sections())
-        print(filename,"READ SECTIONS:",sections)
+        #print(filename,"READ SECTIONS:",sections)
 
         # If there is an INCLUDE in the default section, see if the included file
         # specifies any sections that we did not have. If there is, get those sections too
         default_include_file = None
         if DEFAULT in cf:
             if INCLUDE in cf[DEFAULT]:
-                print(filename,"INCLUDE IS IN DEFAULT SECTION")
+                #print(filename,"INCLUDE IS IN DEFAULT SECTION")
                 default_include_file = cf[DEFAULT][INCLUDE]
                 if default_include_file:
                     pfn = fixpath(filename, default_include_file)
-                    print(filename,"READ",pfn,"TO GET SECTIONS")
+                    #print(filename,"READ",pfn,"TO GET SECTIONS")
                     if not os.path.exists(pfn):
                         raise FileNotFoundError(pfn)
                     cp = HiearchicalConfigParser()
                     cp.read(pfn)
-                    print(filename,"READ SECTIONS:",list(cp.sections()))
+                    #print(filename,"READ SECTIONS:",list(cp.sections()))
                     for section in cp.sections():
-                        print(filename,"FOUND SECTION",section,"IN",pfn)
+                        #print(filename,"FOUND SECTION",section,"IN",pfn)
                         if section not in sections:
-                            print(filename,"ADDING SECTION",section)
+                            #print(filename,"ADDING SECTION",section)
                             sections.add(section)
 
         # Now, for each section from the file we were supposed to read combined with the sections
@@ -70,7 +70,7 @@ class HiearchicalConfigParser(ConfigParser):
         # Note that there may potentially be two include files: one from the section, and one from
         # the default. We therefore read the default include file first, if it exists, and copy those
         # options over. Then we read the ones in the include if, if there is any, and copy those options over.
-        print(filename,"READING INCLUDE FILES FOR EACH SECTION")
+        #print(filename,"READING INCLUDE FILES FOR EACH SECTION")
         for section in sections:
             # make a local copy of the files we read for this section
 
@@ -83,7 +83,7 @@ class HiearchicalConfigParser(ConfigParser):
             section_include_file = cf[section].get(INCLUDE,None)
             for include_file in [default_include_file, section_include_file]:
                 if include_file:
-                    print(filename,"READING SECTION",section,"FROM",include_file)
+                    #print(filename,"READING SECTION",section,"FROM",include_file)
                     
                     pfn = fixpath(filename, include_file)
                     if not os.path.exists(pfn):
@@ -91,7 +91,7 @@ class HiearchicalConfigParser(ConfigParser):
                     cp = HiearchicalConfigParser()
                     cp.read(pfn)
                     if section in cp:
-                        print(filename,"ADDING SECTION",section)
+                        #print(filename,"ADDING SECTION",section)
                         for option in cp[section]:
                             self.set(section,option, cp[section][option])
 
@@ -101,9 +101,9 @@ class HiearchicalConfigParser(ConfigParser):
                 self.set(section,option, cf[section][option])
 
         # All done
-        print(filename,"RETURNING:")
-        self.write(open("/dev/stdout","w"))
-        print(filename,"============")
+        #print(filename,"RETURNING:")
+        #self.write(open("/dev/stdout","w"))
+        #print(filename,"============")
 
     def read_string(self,string,source=None):
         raise RuntimeError("read_string not implemented")
