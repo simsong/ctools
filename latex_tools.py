@@ -12,6 +12,10 @@ import glob
 import tempfile
 import logging
 import hashlib
+
+__version__ = "0.1.0"
+
+
 ERROR_LINES=30
 
 DEBUG=False
