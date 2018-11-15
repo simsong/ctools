@@ -36,6 +36,9 @@ class HiearchicalConfigParser(ConfigParser):
         Scan for any INCLUDE statements.If any are found in any section, read the included file 
         recursively, unless it has already been read.
         """
+        if filename[0]!='/':
+            filename = os.path.abspath(filename)
+
         cf = ConfigParser()
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
