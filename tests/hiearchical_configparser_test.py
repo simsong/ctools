@@ -3,7 +3,7 @@
 
 import os
 
-from ctools.hiearchical_configparser import HiearchicalConfigParser
+from ctools.hiearchical_configparser import HierarchicalConfigParser
 
 
 MYDIR=os.path.dirname(__file__)
@@ -13,7 +13,7 @@ def text_fixpath():
     fixpath("/a/b/c","b")=="/a/b/b"
     
 def test_hiearchical_configparser1():
-    hcf = HiearchicalConfigParser()
+    hcf = HierarchicalConfigParser()
     hcf.read(MYDIR+"/hcf_file2.ini")
     assert sorted(list(hcf.sections()))==['a','b','c']
     assert hcf['a']['color']=='file2-a'
@@ -26,7 +26,7 @@ def test_hiearchical_configparser1():
 def test_hiearchical_configparser2():
     fname = MYDIR+"/hcf_file1.ini" # includes hcf_file2.ini as a default
     assert os.path.exists(fname)
-    hcf = HiearchicalConfigParser()
+    hcf = HierarchicalConfigParser()
     hcf.read(fname)
     # Validate what's in hcf_file1.ini
     assert hcf['a']['INCLUDE']=='hcf_file2.ini'
@@ -44,7 +44,7 @@ def test_hiearchical_configparser2():
     
     
 def test_hiearchical_configparser3():
-    hcf = HiearchicalConfigParser()
+    hcf = HierarchicalConfigParser()
     hcf.read(MYDIR+"/hcf_file3.ini")
     print("and we got:")
     hcf.write(open("/dev/stdout","w"))
