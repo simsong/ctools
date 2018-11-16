@@ -92,9 +92,9 @@ def setup(level='INFO',
     if not called_basicConfig:
         loglevel = logging.getLevelName(level)
         if filename:
-            logging.basicConfig(filename=filename, format=format, level=loglevel)
+            logging.basicConfig(filename=filename, format=log_format, level=loglevel)
         else:
-            logging.basicConfig(format=format, level=loglevel)
+            logging.basicConfig(format=log_format, level=loglevel)
         called_basedConig = True
 
     if syslog:
