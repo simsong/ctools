@@ -253,6 +253,7 @@ def s3open(path, mode="r", encoding=None):
 
 def s3exists(path):
     """Return True if the S3 file exists"""
+    from subprocess import run,PIPE,Popen
     out = Popen(['aws','s3','ls','--page-size','10',path],stdout=PIPE,encoding='utf-8').communicate()[0]
     return len(out) > 0
 
