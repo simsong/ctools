@@ -16,6 +16,9 @@ import warnings
 
 #sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 import ctools.clogging as clogging
 
 def test_logging_to_syslog():

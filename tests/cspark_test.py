@@ -4,10 +4,12 @@ import py.test
 import io
 
 #sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import ctools.cspark as cspark
 
-CSPARK_PATH = os.path.join(os.path.dirname(__file__), "../cspark.py")
+CSPARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),"cspark.py")
 assert os.path.exists(CSPARK_PATH)
 
 fh_config = io.StringIO("""

@@ -3,7 +3,11 @@
 
 import os
 
-from ctools.hiearchical_configparser import HierarchicalConfigParser
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+from ctools.hierarchical_configparser import HierarchicalConfigParser
 
 
 MYDIR=os.path.dirname(__file__)

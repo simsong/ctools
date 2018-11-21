@@ -6,6 +6,7 @@ import sys
 import warnings
 
 #sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ctools.s3 import *
 
