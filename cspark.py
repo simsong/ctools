@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #
-# cspark --- tools for running spark more easily from Python
+"""
+cspark --- tools for running spark more easily from Python
+"""
 #
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"

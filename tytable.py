@@ -19,6 +19,9 @@ LONGTABLE='longtable'
 OPTION_TABLE = 'table'
 OPTION_CENTER = 'center'
 
+from ctools.latex_tools import latex_escape
+import sqlite3
+
 __version__ = "0.1.0"
 
 #
@@ -82,7 +85,6 @@ class subhead(row):
 class raw(row):
     def __init__(self,data):
         self.data = data
-    
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -114,6 +116,12 @@ class ttable:
        add_variable(name,value)  -- add variables to output (for LaTeX mostly)
        set_latex_colspec(str)    -- sets the LaTeX column specification, rather than have it auto calculated
     """
+    TEXT = TEXT
+    LATEX = LATEX
+    HTML = HTML
+    LONGTABLE = LONGTABLE
+    OPTION_TABLE = OPTION_TABLE
+    OPTION_CENTER = OPTION_CENTER
     HR = "<hr>"
     SUPPRESS_ZERO="suppress_zero"
     RIGHT="RIGHT"
@@ -146,11 +154,12 @@ class ttable:
         self.variables    = {}  # additional variables that may be added
         self.label        = None
         self.caption      = None
+        self.footnote     = None
 
     ## Data adding functions
 
     ## User specified formatting functions:
-        
+
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
@@ -174,7 +183,7 @@ class ttable:
                 continue
             else:
                 raise RuntimeError("Invalid format string '{}' in '{}'".format(fmt,ch))
-                
+
     def set_col_totals(self,totals): self.col_totals = totals
     def set_col_fmt(self,col,fmt):
         """Set the formatting for colum COL. Format is specified with a Python format string.
@@ -260,8 +269,8 @@ class ttable:
         "Typeset a value for a given column number."
         import math
         align = self.col_alignment.get(colNumber,self.LEFT)
-        if self.mode==HTML: return formattedValue
-        if self.mode==LATEX: return formattedValue
+        if self.mode==HTML:  return formattedValue
+        if self.mode==LATEX: return latex_escape(formattedValue)
         if self.mode==TEXT: 
             try:
                 fill = (self.col_formatted_widths[colNumber]-len(formattedValue))
@@ -318,7 +327,6 @@ class ttable:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
         return "".join(ret)
-        
 
     ################################################################
 
@@ -378,7 +386,7 @@ class ttable:
                 ret.append(self.typeset_hr())
         return ret
         
-    def typeset(self,mode=TEXT,option=None):
+    def typeset(self,mode=TEXT,option=None,out=None):
         """ Returns the typset output of the entire table. Builds it up in """
 
         if len(self.data)==0:
@@ -445,6 +453,8 @@ class ttable:
             ret.append("<table>\n")
             ret += self.typeset_headings()
         elif self.mode==TEXT:
+            if self.caption: 
+                ret.append(self.caption)
             if self.header:
                 ret.append(self.header)
                 ret.append("\n")
@@ -480,6 +490,10 @@ class ttable:
                     ret.append("\\end{table}")
             else:
                 ret.append("\\end{longtable}\n")
+            if self.footnote:
+                ret.append("\\footnote{")
+                ret.append( latex_escape(self.footnote) )
+                ret.append("}")
         elif self.mode==HTML:
             ret.append("</table>\n")
         elif self.mode==TEXT:
@@ -493,7 +507,10 @@ class ttable:
                 ret += latex_var(name,value)
             if self.mode==HTML:
                 ret += ["Note: ",name," is ", value, "<br>"]
-        return "".join(ret)
+        outbuffer = "".join(ret)
+        if out:
+            out.write(outbuffer)
+        return outbuffer
 
     def add_variable(self,name,value):
         self.variables[name] = value
@@ -501,3 +518,18 @@ class ttable:
     def save_table(self,fname,mode=LATEX,option=None):
         with open(fname,"w") as f:
             f.write(self.typeset(mode=mode,option=option))
+
+    def add_sql( self, db, stmt, headings=None, footnote=False ):
+        if footnote:
+            self.footnote = stmt
+        cur = db.cursor()
+        try:
+            cur.execute( stmt )
+        except sqlite3.OperationalError:
+            raise RuntimeError("Invalid SQL statement: "+stmt)
+        if headings:
+            self.add_head( headings )
+        else:
+            self.add_head( [col[0] for col in cur.description] )
+        [ self.add_data(row) for row in cur ]
+            

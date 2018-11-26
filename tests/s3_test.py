@@ -5,10 +5,10 @@ import os
 import sys
 import warnings
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-
-from s3 import *
+from ctools.s3 import *
 
 def test_s3open():
     if "EC2_HOME" in os.environ:
