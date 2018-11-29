@@ -94,7 +94,7 @@ def detach( logdir=os.getcwd() ):
 def spark_submit_cmd(*, pyfiles=[], pydirs=[], num_executors=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args"""
-    pyfiles += ["census_etl.zip", "census_etl/ctools.zip", "census_etl/dfxml/python.zip"]
+    # pyfiles += ["census_etl.zip", "census_etl/ctools.zip", "census_etl/dfxml/python.zip"]
     for dirname in pydirs:
         for pathname in glob.glob( os.path.join( dirname, '*.py' )):
             pyfiles.append( pathname )
