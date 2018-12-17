@@ -12,12 +12,6 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
-TEXT  = 'text'
-LATEX = 'latex'
-HTML  = 'html'
-LONGTABLE='longtable'
-OPTION_TABLE = 'table'
-OPTION_CENTER = 'center'
 
 from ctools.latex_tools import latex_escape
 import sqlite3
@@ -32,11 +26,11 @@ import os
 import traceback
 
 def line_end(mode):
-    if mode==TEXT:
+    if mode == TEXT:
         return "\n"
-    elif mode==LATEX:
+    elif mode == LATEX:
         return r"~\\" + "\n"
-    elif mode==HTML:
+    elif mode == HTML:
         return "<br>"
     else:
         raise RuntimeError("Unknown mode: {}".format(mode))
@@ -44,7 +38,7 @@ def line_end(mode):
 def isnumber(v):
     """Return true if we can treat v as a number"""
     try:
-        return v==0 or v!=0
+        return v == 0 or v!=0
     except TypeError:
         return False
 
@@ -69,22 +63,27 @@ def icomma(i):
 
 # hr is the tag that we use for linebreaks 
 
-class row:
-    def __init__(self,data):
+# The row class holds the row and anny annotations
+class Row:
+    def __init__(self,data,annotations=None):
+        if annotations:
+            if len(data) != len(annotations):
+                raise ValueError("data and annotations must have same length")
         self.data = data
+        self.annotations = annotations
     def __len__(self):
         return len(self.data)
     def __getitem__(self,n):
         return self.data[n]
 
-class subhead(row):
-    def __init__(self,val):
-        self.data  = [val]
-        self.text  = val
+# Heads are like rows, but they are headers
+class Head(Row):
+    pass
 
-class raw(row):
-    def __init__(self,data):
-        self.data = data
+# Raw is just raw data passed through
+class Raw(Row):
+    def __init__(self,rawdata):
+        self.rawdata = rawdata
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -116,12 +115,13 @@ class ttable:
        add_variable(name,value)  -- add variables to output (for LaTeX mostly)
        set_latex_colspec(str)    -- sets the LaTeX column specification, rather than have it auto calculated
     """
-    TEXT = TEXT
-    LATEX = LATEX
-    HTML = HTML
-    LONGTABLE = LONGTABLE
-    OPTION_TABLE = OPTION_TABLE
-    OPTION_CENTER = OPTION_CENTER
+    TEXT  = 'text'
+    LATEX = 'latex'
+    HTML  = 'html'
+    OPTION_LONGTABLE = 'longtable'
+    OPTION_TABULARX = 'tabularx'
+    OPTION_TABLE = 'table'
+    OPTION_CENTER = 'center'
     HR = "<hr>"
     SUPPRESS_ZERO="suppress_zero"
     RIGHT="RIGHT"
@@ -129,7 +129,7 @@ class ttable:
     CENTER="CENTER"
     NL = {TEXT:'\n', LATEX:"\\\\ \n", HTML:''} # new line
     VALID_MODES = set([TEXT,LATEX,HTML])
-    VALID_OPTIONS = set([LONGTABLE,SUPPRESS_ZERO,OPTION_TABLE])
+    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,SUPPRESS_ZERO,OPTION_TABLE])
     DEFAULT_ALIGNMENT_NUMBER = RIGHT
     DEFAULT_ALIGNMENT_STRING = LEFT
     HTML_ALIGNMENT = {RIGHT:"style='text-align:right;'",
@@ -164,6 +164,7 @@ class ttable:
         assert mode in self.VALID_MODES
         self.mode = mode
     def add_option(self,o): self.options.add(o)
+    def set_option(self,o): self.options.add(o)
     def set_data(self,d): self.data = d
     def set_title(self,t): self.title = t
     def set_label(self,l): self.label = l
@@ -173,11 +174,11 @@ class ttable:
     def set_col_alignmnets(self,fmt):
         col = 0
         for ch in fmt:
-            if ch=='r':
+            if ch == 'r':
                 self.set_col_alignment(col, self.RIGHT)
                 col += 1
                 continue
-            elif ch=='l':
+            elif ch == 'l':
                 self.set_col_alignment(col, self.LEFT)
                 col += 1
                 continue
@@ -194,20 +195,20 @@ class ttable:
     def set_latex_colspec(self,latex_colspec):
         self.latex_colspec = latex_colspec
 
-    def add_head(self,values):
+    def add_head(self,values, annotations=None):
         """ Append a row of VALUES to the table header. The VALUES should be a list of columsn."""
-        assert type(values)==type([]) or type(values)==type(())
-        self.col_headings.append(values)
+        assert isinstance(values,list) or isinstance(values,tuple)
+        self.col_headings.append( Head(values, annotations=annotations))
 
-    def add_data(self,values):
+    def add_subhead(self,values, annotations=None):
+        self.data.append( Head(values, annotations=annotations))
+
+    def add_data(self,values,annotations=None):
         """ Append a ROW to the table body. The ROW should be a list of each column."""
-        self.data.append(row(values))
-
-    def add_subhead(self,values):
-        self.data.append(subhead(values))
+        self.data.append( Row(values, annotations=annotations))
 
     def add_raw(self,val):
-        self.data.append(raw(val))
+        self.data.append( Raw(val))
 
     def ncols(self):
         " Return the number of maximum number of cols in the data"
@@ -223,9 +224,9 @@ class ttable:
         Returns (value,alignment)
         """
         formatted_value = None
-        if value==None:
+        if value == None:
             return ("",self.LEFT)
-        if value==0 and self.SUPPRESS_ZERO in self.options:
+        if value == 0 and self.SUPPRESS_ZERO in self.options:
             return ("",self.LEFT)
         if isnumber(value):
             try:
@@ -257,11 +258,11 @@ class ttable:
 
     def typeset_hr(self):
         "Output a HR."
-        if self.mode==LATEX:
+        if self.mode == self.LATEX:
             return "\\hline\n "
-        elif self.mode==TEXT:
+        elif self.mode == self.TEXT:
             return "+".join(["-"*self.col_formatted_width(col) for col in range(0,self.cols)]) + "\n"
-        elif self.mode==HTML:
+        elif self.mode == self.HTML:
             return ""                   # don't insert
         raise ValueError("Unknown mode '{}'".format(self.mode))        
 
@@ -269,16 +270,16 @@ class ttable:
         "Typeset a value for a given column number."
         import math
         align = self.col_alignment.get(colNumber,self.LEFT)
-        if self.mode==HTML:  return formattedValue
-        if self.mode==LATEX: return latex_escape(formattedValue)
-        if self.mode==TEXT: 
+        if self.mode == self.HTML:  return formattedValue
+        if self.mode == self.LATEX: return latex_escape(formattedValue)
+        if self.mode == self.TEXT: 
             try:
                 fill = (self.col_formatted_widths[colNumber]-len(formattedValue))
             except IndexError:
                 fill=0
-            if align==self.RIGHT:
+            if align == self.RIGHT:
                 return " "*fill+formattedValue
-            if align==self.CENTER:
+            if align == self.CENTER:
                 return " "*math.ceil(fill/2.0)+formattedValue+" "*math.floor(fill/2.0)
             # Must be LEFT
             if colNumber != self.cols-1: # not the last column
@@ -286,44 +287,30 @@ class ttable:
             return formattedValue               #  don't indent last column
 
 
-    def typeset_row(self,row):
+    def typeset_row(self,row,html_delim='td'):
         "row is a an array. It should be typset. Return the string. "
         ret = []
-        if isinstance(row,raw):
-            return row[0]
-        if isinstance(row,subhead):
-            # Do a blank line
-            if self.mode==TEXT:
-                ret.append("\n")
-                ret.append(r.text)
-            elif self.mode==LATEX:
-                ret.append("\\\\\n")
-                ret.append(r.text)
-            elif self.mode==HTML:
-                ret.append('<tr><th colspace={} class="subhead">{}</th></tr>'.format((self.cols,row.text)))
-            ret.append(self.NL[self.mode])
-            return "".join(ret)
-
-        if self.mode==HTML:
+        if isinstance(row,Raw):
+            return row.rawdata
+        if self.mode == self.HTML:
             ret.append("<tr>")
         for colNumber in range(0,len(row)):
             if colNumber > 0:
-                if self.mode==LATEX:
+                if self.mode == self.LATEX:
                     ret.append(" & ")
                 ret.append(" "*self.col_margin)
             (fmt,just)      = self.format_cell(row[colNumber],colNumber)
             val             = self.typeset_cell(fmt,colNumber)
 
-            if self.mode==TEXT:
+            if self.mode == self.TEXT:
                 ret.append(val)
-            elif self.mode==LATEX:
+            elif self.mode == self.LATEX:
+                if row.annotations:
+                    ret.append( row.annotations[colNumber])
                 ret.append(val.replace('%','\\%'))
-            elif self.mode==HTML:
-                ret.append('<{} {}>{}</{}>'.format(self.html_delim,
-                                                   self.HTML_ALIGNMENT[just],
-                                                   val,
-                                                   self.html_delim))
-        if self.mode==HTML:
+            elif self.mode == self.HTML:
+                ret.append(f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
+        if self.mode == self.HTML:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
         return "".join(ret)
@@ -339,7 +326,7 @@ class ttable:
 
     def should_omit_row(self,row):
         for (a,b) in self.omit_row:
-            if row[a]==b: return True
+            if row[a] == b: return True
         return False
 
     def compute_and_add_col_totals(self):
@@ -350,10 +337,10 @@ class ttable:
             for r in self.data:
                 if self.should_omit_row(r):
                     continue
-                if r==self.HR:
+                if r == self.HR:
                     continue        # can't total HRs
                 for col in self.col_totals:
-                    if r[col]=='': continue
+                    if r[col] == '': continue
                     totals[col] += r[col]
         except (ValueError,TypeError) as e:
             print("*** Table cannot be totaled",file=sys.stderr)
@@ -377,11 +364,9 @@ class ttable:
         # Typeset the headings
         #
         ret = []
-        if self.mode==HTML:
-            self.html_delim = 'th'
         if self.col_headings:
             for heading_row in self.col_headings:
-                ret.append(self.typeset_row(heading_row))
+                ret.append( self.typeset_row(heading_row,html_delim='th') )
             for i in range(0,self.heading_hr_count):
                 ret.append(self.typeset_hr())
         return ret
@@ -389,7 +374,7 @@ class ttable:
     def typeset(self,mode=TEXT,option=None,out=None):
         """ Returns the typset output of the entire table. Builds it up in """
 
-        if len(self.data)==0:
+        if len(self.data) == 0:
             print("typeset: no rows")
             return ""
 
@@ -402,7 +387,7 @@ class ttable:
             print("typeset: no data")
             return ""
 
-        if self.mode not in [TEXT,LATEX,HTML]:
+        if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
 
         ret = [""]              # array of strings that will be concatenatted
@@ -412,7 +397,7 @@ class ttable:
             self.compute_and_add_col_totals()
 
         # Precalc any table widths if necessary 
-        if self.mode==TEXT:
+        if self.mode == self.TEXT:
             self.calculate_col_formatted_widths()
             if self.title:
                 ret.append(self.title + ":" + "\n")
@@ -421,25 +406,28 @@ class ttable:
         #
         # Start of the table 
         #
-        if self.mode==LATEX:
+        if self.mode == self.LATEX:
             try:
                 colspec = self.latex_colspec
             except AttributeError:
                 colspec = "r"*self.cols 
-            if LONGTABLE not in self.options:
-                if OPTION_TABLE in self.options:
+            if self.OPTION_LONGTABLE not in self.options:
+                if self.OPTION_TABLE in self.options:
                     ret.append("\\begin{table}")
-                if OPTION_CENTER in self.options:
+                if self.OPTION_CENTER in self.options:
                     ret.append("\\begin{center}")
-                if LONGTABLE not in self.options:
+                if self.OPTION_LONGTABLE not in self.options:
                     if self.caption: ret += ["\\caption{",self.caption, "}\n"]
                     if self.label:
                         ret.append("\\label{")
                         ret.append(self.label)
                         ret.append("}")
-                ret += ["\\begin{tabular}{",colspec,"}\n"]
+                if self.OPTION_TABULARX in self.options:
+                    ret += ["\\begin{tabularx}{\\textwidth}{",colspec,"}\n"]
+                else:
+                    ret += ["\\begin{tabular}{",colspec,"}\n"]
                 ret += self.typeset_headings()
-            if LONGTABLE in self.options:
+            if self.OPTION_LONGTABLE in self.options:
                 ret += ["\\begin{longtable}{",colspec,"}\n"]
                 ret += self.typeset_headings()
                 ret.append("\\endfirsthead\n")
@@ -449,10 +437,10 @@ class ttable:
                 ret.append("\\endfoot\n")
                 ret.append(self.footer)
                 ret.append("\\endlastfoot\n")
-        elif self.mode==HTML:
+        elif self.mode == self.HTML:
             ret.append("<table>\n")
             ret += self.typeset_headings()
-        elif self.mode==TEXT:
+        elif self.mode == self.TEXT:
             if self.caption: 
                 ret.append(self.caption)
             if self.header:
@@ -465,9 +453,6 @@ class ttable:
         # typeset each row.
         # computes the width of each row if necessary
         #
-        if self.mode==HTML:
-            self.html_delim = 'td'
-
         for row in self.data:
 
             # See if we should omit this row
@@ -475,18 +460,21 @@ class ttable:
                 continue
 
             # See if this row demands special processing
-            if row.data==self.HR:
+            if row.data == self.HR:
                 ret.append(self.typeset_hr())
                 continue
 
             ret.append(self.typeset_row(row))
 
-        if self.mode==LATEX:
-            if LONGTABLE not in self.options:
-                ret.append("\\end{tabular}\n")
-                if OPTION_CENTER in self.options:
+        if self.mode == self.LATEX:
+            if self.OPTION_LONGTABLE not in self.options:
+                if self.OPTION_TABULARX in self.options:
+                    ret.append("\\end{tabularx}\n")
+                else:
+                    ret.append("\\end{tabular}\n")
+                if self.OPTION_CENTER in self.options:
                     ret.append("\\end{center}")
-                if OPTION_TABLE in self.options:
+                if self.OPTION_TABLE in self.options:
                     ret.append("\\end{table}")
             else:
                 ret.append("\\end{longtable}\n")
@@ -494,18 +482,18 @@ class ttable:
                 ret.append("\\footnote{")
                 ret.append( latex_escape(self.footnote) )
                 ret.append("}")
-        elif self.mode==HTML:
+        elif self.mode == self.HTML:
             ret.append("</table>\n")
-        elif self.mode==TEXT:
+        elif self.mode == self.TEXT:
             if self.footer:
                 ret.append(self.footer)
                 ret.append("\n")
             
         # Finally, add any variables that have been defined
         for (name,value) in self.variables.items():
-            if self.mode==LATEX:
+            if self.mode == self.LATEX:
                 ret += latex_var(name,value)
-            if self.mode==HTML:
+            if self.mode == self.HTML:
                 ret += ["Note: ",name," is ", value, "<br>"]
         outbuffer = "".join(ret)
         if out:
