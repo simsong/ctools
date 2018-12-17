@@ -12,16 +12,16 @@ import ctools.cspark as cspark
 CSPARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),"cspark.py")
 assert os.path.exists(CSPARK_PATH)
 
-fh_config = io.StringIO("""
+fh_config = """
 [spark]
 name1.key1=value1
 name2.key2: value2
-""")
+"""
 
 def test_spark_submit_cmd():
     from configparser import ConfigParser
     config = ConfigParser()
-    config.readfp(fh_config)
+    config.read_string(fh_config)
     cmd = cspark.spark_submit_cmd(configdict=config['spark'])
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
@@ -45,7 +45,6 @@ def test_run_spark():
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
         if cspark.spark_submit(loglevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark import SparkContext, SparkConf
-            from pyspark.sql import SparkSession
             import operator
             conf = SparkConf().setAppName("cspark_test:test_run_spark")
             sc   = SparkContext(conf=conf)
