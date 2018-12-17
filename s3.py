@@ -44,6 +44,8 @@ def aws_s3api(cmd):
     if debug:
         print(" ".join(fcmd),file=sys.stderr)
     data = subprocess.check_output(fcmd, encoding='utf-8')
+    if not data:
+        return None
     try:
         return json.loads(data)
     except (TypeError,json.decoder.JSONDecodeError) as e:
@@ -76,6 +78,8 @@ def list_objects(bucket,prefix,limit=None,delimiter=None):
             cmd += ['--starting-token',next_token]
         
         res = aws_s3api(cmd)
+        if not res:
+            return
         if 'Contents' in res:
             for data in res['Contents']:
                 yield data
