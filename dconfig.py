@@ -2,7 +2,6 @@
 #
 """dconfig.py
 
-
 Tools for dynamically handling configuration files and paths.
 
 This module helps programs that use configuration files. It provides for the following:
@@ -39,6 +38,9 @@ import re
 import socket
 
 from ctools.s3 import s3open,s3exists
+
+__author__ = "Simson L. Garfinkel"
+__version__ = "0.0.1"
 
 
 SECTION_PATHS='paths'

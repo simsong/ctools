@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 #
-#
-# geo.py: some information about geographies.  This should be recast to use an official Census publication.
-#          
+"""
+geo.py: some information about geographies.  This should be recast to use an official Census publication.
+"""          
 #
 # 
+
+__author__ = "Simson L. Garfinkel"
+__version__ = "0.0.1"
 
 
 STATE_DATA=[

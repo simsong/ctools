@@ -12,7 +12,9 @@ import glob
 import tempfile
 import logging
 import hashlib
+
 ERROR_LINES=50
+__version__ = "0.1.0"
 
 DEBUG=False
 
