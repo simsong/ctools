@@ -258,10 +258,15 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
     if "b" in mode:
         encoding = None
 
+    cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/","_"))
+
+    # If not caching and a cache file is present, delete it. 
+    if not cache and os.path.exists(cache_name):
+        os.unlink(cache_name)
+
     if cache and ('w' not in mode):
         if not os.path.exists(READTHROUGH_CACHE_DIR):
             os.mkdir(READTHROUGH_CACHE_DIR)
-        cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/","_"))
         if os.path.exists(cache_name):
             return open(cache_name, mode=mode, encoding=encoding)
         
