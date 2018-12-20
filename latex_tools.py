@@ -13,10 +13,8 @@ import tempfile
 import logging
 import hashlib
 
+ERROR_LINES=50
 __version__ = "0.1.0"
-
-
-ERROR_LINES=30
 
 DEBUG=False
 
@@ -207,7 +205,6 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     oldenv   = os.environ.get(TEXINPUTS,None)
     if texinputs:
         os.environ[TEXINPUTS] = texinputs
-    
 
     # Are we changing the directory? If so, remember old value
     assert os.path.exists(pathname)
