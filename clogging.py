@@ -58,6 +58,15 @@ added_syslog = False
 called_basicConfig = False
 
 
+def applicationId():
+    """Return the Yarn applicationID.
+    This only works within a Yarn container, which means in a mapper or reducer.
+    """
+    try:
+        return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
+    except KeyError:
+        return "unknown"
+
 def shutdown():
     """Turn off the logging system."""
     global added_syslog, called_basicConfig
