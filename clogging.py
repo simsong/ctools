@@ -34,17 +34,38 @@ import logging
 import logging.handlers
 import os
 import os.path
+import datetime
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
 
 
-added_syslog = False
-called_basicConfig = False
 DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
-SYSLOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+
+# Default log formats. 
+#
+
+# YEAR is used in callers
+YEAR=str(datetime.datetime.now().year)
 LOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+SYSLOG_FORMAT="%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+
+# Global state variables. Keep track as to whether or not syslog
+# handler was added and whether or not the basicConfig was setup.
+
+added_syslog = False
+called_basicConfig = False
+
+
+def applicationId():
+    """Return the Yarn applicationID.
+    This only works within a Yarn container, which means in a mapper or reducer.
+    """
+    try:
+        return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
+    except KeyError:
+        return "unknown"
 
 def shutdown():
     """Turn off the logging system."""
@@ -59,8 +80,8 @@ def add_argument(parser):
                         choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
 
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
-                 syslog_format = SYSLOG_FORMAT):
-    global  added_syslog, called_basicConfig
+                 syslog_format = YEAR+" "+SYSLOG_FORMAT):
+    global  added_syslog
     if not added_syslog:
         # Make a second handler that logs to syslog
         if os.path.exists(DEVLOG):
@@ -73,7 +94,6 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
         added_syslog = True
-    
 
 def setup(level='INFO',
           syslog=False,
@@ -87,7 +107,7 @@ def setup(level='INFO',
     @param facility   - use this facility, default LOG_LOCAL1
     @param log_format - log this log format for all but syslog
     @param syslog_format - use this for the syslog format.
-"""
+    """
     global called_basicConfig
     if not called_basicConfig:
         loglevel = logging.getLevelName(level)
