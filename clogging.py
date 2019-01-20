@@ -60,12 +60,24 @@ called_basicConfig = False
 
 def applicationId():
     """Return the Yarn applicationID.
-    This only works within a Yarn container, which means in a mapper or reducer.
+    The environment variables are only set if we are running in a Yarn container.
     """
     try:
         return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
     except KeyError:
-        return "unknown"
+        pass
+
+    # Perhaps we are running on the head-end. If so, run a Spark job that finds it.
+    try:
+        from pyspark     import SparkConf, SparkContext
+        sc = SparkContext.getOrCreate()
+        appid = sc.parallelize([1]).map(lambda x:applicationId()).collect()
+        return appid[0]
+    except ImportError:
+        pass
+
+    # Ugh. We can't find it.
+    return "unknown"
 
 def shutdown():
     """Turn off the logging system."""
