@@ -183,8 +183,8 @@ def spark_submit(*, loglevel=None, pyfiles=[], pydirs=[], num_executors=None, co
     return False                # not running inside spark; it already ran...
     
 
-def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},
-                  properties_file=None):
+def spark_session(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},
+                  properties_file=None, appName='spark', logLevel=None):
     """If spark is running, return the Spark Context.
     If spark is not running, rerun the program under spark and to get to this same point.
     Notice that we find all current python files and add them.
@@ -195,10 +195,10 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
                         conf=conf, configdict=configdict, properties_file=properties_file,
                         argv=sys.argv):
         # Running inside spark
-        from pyspark import SparkConf
-        from pyspark import SparkContext
-        conf = SparkConf()
-        sc = SparkContext(conf=conf)
+        from pyspark.sql import SparkSession
+        spark = SparkSession.builder.appName(appName).getOrCreate()
+        if logLevel:
+            spark.sparkContext.setLogLevel(logLevel)
         
         # for zipfile in zipdirs:
         # need to use zip files or a whole bunch of import statement will be broken
@@ -206,7 +206,7 @@ def spark_context(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
         # sc.addPyFile("census_etl.zip")
         # sc.addPyFile("census_etl/ctools.zip")
         # sc.addPyFile("census_etl/dfxml/python.zip")
-        return sc
+        return spark
     exit(0)                     # spark-submit successfully submitted, so exit from the caller.
 
 
