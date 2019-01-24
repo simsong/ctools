@@ -192,8 +192,8 @@ def spark_session(*,loglevel=None, pyfiles=[],pydirs=[],num_executors=None, conf
     and before logging is started."""
 
     if spark_submit(pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
-                        conf=conf, configdict=configdict, properties_file=properties_file,
-                        argv=sys.argv):
+                    conf=conf, configdict=configdict, properties_file=properties_file,
+                    loglevel = loglevel,argv=sys.argv):
         # Running inside spark
         from pyspark.sql import SparkSession
         spark = SparkSession.builder.appName(appName).getOrCreate()
