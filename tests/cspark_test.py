@@ -43,7 +43,7 @@ def test_run_spark():
         f.close()
         
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
-        if cspark.spark_submit(loglevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
+        if cspark.spark_submit(logLevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark import SparkContext, SparkConf
             import operator
             conf = SparkConf().setAppName("cspark_test:test_run_spark")
