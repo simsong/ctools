@@ -312,7 +312,7 @@ class ttable:
                     ret.append( row.annotations[colNumber])
                 ret.append(val.replace('%','\\%'))
             elif self.mode == HTML:
-                ret.append(f'<{html_delim} {HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
+                ret.append(f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
         if self.mode == HTML:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
