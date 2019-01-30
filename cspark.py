@@ -183,8 +183,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     cmd += argv
 
     print("=== RUNNING SPARK ===")
-    print("$ pwd")
-    print(os.getcwd())
+    print("$ cd {}".format(os.getcwd()))
     print("$ {}".format(" ".join(cmd)))
     os.execvp(cmd[0],cmd)
     
