@@ -186,11 +186,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     print("$ pwd")
     print(os.getcwd())
     print("$ {}".format(" ".join(cmd)))
-    
-    r = subprocess.run(cmd)
-    if r.returncode != 0:
-        raise RuntimeError("spark-submit failed r={}".format(r))
-    return False                # not running inside spark; it already ran...
+    os.execvp(cmd[0],cmd)
     
 
 def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},
@@ -201,16 +197,16 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
     This should be called early in a program's life, immediately after arguments are parsed
     and before logging is started."""
 
-    if spark_submit(logLevel = logLevel,zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
-                    conf=conf, configdict=configdict, properties_file=properties_file,
-                    argv=sys.argv):
-        # Running inside spark
-        from pyspark.sql import SparkSession
-        spark = SparkSession.builder.appName(appName).getOrCreate()
-        if logLevel:
-            spark.sparkContext.setLogLevel(logLevel)
+    if not spark_running():
+        spark_submit(logLevel = logLevel,zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
+                     conf=conf, configdict=configdict, properties_file=properties_file,
+                     argv=sys.argv)
+    # Running inside spark
+    from pyspark.sql import SparkSession
+    spark = SparkSession.builder.appName(appName).getOrCreate()
+    if logLevel:
+        spark.sparkContext.setLogLevel(logLevel)
         return spark
-    exit(0)                     # spark-submit successfully submitted, so exit from the caller.
 
 
 if __name__ == "__main__":
