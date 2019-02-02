@@ -17,6 +17,8 @@ import os
 import traceback
 import sqlite3
 
+__package__="ctools"
+
 from .latex_tools import latex_escape
 
 
