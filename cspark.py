@@ -167,7 +167,6 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     @param argv    - sys.argv (args[0] is script to run; remainder are arguments)
     @return Returns True if Spark was successfully run
     """
-    import subprocess
     if spark_running():
         return True             # running inside Spark
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs, 

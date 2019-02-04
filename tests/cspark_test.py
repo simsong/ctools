@@ -44,17 +44,27 @@ def test_run_spark():
         
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
         if cspark.spark_submit(logLevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
-            from pyspark import SparkContext, SparkConf
+            from pyspark.sql import SparkSession
+            spark = SparkSession.builder.appName("cspark_test:test_run_spark").getOrCreate()
             import operator
-            conf = SparkConf().setAppName("cspark_test:test_run_spark")
-            sc   = SparkContext(conf=conf)
-            sc.setLogLevel("ERROR")
-            mysum = sc.parallelize(range(1000000)).reduce(operator.add)
+            mysum = spark.sparkContext.parallelize(range(1000000)).reduce(operator.add)
             f.truncate(0)
             f.write("{}\n".format(mysum))
-            f.close()
-            exit(0)             # spark job is finished
-        f.seek(0)
+
+            # Not sure what Simson tried to do here, but the file should not be closed,
+            # because it is read from later. Neither there should be any exit from the program,
+            # otherwise the test just exits (and the whole suite of unit tests ends to)
+            #
+            # It used to work before, but now doesn't, apparently, after changing
+            # of the subprocess call in cspark.spark_submit to os.exevp
+
+            # Commenting them out fixes the run in standalone run with python,
+            # but when run from pytest it still exits.
+            # --- P.Z.
+
+            # f.close()
+            # exit(0)             # spark job is finished
+
         data = f.read()
         assert data=='499999500000\n'
         print("spark ran successfully")
