@@ -33,6 +33,9 @@ def test_run_spark():
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
 
+    raise RuntimeWarning("WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in "
+                   "the test")
+
     if not cspark.spark_available():
         return                  # don't test if no spark is available
 
@@ -41,7 +44,7 @@ def test_run_spark():
         f = tempfile.NamedTemporaryFile(delete=False, mode='w+')
         os.environ[TEST_RUN_SPARK_FILENAME] = f.name
         f.close()
-        
+
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
         if cspark.spark_submit(logLevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark.sql import SparkSession
@@ -56,18 +59,22 @@ def test_run_spark():
             # otherwise the test just exits (and the whole suite of unit tests ends to)
             #
             # It used to work before, but now doesn't, apparently, after changing
-            # of the subprocess call in cspark.spark_submit to os.exevp
+            # of the subprocess call in cspark.spark_submit to os.execvp
 
             # Commenting them out fixes the run in standalone run with python,
             # but when run from pytest it still exits.
+            #
+            # My guess is that it is because os.exec* commands replace the processes and do not return.
+            #
             # --- P.Z.
 
             # f.close()
             # exit(0)             # spark job is finished
 
-        data = f.read()
-        assert data=='499999500000\n'
-        print("spark ran successfully")
+            data = f.read()
+            assert data=='499999500000\n'
+            print("spark ran successfully")
+            f.close()
     os.unlink(os.environ[TEST_RUN_SPARK_FILENAME])
 
 
