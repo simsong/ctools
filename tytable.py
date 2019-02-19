@@ -12,18 +12,26 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
-
-from ctools.latex_tools import latex_escape
+import sys
+import os
+import traceback
 import sqlite3
 
-__version__ = "0.1.0"
+__package__="ctools"
+
+from .latex_tools import latex_escape
+
+
+__version__ = "0.2.0"
 
 #
 # Some basic functions
 #
-import sys
-import os
-import traceback
+
+
+TEXT_MODE = TEXT  = 'text'
+LATEX_MODE = LATEX = 'latex'
+HTML_MODE  = HTML  = 'html'
 
 def line_end(mode):
     if mode == TEXT:
@@ -115,9 +123,6 @@ class ttable:
        add_variable(name,value)  -- add variables to output (for LaTeX mostly)
        set_latex_colspec(str)    -- sets the LaTeX column specification, rather than have it auto calculated
     """
-    TEXT  = 'text'
-    LATEX = 'latex'
-    HTML  = 'html'
     OPTION_LONGTABLE = 'longtable'
     OPTION_TABULARX = 'tabularx'
     OPTION_TABLE = 'table'
@@ -258,11 +263,11 @@ class ttable:
 
     def typeset_hr(self):
         "Output a HR."
-        if self.mode == self.LATEX:
+        if self.mode == LATEX:
             return "\\hline\n "
-        elif self.mode == self.TEXT:
+        elif self.mode == TEXT:
             return "+".join(["-"*self.col_formatted_width(col) for col in range(0,self.cols)]) + "\n"
-        elif self.mode == self.HTML:
+        elif self.mode == HTML:
             return ""                   # don't insert
         raise ValueError("Unknown mode '{}'".format(self.mode))        
 
@@ -270,9 +275,9 @@ class ttable:
         "Typeset a value for a given column number."
         import math
         align = self.col_alignment.get(colNumber,self.LEFT)
-        if self.mode == self.HTML:  return formattedValue
-        if self.mode == self.LATEX: return latex_escape(formattedValue)
-        if self.mode == self.TEXT: 
+        if self.mode == HTML:  return formattedValue
+        if self.mode == LATEX: return latex_escape(formattedValue)
+        if self.mode == TEXT: 
             try:
                 fill = (self.col_formatted_widths[colNumber]-len(formattedValue))
             except IndexError:
@@ -292,25 +297,25 @@ class ttable:
         ret = []
         if isinstance(row,Raw):
             return row.rawdata
-        if self.mode == self.HTML:
+        if self.mode == HTML:
             ret.append("<tr>")
         for colNumber in range(0,len(row)):
             if colNumber > 0:
-                if self.mode == self.LATEX:
+                if self.mode == LATEX:
                     ret.append(" & ")
                 ret.append(" "*self.col_margin)
             (fmt,just)      = self.format_cell(row[colNumber],colNumber)
             val             = self.typeset_cell(fmt,colNumber)
 
-            if self.mode == self.TEXT:
+            if self.mode == TEXT:
                 ret.append(val)
-            elif self.mode == self.LATEX:
+            elif self.mode == LATEX:
                 if row.annotations:
                     ret.append( row.annotations[colNumber])
                 ret.append(val.replace('%','\\%'))
-            elif self.mode == self.HTML:
+            elif self.mode == HTML:
                 ret.append(f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
-        if self.mode == self.HTML:
+        if self.mode == HTML:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
         return "".join(ret)
@@ -387,7 +392,7 @@ class ttable:
             print("typeset: no data")
             return ""
 
-        if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
+        if self.mode not in [TEXT,LATEX,HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
 
         ret = [""]              # array of strings that will be concatenatted
@@ -397,7 +402,7 @@ class ttable:
             self.compute_and_add_col_totals()
 
         # Precalc any table widths if necessary 
-        if self.mode == self.TEXT:
+        if self.mode == TEXT:
             self.calculate_col_formatted_widths()
             if self.title:
                 ret.append(self.title + ":" + "\n")
@@ -406,7 +411,7 @@ class ttable:
         #
         # Start of the table 
         #
-        if self.mode == self.LATEX:
+        if self.mode == LATEX:
             try:
                 colspec = self.latex_colspec
             except AttributeError:
@@ -437,10 +442,10 @@ class ttable:
                 ret.append("\\endfoot\n")
                 ret.append(self.footer)
                 ret.append("\\endlastfoot\n")
-        elif self.mode == self.HTML:
+        elif self.mode == HTML:
             ret.append("<table>\n")
             ret += self.typeset_headings()
-        elif self.mode == self.TEXT:
+        elif self.mode == TEXT:
             if self.caption: 
                 ret.append(self.caption)
             if self.header:
@@ -466,7 +471,7 @@ class ttable:
 
             ret.append(self.typeset_row(row))
 
-        if self.mode == self.LATEX:
+        if self.mode == LATEX:
             if self.OPTION_LONGTABLE not in self.options:
                 if self.OPTION_TABULARX in self.options:
                     ret.append("\\end{tabularx}\n")
@@ -482,18 +487,18 @@ class ttable:
                 ret.append("\\footnote{")
                 ret.append( latex_escape(self.footnote) )
                 ret.append("}")
-        elif self.mode == self.HTML:
+        elif self.mode == HTML:
             ret.append("</table>\n")
-        elif self.mode == self.TEXT:
+        elif self.mode == TEXT:
             if self.footer:
                 ret.append(self.footer)
                 ret.append("\n")
             
         # Finally, add any variables that have been defined
         for (name,value) in self.variables.items():
-            if self.mode == self.LATEX:
+            if self.mode == LATEX:
                 ret += latex_var(name,value)
-            if self.mode == self.HTML:
+            if self.mode == HTML:
                 ret += ["Note: ",name," is ", value, "<br>"]
         outbuffer = "".join(ret)
         if out:
