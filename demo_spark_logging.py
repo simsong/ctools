@@ -16,8 +16,8 @@ import json
 
 sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
 
-import ctools.cspark as cspark
-import ctools.clogging as clogging
+import .cspark as cspark
+import .clogging as clogging
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"

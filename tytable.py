@@ -12,17 +12,21 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
-from ctools.latex_tools import latex_escape
+import sys
+import os
+import traceback
 import sqlite3
+
+__package__="ctools"
+
+from .latex_tools import latex_escape
+
 
 __version__ = "0.2.0"
 
 #
 # Some basic functions
 #
-import sys
-import os
-import traceback
 
 
 TEXT_MODE = TEXT  = 'text'
@@ -315,7 +319,7 @@ class ttable:
                     ret.append( row.annotations[colNumber])
                 ret.append(val.replace('%','\\%'))
             elif self.mode == HTML:
-                ret.append(f'<{html_delim} {HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
+                ret.append(f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
         if self.mode == HTML:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
