@@ -37,6 +37,7 @@ import atexit
 import re
 import socket
 
+__package__ = "ctools"
 from .s3 import s3open,s3exists
 
 __author__ = "Simson L. Garfinkel"
