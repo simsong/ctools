@@ -147,7 +147,7 @@ class ttable:
         self.omit_row     = []          # descriptions of rows that should be omitted
         self.col_widths   = []          # a list of how wide each of the formatted columns are
         self.col_margin   = 1
-        self.col_fmt_default  = "{:,}"  # default format gives numbers
+        self.col_fmt_default  = "{:}"   # default format gives numbers
         self.col_fmt      = {}          # format for each column
         self.title        = ""
         self.num_units    = []
@@ -237,8 +237,13 @@ class ttable:
             try:
                 formatted_value   = self.col_fmt.get(colNumber, self.col_fmt_default).format(value)
                 default_alignment = self.DEFAULT_ALIGNMENT_NUMBER
-            except ValueError:
+            except (ValueError,TypeError) as e:
+                print(str(e))
+                print("Format string: ",self.col_fmt.get(colNumber, self.col_fmt_default))
+                print("Value:         ",value)
+                print("Will use default formatting")
                 pass            # will be formatted below
+
         if not formatted_value:
             formatted_value   = str(value)
             default_alignment = self.DEFAULT_ALIGNMENT_STRING 
