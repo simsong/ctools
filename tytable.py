@@ -13,11 +13,10 @@ All of the formatting specifications need to be redone so that they are more fle
 """
 
 import sys
-import os
-import traceback
 import sqlite3
 
-__package__="ctools"
+if __name__ == "__main__" or __package__=="":
+    __package__ = "ctools"
 
 from .latex_tools import latex_escape
 
