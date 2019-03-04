@@ -140,7 +140,14 @@ class ttable:
                       LEFT:"style='text-align:left;'",
                       CENTER:"style='text-align:center;'"}
 
-    def __init__(self):
+    def __init__(self,mode=None):
+        self.clear()
+        self.options      = set()
+        if mode:
+            self.set_mode(mode)
+
+    def clear(self):
+        """Clear the data; keep the formatting"""
         self.col_headings = []          # the col_headings; a list of lists
         self.data         = []          # the raw data; a list of lists
         self.omit_row     = []          # descriptions of rows that should be omitted
@@ -153,20 +160,18 @@ class ttable:
         self.footer       = ""
         self.header       = None # 
         self.heading_hr_count = 1       # number of <hr> to put between heading and table body
-        self.options      = set()
         self.col_alignment = {}
         self.variables    = {}  # additional variables that may be added
         self.label        = None
         self.caption      = None
         self.footnote     = None
+        self.autoescape    = True # default
 
-    ## Data adding functions
-
-    ## User specified formatting functions:
 
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
+
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
     def set_data(self,d): self.data = d
@@ -380,14 +385,18 @@ class ttable:
                 ret.append(self.typeset_hr())
         return ret
         
-    def typeset(self,mode=TEXT,option=None,out=None):
+    def typeset(self,*,mode=None,option=None,out=None):
         """ Returns the typset output of the entire table. Builds it up in """
 
         if len(self.data) == 0:
             print("typeset: no rows")
             return ""
 
-        self.set_mode(mode)
+        if mode:
+            self.set_mode(mode)
+        if self.mode not in [TEXT,LATEX,HTML]:
+            raise ValueError("Invalid typsetting mode "+self.mode)
+
         if option:
             self.add_option(option)
             print("add option",option)
@@ -395,9 +404,6 @@ class ttable:
         if self.cols == 0:
             print("typeset: no data")
             return ""
-
-        if self.mode not in [TEXT,LATEX,HTML]:
-            raise ValueError("Invalid typsetting mode "+self.mode)
 
         ret = [""]              # array of strings that will be concatenatted
 
