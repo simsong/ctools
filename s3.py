@@ -69,10 +69,8 @@ def delete_object(bucket,key):
 
 PAGE_SIZE=1000
 MAX_ITEMS=1000
-def list_objects(bucket,prefix,limit=None,delimiter=None):
+def list_objects(bucket, prefix,limit=None,delimiter=None):
     """Returns a generator that lists objects in a bucket. Returns a list of dictionaries, including Size and ETag"""
-    if bucket.startswith("s3://"):
-        bucket = bucket[5:]
     next_token = None
     total = 0
     while True:
