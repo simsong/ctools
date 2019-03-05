@@ -65,9 +65,13 @@ def head_object(bucket,key):
     """Wrap the head-object api"""
     return aws_s3api(['head-object','--bucket',bucket,'--key',key])
 
+def delete_object(bucket,key):
+    """Wrap the delete-object api"""
+    return aws_s3api(['delete-object','--bucket',bucket,'--key',key])
+
 PAGE_SIZE=1000
 MAX_ITEMS=1000
-def list_objects(bucket,prefix,limit=None,delimiter=None):
+def list_objects(bucket, prefix,limit=None,delimiter=None):
     """Returns a generator that lists objects in a bucket. Returns a list of dictionaries, including Size and ETag"""
     next_token = None
     total = 0
