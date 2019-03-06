@@ -76,7 +76,7 @@ def applicationId():
     except ImportError:
         pass
 
-    # Ugh. We can't find it.
+    # Application ID cannot be determined.
     return "unknown"
 
 def shutdown():
