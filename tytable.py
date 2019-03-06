@@ -77,6 +77,19 @@ def safenum(v):
     return v
 
 
+def scalenum(v,minscale=0):
+    """Like safenum, but automatically add K, M, G, or T as appropriate"""
+    v = safenum(v)
+    if type(v)==int:
+        for (div,suffix) in [[1_000_000_000_000,'T'],
+                             [1_000_000_000,    'G'],
+                             [1_000_000,        'M'],
+                             [1_000,            'K']]:
+            if (v > div) and (v > minscale):
+                return str(v//div) + suffix
+    return v
+            
+
 def latex_var(name,value,desc=None,xspace=True):
     """Create a variable NAME with a given VALUE.
     Primarily for output to LaTeX.
@@ -194,8 +207,11 @@ class ttable:
         self.caption      = None
         self.footnote     = None
         self.autoescape    = True # default
+        self.fontsize     = None
 
 
+    def set_fontsize(self,sz):
+        self.fontsize = sz
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
