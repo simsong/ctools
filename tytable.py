@@ -49,6 +49,34 @@ def isnumber(v):
     except TypeError:
         return False
 
+def safeint(v):
+    """Return v as an integer if it is a number, otherwise return it as is"""
+    try:
+        return int(v)
+    except Exception:
+        return v
+
+
+def safefloat(v):
+    """Return v as a float if it is a number, otherwise return it as is"""
+    try:
+        return float(v)
+    except Exception:
+        return v
+
+def safenum(v):
+    """Return v as an int if possible, then as a float, otherwise return it as is"""
+    try:
+        return int(v)
+    except Exception:
+        pass
+    try:
+        return float(v)
+    except Exception:
+        pass
+    return v
+
+
 def latex_var(name,value,desc=None,xspace=True):
     """Create a variable NAME with a given VALUE.
     Primarily for output to LaTeX.
@@ -457,7 +485,7 @@ class ttable:
             ret += self.typeset_headings()
         elif self.mode == TEXT:
             if self.caption: 
-                ret.append(self.caption)
+                ret.append("================ {} ================\n".format(self.caption))
             if self.header:
                 ret.append(self.header)
                 ret.append("\n")
