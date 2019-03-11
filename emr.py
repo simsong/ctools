@@ -37,10 +37,13 @@ def proxy_off():
     del os.environ[HTTP_PROXY]
     del os.environ[HTTPS_PROXY]
 
+def get_url(url):
+    import urllib.request
+    with urllib.request.urlopen(url) as response:
+        return response.read().decode('utf-8')
 
 def user_data():
-    """Return the userdata associated with this instance"""
-    return json.loads(subprocess.run(['curl','-s','http://169.254.169.254/2016-09-02/user-data/'],stdout=subprocess.PIPE).stdout)
+    return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
 
 def isMaster():
     """Returns true if running on master"""
@@ -56,8 +59,8 @@ def phost(host):
 def decode_status(meminfo):
     return { line[:line.find(":")] : line[line.find(":")+1:].strip() for line in meminfo.split("\n") }
 
-def clusterID():
-    return os.environ['CLUSTERID']
+def clusterId():
+    return user_data()['clusterId']
 
 def run_command_on_host(host,command,encoding='utf-8',pipeerror=None):
     error_out = PIPE if pipeerror else sys.stdout
@@ -75,11 +78,6 @@ def get_file_on_host(host,path,encoding='utf-8'):
 
 def get_instance_type(host):
     return run_command_on_host(host,"curl -s http://169.254.169.254/latest/meta-data/instance-type")
-
-def get_url(url):
-    import urllib.request
-    with urllib.request.urlopen(url) as response:
-        return response.read().decode('utf-8')
 
 def get_ipaddr():
     return get_url("http://169.254.169.254/latest/meta-data/local-ipv4")
