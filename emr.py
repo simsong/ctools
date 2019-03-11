@@ -27,6 +27,8 @@ _clusterId = 'clusterId'
 _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
 
+Status='Status'
+
 def proxy_on():
     os.environ[HTTP_PROXY]  = os.environ[BCC_PROXY]
     os.environ[HTTPS_PROXY] = os.environ[BCC_PROXY]
@@ -113,6 +115,20 @@ def cluster_hostnames(getMaster=True):
         if "RUNNING" in line:
             host = line[0:line.find(':')]
             yield(host)
+
+def list_clusters():
+    res = Popen(['aws','emr','list-clusters','--output','json'],encoding='utf-8',stdout=PIPE).communicate()[0]
+    return json.loads(res)['Clusters']
+
+def describe_cluster(clusterID):
+    res = Popen(['aws','emr','describe-cluster','--output','json','--cluster',clusterID],
+                encoding='utf-8',stdout=PIPE).communicate()[0]
+    return json.loads(res)['Cluster']    
+
+def list_instances(clusterID):
+    res = Popen(['aws','emr','list-instances','--output','json','--cluster-id',clusterID],
+                encoding='utf-8',stdout=PIPE).communicate()[0]
+    return json.loads(res)['Instances']    
 
 if __name__=="__main__":
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
