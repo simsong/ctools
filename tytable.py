@@ -65,6 +65,7 @@ def icomma(i):
 
 # The row class holds the row and anny annotations
 class Row:
+    __slots__ = ['data','annotations']
     def __init__(self,data,annotations=None):
         if annotations:
             if len(data) != len(annotations):
@@ -83,7 +84,7 @@ class Head(Row):
 # Raw is just raw data passed through
 class Raw(Row):
     def __init__(self,rawdata):
-        self.rawdata = rawdata
+        self.data    = rawdata
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -122,6 +123,7 @@ class ttable:
     OPTION_TABULARX = 'tabularx'
     OPTION_TABLE = 'table'
     OPTION_CENTER = 'center'
+    OPTION_NO_ESCAPE = 'noescape'
     HR = "<hr>"
     SUPPRESS_ZERO="suppress_zero"
     RIGHT="RIGHT"
@@ -155,6 +157,7 @@ class ttable:
         self.label        = None
         self.caption      = None
         self.footnote     = None
+        self.fontsize     = None
 
     ## Data adding functions
 
@@ -163,6 +166,7 @@ class ttable:
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
+    def set_fontsize(self,ft): self.fontsize = ft
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
     def set_data(self,d): self.data = d
@@ -271,7 +275,11 @@ class ttable:
         import math
         align = self.col_alignment.get(colNumber,self.LEFT)
         if self.mode == self.HTML:  return formattedValue
-        if self.mode == self.LATEX: return latex_escape(formattedValue)
+        if self.mode == self.LATEX: 
+            if self.OPTION_NO_ESCAPE in self.options:
+                return formattedValue
+            else:
+                return latex_escape(formattedValue)
         if self.mode == self.TEXT: 
             try:
                 fill = (self.col_formatted_widths[colNumber]-len(formattedValue))
@@ -291,7 +299,7 @@ class ttable:
         "row is a an array. It should be typset. Return the string. "
         ret = []
         if isinstance(row,Raw):
-            return row.rawdata
+            return row.data
         if self.mode == self.HTML:
             ret.append("<tr>")
         for colNumber in range(0,len(row)):
@@ -374,6 +382,10 @@ class ttable:
     def typeset(self,mode=TEXT,option=None,out=None):
         """ Returns the typset output of the entire table. Builds it up in """
 
+        if ((self.OPTION_LONGTABLE in self.options) and
+            (self.OPTION_TABULARX in self.options)):
+            raise RuntimeError("OPTION_LONGTABLE and OPTION_TABULARX conflict")
+
         if len(self.data) == 0:
             print("typeset: no rows")
             return ""
@@ -407,36 +419,44 @@ class ttable:
         # Start of the table 
         #
         if self.mode == self.LATEX:
+            if self.fontsize:
+                ret.append("{\\fontsize{%d}{%d}\\selectfont" % (self.fontsize,self.fontsize+1))
             try:
                 colspec = self.latex_colspec
             except AttributeError:
                 colspec = "r"*self.cols 
             if self.OPTION_LONGTABLE not in self.options:
+                # Regular table
                 if self.OPTION_TABLE in self.options:
                     ret.append("\\begin{table}")
                 if self.OPTION_CENTER in self.options:
                     ret.append("\\begin{center}")
-                if self.OPTION_LONGTABLE not in self.options:
-                    if self.caption: ret += ["\\caption{",self.caption, "}\n"]
-                    if self.label:
-                        ret.append("\\label{")
-                        ret.append(self.label)
-                        ret.append("}")
+                if self.caption:
+                    ret += ["\\caption{",self.caption, "}\n"]
+                if self.label:
+                    ret.append("\\label{")
+                    ret.append(self.label)
+                    ret.append("}")
                 if self.OPTION_TABULARX in self.options:
                     ret += ["\\begin{tabularx}{\\textwidth}{",colspec,"}\n"]
                 else:
                     ret += ["\\begin{tabular}{",colspec,"}\n"]
                 ret += self.typeset_headings()
             if self.OPTION_LONGTABLE in self.options:
+                # Longtable
                 ret += ["\\begin{longtable}{",colspec,"}\n"]
+                if self.caption:
+                    ret += ["\\caption{",self.caption,"}\\\\ \n"]
+                if self.label:
+                    ret += ["\\label{",self.label,"}"]
                 ret += self.typeset_headings()
-                ret.append("\\endfirsthead\n")
+                ret.append("\\hline\\endfirsthead\n")
                 ret += self.typeset_headings()
-                ret.append("\\endhead\n")
+                ret.append("\\hline\\endhead\n")
                 ret.append(self.footer)
-                ret.append("\\endfoot\n")
+                ret.append("\\hline\\endfoot\n")
                 ret.append(self.footer)
-                ret.append("\\endlastfoot\n")
+                ret.append("\\hline\\hline\\endlastfoot\n")
         elif self.mode == self.HTML:
             ret.append("<table>\n")
             ret += self.typeset_headings()
@@ -466,6 +486,10 @@ class ttable:
 
             ret.append(self.typeset_row(row))
 
+        #
+        # End of the table
+        ##
+
         if self.mode == self.LATEX:
             if self.OPTION_LONGTABLE not in self.options:
                 if self.OPTION_TABULARX in self.options:
@@ -478,6 +502,8 @@ class ttable:
                     ret.append("\\end{table}")
             else:
                 ret.append("\\end{longtable}\n")
+            if self.fontsize:
+                ret.append("}")
             if self.footnote:
                 ret.append("\\footnote{")
                 ret.append( latex_escape(self.footnote) )
