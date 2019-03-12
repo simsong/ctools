@@ -4,22 +4,24 @@ import py.test
 import io
 
 #sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import ctools.cspark as cspark
 
-CSPARK_PATH = os.path.join(os.path.dirname(__file__), "../cspark.py")
+CSPARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),"cspark.py")
 assert os.path.exists(CSPARK_PATH)
 
-fh_config = io.StringIO("""
+fh_config = """
 [spark]
 name1.key1=value1
 name2.key2: value2
-""")
+"""
 
 def test_spark_submit_cmd():
     from configparser import ConfigParser
     config = ConfigParser()
-    config.readfp(fh_config)
+    config.read_string(fh_config)
     cmd = cspark.spark_submit_cmd(configdict=config['spark'])
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
@@ -31,6 +33,9 @@ def test_run_spark():
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
 
+    raise RuntimeWarning("WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in "
+                   "the test")
+
     if not cspark.spark_available():
         return                  # don't test if no spark is available
 
@@ -39,24 +44,37 @@ def test_run_spark():
         f = tempfile.NamedTemporaryFile(delete=False, mode='w+')
         os.environ[TEST_RUN_SPARK_FILENAME] = f.name
         f.close()
-        
+
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
-        if cspark.spark_submit(loglevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
-            from pyspark import SparkContext, SparkConf
+        if cspark.spark_submit(logLevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark.sql import SparkSession
+            spark = SparkSession.builder.appName("cspark_test:test_run_spark").getOrCreate()
             import operator
-            conf = SparkConf().setAppName("cspark_test:test_run_spark")
-            sc   = SparkContext(conf=conf)
-            sc.setLogLevel("ERROR")
-            mysum = sc.parallelize(range(1000000)).reduce(operator.add)
+            mysum = spark.sparkContext.parallelize(range(1000000)).reduce(operator.add)
             f.truncate(0)
             f.write("{}\n".format(mysum))
+
+            # Not sure what Simson tried to do here, but the file should not be closed,
+            # because it is read from later. Neither there should be any exit from the program,
+            # otherwise the test just exits (and the whole suite of unit tests ends to)
+            #
+            # It used to work before, but now doesn't, apparently, after changing
+            # of the subprocess call in cspark.spark_submit to os.execvp
+
+            # Commenting them out fixes the run in standalone run with python,
+            # but when run from pytest it still exits.
+            #
+            # My guess is that it is because os.exec* commands replace the processes and do not return.
+            #
+            # --- P.Z.
+
+            # f.close()
+            # exit(0)             # spark job is finished
+
+            data = f.read()
+            assert data=='499999500000\n'
+            print("spark ran successfully")
             f.close()
-            exit(0)             # spark job is finished
-        f.seek(0)
-        data = f.read()
-        assert data=='499999500000\n'
-        print("spark ran successfully")
     os.unlink(os.environ[TEST_RUN_SPARK_FILENAME])
 
 

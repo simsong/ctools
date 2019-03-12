@@ -30,12 +30,15 @@ def fixpath(base,name):
         return name
     return os.path.join(os.path.dirname(base), name)
 
-class HiearchicalConfigParser(ConfigParser):
+class HierarchicalConfigParser(ConfigParser):
     def read(self,filename):
         """First read the requested filename into a temporary config parser.
         Scan for any INCLUDE statements.If any are found in any section, read the included file 
         recursively, unless it has already been read.
         """
+        if filename[0]!='/':
+            filename = os.path.abspath(filename)
+
         cf = ConfigParser()
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
@@ -56,7 +59,7 @@ class HiearchicalConfigParser(ConfigParser):
                     #print(filename,"READ",pfn,"TO GET SECTIONS")
                     if not os.path.exists(pfn):
                         raise FileNotFoundError(pfn)
-                    cp = HiearchicalConfigParser()
+                    cp = HierarchicalConfigParser()
                     cp.read(pfn)
                     #print(filename,"READ SECTIONS:",list(cp.sections()))
                     for section in cp.sections():
@@ -88,7 +91,7 @@ class HiearchicalConfigParser(ConfigParser):
                     pfn = fixpath(filename, include_file)
                     if not os.path.exists(pfn):
                         raise FileNotFoundError(pfn)
-                    cp = HiearchicalConfigParser()
+                    cp = HierarchicalConfigParser()
                     cp.read(pfn)
                     if section in cp:
                         #print(filename,"ADDING SECTION",section)

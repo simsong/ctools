@@ -12,25 +12,30 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
-
-from ctools.latex_tools import latex_escape
+import sys
+import os
+import traceback
 import sqlite3
 
-__version__ = "0.1.0"
+__package__="ctools"
+
+from .latex_tools import latex_escape
+
+
+__version__ = "0.2.0"
 
 #
 # Some basic functions
 #
-import sys
-import os
-import traceback
+
+
 
 def line_end(mode):
-    if mode == TEXT:
+    if mode == ttable.TEXT:
         return "\n"
-    elif mode == LATEX:
+    elif mode == ttable.LATEX:
         return r"~\\" + "\n"
-    elif mode == HTML:
+    elif mode == ttable.HTML:
         return "<br>"
     else:
         raise RuntimeError("Unknown mode: {}".format(mode))
@@ -116,9 +121,6 @@ class ttable:
        add_variable(name,value)  -- add variables to output (for LaTeX mostly)
        set_latex_colspec(str)    -- sets the LaTeX column specification, rather than have it auto calculated
     """
-    TEXT  = 'text'
-    LATEX = 'latex'
-    HTML  = 'html'
     OPTION_LONGTABLE = 'longtable'
     OPTION_TABULARX = 'tabularx'
     OPTION_TABLE = 'table'
@@ -126,6 +128,9 @@ class ttable:
     OPTION_NO_ESCAPE = 'noescape'
     HR = "<hr>"
     SUPPRESS_ZERO="suppress_zero"
+    TEXT_MODE = TEXT  = 'text'
+    LATEX_MODE = LATEX = 'latex'
+    HTML_MODE  = HTML  = 'html'
     RIGHT="RIGHT"
     LEFT="LEFT"
     CENTER="CENTER"
@@ -144,7 +149,7 @@ class ttable:
         self.omit_row     = []          # descriptions of rows that should be omitted
         self.col_widths   = []          # a list of how wide each of the formatted columns are
         self.col_margin   = 1
-        self.col_fmt_default  = "{:,}"  # default format gives numbers
+        self.col_fmt_default  = "{:}"   # default format gives numbers
         self.col_fmt      = {}          # format for each column
         self.title        = ""
         self.num_units    = []
@@ -236,8 +241,13 @@ class ttable:
             try:
                 formatted_value   = self.col_fmt.get(colNumber, self.col_fmt_default).format(value)
                 default_alignment = self.DEFAULT_ALIGNMENT_NUMBER
-            except ValueError:
+            except (ValueError,TypeError) as e:
+                print(str(e))
+                print("Format string: ",self.col_fmt.get(colNumber, self.col_fmt_default))
+                print("Value:         ",value)
+                print("Will use default formatting")
                 pass            # will be formatted below
+
         if not formatted_value:
             formatted_value   = str(value)
             default_alignment = self.DEFAULT_ALIGNMENT_STRING 
@@ -299,6 +309,8 @@ class ttable:
         "row is a an array. It should be typset. Return the string. "
         ret = []
         if isinstance(row,Raw):
+            return row.data
+        if self.mode == self.HTML:
             return row.data
         if self.mode == self.HTML:
             ret.append("<tr>")
