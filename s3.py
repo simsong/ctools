@@ -26,7 +26,7 @@ debug=False
 READTHROUGH_CACHE_DIR='/mnt/tmp/s3cache'
 
 def get_bucket_key(loc):
-    """Given a location, return the bucket and the key"""
+    """Given a location, return the (bucket,key)"""
     p = urllib.parse.urlparse(loc)
     if p.scheme=='s3':
         return (p.netloc, p.path[1:])
@@ -53,19 +53,25 @@ def aws_s3api(cmd):
 
 def put_object(bucket,key,fname):
     """Given a bucket and a key, upload a file"""
+    assert os.path.exists(fname)
     return aws_s3api(['put-object','--bucket',bucket,'--key',key,'--body',fname])
 
 def get_object(bucket,key,fname):
-    """Given a bucket and a key, upload a file"""
+    """Given a bucket and a key, download a file"""
+    assert not os.path.exists(fname)
     return aws_s3api(['get-object','--bucket',bucket,'--key',key,fname])
 
 def head_object(bucket,key):
     """Wrap the head-object api"""
     return aws_s3api(['head-object','--bucket',bucket,'--key',key])
 
+def delete_object(bucket,key):
+    """Wrap the delete-object api"""
+    return aws_s3api(['delete-object','--bucket',bucket,'--key',key])
+
 PAGE_SIZE=1000
 MAX_ITEMS=1000
-def list_objects(bucket,prefix,limit=None,delimiter=None):
+def list_objects(bucket, prefix,limit=None,delimiter=None):
     """Returns a generator that lists objects in a bucket. Returns a list of dictionaries, including Size and ETag"""
     next_token = None
     total = 0

@@ -13,11 +13,10 @@ All of the formatting specifications need to be redone so that they are more fle
 """
 
 import sys
-import os
-import traceback
 import sqlite3
 
-__package__="ctools"
+if __name__ == "__main__" or __package__=="":
+    __package__ = "ctools"
 
 from .latex_tools import latex_escape
 
@@ -46,6 +45,47 @@ def isnumber(v):
         return v == 0 or v!=0
     except TypeError:
         return False
+
+def safeint(v):
+    """Return v as an integer if it is a number, otherwise return it as is"""
+    try:
+        return int(v)
+    except Exception:
+        return v
+
+
+def safefloat(v):
+    """Return v as a float if it is a number, otherwise return it as is"""
+    try:
+        return float(v)
+    except Exception:
+        return v
+
+def safenum(v):
+    """Return v as an int if possible, then as a float, otherwise return it as is"""
+    try:
+        return int(v)
+    except Exception:
+        pass
+    try:
+        return float(v)
+    except Exception:
+        pass
+    return v
+
+
+def scalenum(v,minscale=0):
+    """Like safenum, but automatically add K, M, G, or T as appropriate"""
+    v = safenum(v)
+    if type(v)==int:
+        for (div,suffix) in [[1_000_000_000_000,'T'],
+                             [1_000_000_000,    'G'],
+                             [1_000_000,        'M'],
+                             [1_000,            'K']]:
+            if (v > div) and (v > minscale):
+                return str(v//div) + suffix
+    return v
+            
 
 def latex_var(name,value,desc=None,xspace=True):
     """Create a variable NAME with a given VALUE.
@@ -155,7 +195,14 @@ class ttable:
                       LEFT:"style='text-align:left;'",
                       CENTER:"style='text-align:center;'"}
 
-    def __init__(self):
+    def __init__(self,mode=None):
+        self.clear()
+        self.options      = set()
+        if mode:
+            self.set_mode(mode)
+
+    def clear(self):
+        """Clear the data; keep the formatting"""
         self.col_headings = []          # the col_headings; a list of lists
         self.data         = []          # the raw data; a list of lists
         self.omit_row     = []          # descriptions of rows that should be omitted
@@ -168,22 +215,28 @@ class ttable:
         self.footer       = ""
         self.header       = None # 
         self.heading_hr_count = 1       # number of <hr> to put between heading and table body
-        self.options      = set()
         self.col_alignment = {}
         self.variables    = {}  # additional variables that may be added
         self.label        = None
         self.caption      = None
         self.footnote     = None
+<<<<<<< HEAD
+=======
+        self.autoescape    = True # default
+>>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
         self.fontsize     = None
 
-    ## Data adding functions
 
-    ## User specified formatting functions:
-
+    def set_fontsize(self,sz):
+        self.fontsize = sz
     def set_mode(self,mode):
         assert mode in self.VALID_MODES
         self.mode = mode
+<<<<<<< HEAD
     def set_fontsize(self,ft): self.fontsize = ft
+=======
+
+>>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
     def set_data(self,d): self.data = d
@@ -403,7 +456,7 @@ class ttable:
                 ret.append(self.typeset_hr())
         return ret
         
-    def typeset(self,mode=TEXT,option=None,out=None):
+    def typeset(self,*,mode=None,option=None,out=None):
         """ Returns the typset output of the entire table. Builds it up in """
 
         if ((self.OPTION_LONGTABLE in self.options) and
@@ -414,7 +467,11 @@ class ttable:
             print("typeset: no rows")
             return ""
 
-        self.set_mode(mode)
+        if mode:
+            self.set_mode(mode)
+        if self.mode not in [TEXT,LATEX,HTML]:
+            raise ValueError("Invalid typsetting mode "+self.mode)
+
         if option:
             self.add_option(option)
             print("add option",option)
@@ -423,9 +480,12 @@ class ttable:
             print("typeset: no data")
             return ""
 
+<<<<<<< HEAD
         if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
 
+=======
+>>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
         ret = [""]              # array of strings that will be concatenatted
 
         # If we need column totals, compute them
@@ -489,7 +549,7 @@ class ttable:
             ret += self.typeset_headings()
         elif self.mode == self.TEXT:
             if self.caption: 
-                ret.append(self.caption)
+                ret.append("================ {} ================\n".format(self.caption))
             if self.header:
                 ret.append(self.header)
                 ret.append("\n")

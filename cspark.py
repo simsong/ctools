@@ -196,7 +196,9 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
     and before logging is started."""
 
     if not spark_running():
-        spark_submit(logLevel = logLevel,zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs, num_executors=num_executors,
+        spark_submit(logLevel = logLevel,
+                     zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs,
+                     num_executors=num_executors,
                      conf=conf, configdict=configdict, properties_file=properties_file,
                      argv=sys.argv)
     # Running inside spark
@@ -204,7 +206,7 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
     spark = SparkSession.builder.appName(appName).getOrCreate()
     if logLevel:
         spark.sparkContext.setLogLevel(logLevel)
-        return spark
+    return spark
 
 
 if __name__ == "__main__":
