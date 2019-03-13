@@ -81,15 +81,27 @@ class Row:
         return len(self.data)
     def __getitem__(self,n):
         return self.data[n]
+    def ncols(self):
+        return len(self.data)
 
 # Heads are like rows, but they are headers
 class Head(Row):
-    pass
+    def __init__(self,data,annotations=None):
+        super().__init__(data=data,annotations=annotations)
+
+# A special class that makes a horizontal rule
+class HorizontalRule(Row):
+    def __init__(self):
+        super().__init__(data=[])
+
+    
 
 # Raw is just raw data passed through
 class Raw(Row):
     def __init__(self,rawdata):
         self.data    = rawdata
+    def ncols(self):
+        raise RuntimeError("Raw does not implement ncols")
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -126,7 +138,7 @@ class ttable:
     OPTION_TABLE = 'table'
     OPTION_CENTER = 'center'
     OPTION_NO_ESCAPE = 'noescape'
-    HR = "<hr>"
+    HR = HorizontalRule()
     SUPPRESS_ZERO="suppress_zero"
     TEXT_MODE = TEXT  = 'text'
     LATEX_MODE = LATEX = 'latex'
@@ -222,7 +234,7 @@ class ttable:
     def ncols(self):
         " Return the number of maximum number of cols in the data"
         if self.data:
-            return max([len(r) for r in self.data])
+            return max([row.ncols() for row in self.data if type(row)==Row])
         return 0
 
 
@@ -463,8 +475,11 @@ class ttable:
                     ret += ["\\label{",self.label,"}"]
                 ret += self.typeset_headings()
                 ret.append("\\hline\\endfirsthead\n")
+                if self.label:
+                    ret += [r'\multicolumn{',str(self.ncols()),r'}{c}{(Table \ref{',self.label,r'} continued)}\\','\n']
                 ret += self.typeset_headings()
                 ret.append("\\hline\\endhead\n")
+                ret += ['\\multicolumn{',str(self.ncols()),'}{c}{(Continued on next page)}\\\\ \n']
                 ret.append(self.footer)
                 ret.append("\\hline\\endfoot\n")
                 ret.append(self.footer)
