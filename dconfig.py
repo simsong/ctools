@@ -19,16 +19,12 @@ test1.company.com.
 This module also supports opening files on Amazon S3, with the s3:// notation.
 
 """
-
 from configparser import ConfigParser
-from subprocess import run,PIPE,Popen
 import os
 import os.path
 import logging
 import logging.handlers
 import datetime
-import argparse
-import csv
 import zipfile
 import io
 import glob
@@ -37,7 +33,9 @@ import atexit
 import re
 import socket
 
-__package__ = "ctools"
+if __name__ == "__main__" or __package__=="":
+    __package__ = "ctools"
+
 from .s3 import s3open,s3exists
 
 __author__ = "Simson L. Garfinkel"
