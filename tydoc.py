@@ -37,30 +37,37 @@ LATEX_TAGS = {TAG_HTML:r'',
               TAG_H2:r'\subsection',
               TAG_H3:r'\subsubsection'}
 
-MARKDOWN_TAGS = {TAG_HTML:,,
+MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_P:('','\n\n'),
                  TAG_B:('**','**'),
                  TAG_H1:('# ',''),
                  TAG_H2:('## ',''),
                  TAG_H3:('### ','')}
 
-def render(doc,mode=ttable.HTML,depth=0):
+def render(doc,mode=ttable.HTML):
     if mode==ttable.HTML:
-        tbegin = '<{doc.tag}>'
-        tend   = '</{doc.tag}>'
+        tbegin = f'<{doc.tag}>'
+        tend   = f'</{doc.tag}>'
     elif mode==ttable.LATEX:
         tbegin = LATEX_TAGS[doc.tag] + '{'
         tend   = '}'
     elif mode==ttable.MARKDOWN:
         (tbegin,tend) = MARKDOWN_TAGS[doc.tag]
-    print(tbegin,end='')
+
+    ret = []
+    ret.append(tbegin)
     if doc.text!=None:
-        print(doc.text,end='')
+        ret.append(doc.text)
     for child in doc:
-        render(child,mode=mode,depth=depth+1)
+        ret.append( render(child,mode=mode) )
         if child.tail!=None:
-            print(child.tail,end='')
-    print(tend,end='')
+            ret.append(child.tail)
+    ret.append(tend)
+
+    # Now do a flatten
+    flatten = [item for sublist in ret for item in sublist]
+
+    return "".join(flatten)
 
 import xml.etree.ElementTree
 class tydoc(xml.etree.ElementTree.Element):
@@ -124,8 +131,7 @@ class tydoc(xml.etree.ElementTree.Element):
         return self
 
     def typeset(self, mode=None):
-        render(self)
-        return self
+        return render(self)
 
 # Add some covers for popular paragraph types
 def p(*text):
@@ -156,10 +162,9 @@ def h3(*text):
 
 def showcase(doc):
     print(ET.tostring(doc,encoding='unicode'))
-    render(doc)
-    print("")
-    render(doc,mode=ttable.LATEX)
-    print()
+    print(render(doc))
+    print(render(doc,mode=ttable.LATEX))
+    print(render(doc,mode=ttable.MARKDOWN))
     print("----------")
 
 def demo1():
