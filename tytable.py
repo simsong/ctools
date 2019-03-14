@@ -177,6 +177,7 @@ class ttable:
     TEXT_MODE = TEXT  = 'text'
     LATEX_MODE = LATEX = 'latex'
     HTML_MODE  = HTML  = 'html'
+    MARKDOWN_MODE = MARKDOWN = 'markdown'
     RIGHT="RIGHT"
     LEFT="LEFT"
     CENTER="CENTER"

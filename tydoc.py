@@ -37,22 +37,30 @@ LATEX_TAGS = {TAG_HTML:r'',
               TAG_H2:r'\subsection',
               TAG_H3:r'\subsubsection'}
 
+MARKDOWN_TAGS = {TAG_HTML:,,
+                 TAG_P:('','\n\n'),
+                 TAG_B:('**','**'),
+                 TAG_H1:('# ',''),
+                 TAG_H2:('## ',''),
+                 TAG_H3:('### ','')}
+
 def render(doc,mode=ttable.HTML,depth=0):
     if mode==ttable.HTML:
-        begin = '<{tag}>'
-        end   = '</{tag}>'
+        tbegin = '<{doc.tag}>'
+        tend   = '</{doc.tag}>'
     elif mode==ttable.LATEX:
-        begin = r'{latex_tag}{{'
-        end   = r'}}'
-    latex_tag = LATEX_TAGS[doc.tag]
-    print(begin.format(tag=doc.tag,latex_tag=latex_tag),end='')
+        tbegin = LATEX_TAGS[doc.tag] + '{'
+        tend   = '}'
+    elif mode==ttable.MARKDOWN:
+        (tbegin,tend) = MARKDOWN_TAGS[doc.tag]
+    print(tbegin,end='')
     if doc.text!=None:
         print(doc.text,end='')
     for child in doc:
         render(child,mode=mode,depth=depth+1)
         if child.tail!=None:
             print(child.tail,end='')
-    print(end.format(tag=doc.tag,latex_tag=latex_tag),end='')
+    print(tend,end='')
 
 import xml.etree.ElementTree
 class tydoc(xml.etree.ElementTree.Element):
