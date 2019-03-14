@@ -15,18 +15,16 @@ All of the formatting specifications need to be redone so that they are more fle
 import sys
 import sqlite3
 
-if __name__ == "__main__" or __package__=="":
-    __package__ = "ctools"
+#if __name__ == "__main__" or __package__=="":
+#    __package__ = "ctools"
 
-from .latex_tools import latex_escape
+from latex_tools import latex_escape
 
-
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 #
 # Some basic functions
 #
-
 
 
 def line_end(mode):
@@ -106,8 +104,6 @@ def icomma(i):
     if i<1000:return "%d" % i
     return icomma(i/1000) + ",%03d" % (i%1000)
 
-# hr is the tag that we use for linebreaks 
-
 # The row class holds the row and anny annotations
 class Row:
     __slots__ = ['data','annotations']
@@ -133,8 +129,6 @@ class Head(Row):
 class HorizontalRule(Row):
     def __init__(self):
         super().__init__(data=[])
-
-    
 
 # Raw is just raw data passed through
 class Raw(Row):
@@ -197,9 +191,8 @@ class ttable:
 
     def __init__(self,mode=None):
         self.clear()
-        self.options      = set()
-        if mode:
-            self.set_mode(mode)
+        self.options = set()
+        self.set_mode(mode)
 
     def clear(self):
         """Clear the data; keep the formatting"""
@@ -220,28 +213,21 @@ class ttable:
         self.label        = None
         self.caption      = None
         self.footnote     = None
-<<<<<<< HEAD
-=======
         self.autoescape    = True # default
->>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
         self.fontsize     = None
-
 
     def set_fontsize(self,sz):
         self.fontsize = sz
     def set_mode(self,mode):
-        assert mode in self.VALID_MODES
+        if mode:
+            assert mode in self.VALID_MODES
         self.mode = mode
-<<<<<<< HEAD
     def set_fontsize(self,ft): self.fontsize = ft
-=======
-
->>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
-    def set_data(self,d): self.data = d
-    def set_title(self,t): self.title = t
-    def set_label(self,l): self.label = l
+    def set_data(self,d):   self.data = d
+    def set_title(self,t):  self.title = t
+    def set_label(self,l):  self.label = l
     def set_footer(self,footer): self.footer = footer
     def set_caption(self,c): self.caption = c
     def set_col_alignment(self,col,align): self.col_alignment[col] = align
@@ -480,12 +466,8 @@ class ttable:
             print("typeset: no data")
             return ""
 
-<<<<<<< HEAD
         if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
-
-=======
->>>>>>> 1754579e6154558ffff2053a75909e9c7db5f275
         ret = [""]              # array of strings that will be concatenatted
 
         # If we need column totals, compute them
