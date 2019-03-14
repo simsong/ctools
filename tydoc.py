@@ -73,7 +73,6 @@ import xml.etree.ElementTree
 class tydoc(xml.etree.ElementTree.Element):
     """Python class for representing arbitrary documents. Can render into
     ASCII, HTML and LaTeX"""
-    TEXT=ttable.TEXT
     def __init__(self, mode=None):
         super().__init__('html')
         self.options = set()
@@ -200,25 +199,11 @@ def demo4():
     doc.p("Second ",b('bold'), " Paragraph")
     return doc
 
-    
-
 if __name__=="__main__":
+    # Showcase different ways of making a document and render it each way:
     showcase(demo1())
     showcase(demo2())
     showcase(demo3())
     showcase(demo4())
     exit(0)
 
-    # Let's try building a document
-    #bt.text = 'here'
-    ##doc.p(bt)
-    ET.SubElement(doc,bt)
-    if False:
-        doc.p("Third paragraph has at end ",bt)
-        doc.p(bt,"Fourh paragraph has bold at beginning")
-        doc.p("Fifth paragraph has ",bt," text in the middle.")
-    doc.typeset(mode=doc.TEXT)
-    print()
-    print()
-    print()
-    print(ET.tostring(doc.getroot(),encoding='unicode'))
