@@ -21,22 +21,38 @@ from latex_tools import latex_escape
 from tytable import ttable
 import copy
 
-def render(doc,depth=0):
-    print('<{}>'.format(doc.tag),end='')
-    if doc.text!=None:
-        print(doc.text,end='')
-    for child in doc:
-        render(child,depth=depth+1)
-        if child.tail!=None:
-            print(child.tail,end='')
-    print('</{}>'.format(doc.tag),end='')
-
 TAG_P = 'p'
+TAG_B  = 'b'
+TAG_I  = 'i'
 TAG_H1 = 'h1'
 TAG_H2 = 'h2'
 TAG_H3 = 'h3'
-TAG_B  = 'b'
-TAG_I  = 'i'
+TAG_HTML = 'html'
+
+LATEX_TAGS = {TAG_HTML:r'',
+              TAG_P:'\n\n',
+              TAG_B:r'\textbf',
+              TAG_I:r'\textit',
+              TAG_H1:r'\section',
+              TAG_H2:r'\subsection',
+              TAG_H3:r'\subsubsection'}
+
+def render(doc,mode=ttable.HTML,depth=0):
+    if mode==ttable.HTML:
+        begin = '<{tag}>'
+        end   = '</{tag}>'
+    elif mode==ttable.LATEX:
+        begin = r'{latex_tag}{{'
+        end   = r'}}'
+    latex_tag = LATEX_TAGS[doc.tag]
+    print(begin.format(tag=doc.tag,latex_tag=latex_tag),end='')
+    if doc.text!=None:
+        print(doc.text,end='')
+    for child in doc:
+        render(child,mode=mode,depth=depth+1)
+        if child.tail!=None:
+            print(child.tail,end='')
+    print(end.format(tag=doc.tag,latex_tag=latex_tag),end='')
 
 import xml.etree.ElementTree
 class tydoc(xml.etree.ElementTree.Element):
@@ -44,7 +60,7 @@ class tydoc(xml.etree.ElementTree.Element):
     ASCII, HTML and LaTeX"""
     TEXT=ttable.TEXT
     def __init__(self, mode=None):
-        super().__init__('tydoc')
+        super().__init__('html')
         self.options = set()
 
     def add(self, tag, *args):
@@ -77,6 +93,26 @@ class tydoc(xml.etree.ElementTree.Element):
     def b(self, *text):
         """Add one or more paragraph"""
         self.add(TAG_B, *text)
+        return self
+
+    def i(self, *text):
+        """Add one or more paragraph"""
+        self.add(TAG_I, *text)
+        return self
+
+    def h1(self, *text):
+        """Add one or more paragraph"""
+        self.add(TAG_H1, *text)
+        return self
+
+    def h2(self, *text):
+        """Add one or more paragraph"""
+        self.add(TAG_H2, *text)
+        return self
+
+    def h3(self, *text):
+        """Add one or more paragraph"""
+        self.add(TAG_H3, *text)
         return self
 
     def typeset(self, mode=None):
@@ -113,17 +149,19 @@ def h3(*text):
 def showcase(doc):
     print(ET.tostring(doc,encoding='unicode'))
     render(doc)
+    print("")
+    render(doc,mode=ttable.LATEX)
     print()
     print("----------")
 
 def demo1():
     # Verify that render works
-    doc  = ET.fromstring("<tydoc><p>First Paragraph</p><p>Second <b>bold</b> Paragraph</p></tydoc>")
+    doc  = ET.fromstring("<html><p>First Paragraph</p><p>Second <b>bold</b> Paragraph</p></html>")
     print("doc=",doc)
     return doc
 
 def demo2():
-    doc = ET.Element("tydoc")
+    doc = ET.Element("html")
     ET.SubElement(doc, 'p').text = "First Paragraph"
 
     p = ET.SubElement(doc, 'p')
@@ -158,3 +196,16 @@ if __name__=="__main__":
     showcase(demo4())
     exit(0)
 
+    # Let's try building a document
+    #bt.text = 'here'
+    ##doc.p(bt)
+    ET.SubElement(doc,bt)
+    if False:
+        doc.p("Third paragraph has at end ",bt)
+        doc.p(bt,"Fourh paragraph has bold at beginning")
+        doc.p("Fifth paragraph has ",bt," text in the middle.")
+    doc.typeset(mode=doc.TEXT)
+    print()
+    print()
+    print()
+    print(ET.tostring(doc.getroot(),encoding='unicode'))
