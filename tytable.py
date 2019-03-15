@@ -315,8 +315,11 @@ class ttable:
         self.autoescape    = True # default
         self.fontsize     = None
 
-    def set_fontsize(self,sz):
-        self.fontsize = sz
+
+    def set_mode(self,mode):
+        assert (mode in self.VALID_MODES) or (mode is None)
+        self.mode = mode
+
     def set_fontsize(self,ft): self.fontsize = ft
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
@@ -563,6 +566,10 @@ class ttable:
 
         if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
+
+        if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
+            raise ValueError("Invalid typsetting mode "+self.mode)
+
         ret = [""]              # array of strings that will be concatenatted
 
         # If we need column totals, compute them
