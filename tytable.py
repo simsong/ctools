@@ -553,7 +553,7 @@ class ttable:
 
         if mode:
             self.set_mode(mode)
-        if self.mode not in [TEXT,LATEX,HTML]:
+        if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
 
         if option:
@@ -700,7 +700,7 @@ class ttable:
     def add_variable(self,name,value):
         self.variables[name] = value
 
-    def save_table(self,fname,mode=LATEX,option=None):
+    def save_table(self,fname,mode=ttable.LATEX,option=None):
         with open(fname,"w") as f:
             f.write(self.typeset(mode=mode,option=option))
 
