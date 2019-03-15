@@ -77,6 +77,9 @@ class tydoc(xml.etree.ElementTree.Element):
         super().__init__('html')
         self.options = set()
 
+    def prettyprint(self):
+        return xml.dom.minidom.parseString( ET.tostring(doc,encoding='unicode')).toprettyxml(indent='  ')
+
     def add(self, tag, *args):
         """Add an element with type 'tag' for each item in args.
         If args has elements inside it, add them as subelements, with text set to the tail."""

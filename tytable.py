@@ -150,9 +150,17 @@ class tytable(xml.etree.ElementTree.Element):
         """Clear the data and the formatting; keeps mode and options"""
         super().clear()
         self.fontsize = None
+        self.latex_colspec_override = None
 
     def set_option(self,o):    self.options.add(o)
     def set_fontsize(self,sz): self.fontsize = sz
+    def set_latex_colspec(self,latex_colspec): 
+        """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
+        self.latex_colspec_override = latex_colspec
+
+    def latex_colspec(self):
+        """Figure out latex colspec"""
+        pass
 
     def add_row(self,cellTag, cells):
         """Add a row to the table with the TR"""
@@ -166,6 +174,10 @@ class tytable(xml.etree.ElementTree.Element):
 
     def add_data(self, values):
         self.add_row('TD',values)
+
+    def ncols(self):
+        """Return the number of maximum number of cols in the data"""
+        
 
 ################################################################
 ### Legacy system follows
