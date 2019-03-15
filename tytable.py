@@ -12,6 +12,8 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
+import os
+import os.path
 import sys
 import sqlite3
 import xml.etree.ElementTree
@@ -21,7 +23,9 @@ import xml.dom.minidom
 #if __name__ == "__main__" or __package__=="":
 #    __package__ = "ctools"
 
-from latex_tools import latex_escape
+sys.path.append( os.path.dirname(__file__))
+
+import latex_tools 
 
 __version__ = "0.2.1"
 
@@ -431,7 +435,7 @@ class ttable:
             if self.OPTION_NO_ESCAPE in self.options:
                 return formattedValue
             else:
-                return latex_escape(formattedValue)
+                return latex_tools.latex_escape(formattedValue)
         if self.mode == self.TEXT: 
             try:
                 fill = (self.col_formatted_widths[colNumber]-len(formattedValue))
@@ -666,7 +670,7 @@ class ttable:
                 ret.append("}")
             if self.footnote:
                 ret.append("\\footnote{")
-                ret.append( latex_escape(self.footnote) )
+                ret.append( latex_tools.latex_escape(self.footnote) )
                 ret.append("}")
         elif self.mode == self.HTML:
             ret.append("</table>\n")

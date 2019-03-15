@@ -99,7 +99,6 @@ def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
                   If the empty directory is provided, that is taken as the current directory.
     """
 
-
     for pydir in pydirs:
         if pydir=="":
             pydir="."
@@ -207,6 +206,48 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
     if logLevel:
         spark.sparkContext.setLogLevel(logLevel)
     return spark
+
+
+SPARK_PORT_START = 4040
+SPARK_PORT_END   = 4050
+def get_spark_info():
+    import requests
+    import ssl
+    from   urllib.request import urlopen
+    import urllib3
+    import urllib.error
+    urllib3.disable_warnings()
+
+    host       = os.environ.get("SPARK_LOCAL_IP","localhost")
+
+    for port in range(SPARK_PORT_START,SPARK_PORT_END+1):
+        try:
+            url = 'http://{}:{}/api/v1/applications/'.format(host,port)
+            resp  = urlopen(url, context=ssl._create_unverified_context())
+            spark_data = resp.read()
+            break
+        except (ConnectionError, ConnectionRefusedError,urllib.error.URLError) as e:
+            continue
+    if port>=SPARK_PORT_END:
+        raise RuntimeError(f"No spark listener found on {host} ports {SPARK_PORT_START}-{SPARK_PORT_END}")
+        return
+
+    # Looks like we have spark!
+    ret = {'spark':[]}
+    for app in json.loads(spark_data):
+        app_id   = app['id']
+        app_name = app['name']
+        
+        r2 = {'application':app}
+        for param in ['jobs','allexecutors','storage/rdd']:
+            url = f'http://{host}:{port}/api/v1/applications/{app_id}/{param}'
+            resp = urlopen(url, context=ssl._create_unverified_context())
+            data = resp.read()
+            r2[param] = json.loads(data)
+        
+        ret['spark'].append(r2)
+    return ret
+
 
 
 if __name__ == "__main__":
