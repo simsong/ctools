@@ -700,7 +700,7 @@ class ttable:
     def add_variable(self,name,value):
         self.variables[name] = value
 
-    def save_table(self,fname,mode=ttable.LATEX,option=None):
+    def save_table(self,fname,mode=LATEX,option=None):
         with open(fname,"w") as f:
             f.write(self.typeset(mode=mode,option=option))
 
