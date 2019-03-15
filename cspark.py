@@ -11,6 +11,7 @@ import os
 import sys
 import time
 import glob
+import json
 
 SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
 AWS_PATH = 'AWS_PATH'
@@ -210,7 +211,7 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
 
 SPARK_PORT_START = 4040
 SPARK_PORT_END   = 4050
-def get_spark_info():
+def get_spark_info(host=None,port=None):
     import requests
     import ssl
     from   urllib.request import urlopen
@@ -218,9 +219,15 @@ def get_spark_info():
     import urllib.error
     urllib3.disable_warnings()
 
-    host       = os.environ.get("SPARK_LOCAL_IP","localhost")
+    if not host:
+        host       = os.environ.get("SPARK_LOCAL_IP","localhost")
 
-    for port in range(SPARK_PORT_START,SPARK_PORT_END+1):
+    if port:
+        ports = [p1]
+    else:
+        ports = range(SPARK_PORT_START,SPARK_PORT_END+1)
+
+    for port in ports:
         try:
             url = 'http://{}:{}/api/v1/applications/'.format(host,port)
             resp  = urlopen(url, context=ssl._create_unverified_context())
