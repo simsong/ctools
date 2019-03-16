@@ -16,10 +16,14 @@ We may rewrite this to do everything with XML internally.
 
 __version__ = "0.0.1"
 
+import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
 from latex_tools import latex_escape
 from tytable import ttable
 import copy
+import io
+import base64
+import codecs
 
 TAG_P = 'p'
 TAG_B  = 'b'
@@ -45,6 +49,12 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_H3:('### ','')}
 
 def render(doc,mode=ttable.HTML):
+    """Custom rendering tool. Use the built-in rendering unless
+    the Element has its own render method."""
+
+    if hasattr(doc,'render'):
+        return doc.render(mode=mode)
+
     if mode==ttable.HTML:
         tbegin = f'<{doc.tag}>'
         tend   = f'</{doc.tag}>'
@@ -69,7 +79,22 @@ def render(doc,mode=ttable.HTML):
 
     return "".join(flatten)
 
-import xml.etree.ElementTree
+class EmbeddedImageTag(xml.etree.ElementTree.Element):
+    def __init__(self, buf, *, format, alt=""):
+        """Create an image. You must specify the format. 
+        buf can be a string of a BytesIO"""
+        super().__init__('img')
+        self.buf    = buf
+        self.alt    = alt
+        self.format = format
+
+    def render(self, alt="", mode=ttable.HTML):
+        if mode==ttable.HTML:
+            return '<img alt="{}" src="data:image/{};base64,{}" />'.format(
+                self.alt,self.format,codecs.decode(base64.b64encode(self.buf)))
+        raise RuntimeError("unknown mode: {}".format(mode))
+        
+
 class tydoc(xml.etree.ElementTree.Element):
     """Python class for representing arbitrary documents. Can render into
     ASCII, HTML and LaTeX"""
@@ -78,9 +103,23 @@ class tydoc(xml.etree.ElementTree.Element):
         super().__init__('html')
         self.options = set()
 
+    def savehtml(self, filename,*,imagedir=".",**kwargs):
+        with open(filename,"w") as outfile:
+            outfile.write(render(self,mode=ttable.HTML))
+
+    def save(self,filename,format=None,**kwargs):
+        if not format:
+            format = os.path.splitext(filename)[1]
+            if format[0:1]=='.':
+                format=format[1:]
+        if format=='html':
+            return savehtml(filename,**kwargs)
+        raise RuntimeError("Unknown format")
+
     def add(self, tag, *args):
-        """Add an element with type 'tag' for each item in args.
-        If args has elements inside it, add them as subelements, with text set to the tail."""
+        """Add an element with type 'tag' for each item in args.  If args has
+        elements inside it, add them as subelements, with text set to
+        the tail."""
 
         e       = ET.SubElement(self, tag)
         lastTag = None
@@ -99,6 +138,20 @@ class tydoc(xml.etree.ElementTree.Element):
                 lastTag = copy.deepcopy(arg)
                 e.append(lastTag)
         return self
+
+    def insert_image(self, buf, *, format):
+        if isinstance(buf,io.BytesIO):
+            buf.seek(0)
+            buf = buf.read()    # turn it into a buffer
+        img = EmbeddedImageTag(buf,format=format)
+        self.append(img)
+
+    def insert_matplotlib(self, plt, *, format="png", **kwargs):
+        buf = io.BytesIO()
+        plt.savefig(buf, format=format, **kwargs)
+        buf.seek(0)
+        self.insert_image(buf,format='png')
+
 
     def p(self, *text):
         """Add one or more paragraph"""
@@ -199,8 +252,6 @@ def demo4():
     doc.p("First Paragraph")
     doc.p("Second ",b('bold'), " Paragraph")
     return doc
-
-    
 
 if __name__=="__main__":
     showcase(demo1())
