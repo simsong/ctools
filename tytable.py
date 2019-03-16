@@ -14,7 +14,10 @@ All of the formatting specifications need to be redone so that they are more fle
 
 import sys
 import sqlite3
-
+import xml.etree.ElementTree
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+# not sure why this was put in, but it breaks calling tytable from this directory.
 #if __name__ == "__main__" or __package__=="":
 #    __package__ = "ctools"
 
@@ -23,19 +26,8 @@ from latex_tools import latex_escape
 __version__ = "0.2.1"
 
 #
-# Some basic functions
+# Some basic functions for working with text and numbers
 #
-
-
-def line_end(mode):
-    if mode == ttable.TEXT:
-        return "\n"
-    elif mode == ttable.LATEX:
-        return r"~\\" + "\n"
-    elif mode == ttable.HTML:
-        return "<br>"
-    else:
-        raise RuntimeError("Unknown mode: {}".format(mode))
 
 def isnumber(v):
     """Return true if we can treat v as a number"""
@@ -104,6 +96,94 @@ def icomma(i):
     if i<1000:return "%d" % i
     return icomma(i/1000) + ",%03d" % (i%1000)
 
+################################################################
+### Improved tytable with the new API.
+### Class name has changed from ttable to tytable.
+### It now uses the XML ETree to represent the table.
+### Tables can then be rendered into HTML or another form.
+################################################################
+class tytable(xml.etree.ElementTree.Element):
+    """Python class for representing a table that can be rendered into HTML or LaTeX or text.
+    Based on Simson Garfinkel's legacy ttable() class, which was hack that evolved. This class
+    has a similar API, but it's not identical, so the old class appears below.
+
+    Key differences:
+    1. Format must be specified in advance, and formatting is done when data is put into the table.
+       If format is changed, table is reformatted.
+    2. Orignal numeric data is kept as num= option"""
+
+    OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
+    OPTION_TABLE     = 'table'  # use LaTeX {table} enviornment
+    OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
+    OPTION_CENTER    = 'center'   # use LaTeX {center} environment
+    OPTION_NO_ESCAPE = 'noescape' # do not escape values
+    OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
+    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,OPTION_SUPPRESS_ZERO,OPTION_TABLE])
+    TEXT  = 'text'
+    LATEX = 'latex'
+    HTML  = 'html'
+    MARKDOWN = 'markdown'
+    VALID_MODES = set([TEXT,LATEX,HTML,MARKDOWN])
+
+    ALIGN_LEFT="LEFT"
+    ALIGN_CENTER="CENTER"
+    ALIGN_RIGHT="RIGHT"
+    VALID_ALIGNS = set([ALIGN_LEFT,ALIGN_CENTER,ALIGN_RIGHT])
+
+    DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
+    DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
+
+    def __init__(self, mode=None):
+        super().__init__('table')
+        self.set_mode(mode)
+        self.options = set()
+        self.clear()
+    
+    def prettyprint(self):
+        return xml.dom.minidom.parseString( ET.tostring(doc,encoding='unicode')).toprettyxml(indent='  ')
+
+    def set_mode(self,mode):
+        assert (mode in self.VALID_MODES) or (mode is None)
+        self.mode = mode
+
+    def clear(self):
+        """Clear the data and the formatting; keeps mode and options"""
+        super().clear()
+        self.fontsize = None
+        self.latex_colspec_override = None
+
+    def set_option(self,o):    self.options.add(o)
+    def set_fontsize(self,sz): self.fontsize = sz
+    def set_latex_colspec(self,latex_colspec): 
+        """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
+        self.latex_colspec_override = latex_colspec
+
+    def latex_colspec(self):
+        """Figure out latex colspec"""
+        pass
+
+    def add_row(self,cellTag, cells):
+        """Add a row to the table with the TR"""
+        row = ET.SubElement(self,'TR')
+        for cell in cells:
+            e = ET.SubElement(row,cellTag,{'d':str(cell),'t':str(type(cell).__name__)})
+            e.text = str(cell)
+        
+    def add_head(self, values):
+        self.add_row('TH',values)
+
+    def add_data(self, values):
+        self.add_row('TD',values)
+
+    def ncols(self):
+        """Return the number of maximum number of cols in the data"""
+        
+
+################################################################
+### Legacy system follows
+################################################################
+
+
 # The row class holds the row and anny annotations
 class Row:
     __slots__ = ['data','annotations']
@@ -136,6 +216,16 @@ class Raw(Row):
         self.data    = rawdata
     def ncols(self):
         raise RuntimeError("Raw does not implement ncols")
+
+def line_end(mode):
+    if mode == ttable.TEXT:
+        return "\n"
+    elif mode == ttable.LATEX:
+        return r"~\\" + "\n"
+    elif mode == ttable.HTML:
+        return "<br>"
+    else:
+        raise RuntimeError("Unknown mode: {}".format(mode))
 
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
@@ -191,12 +281,16 @@ class ttable:
                       CENTER:"style='text-align:center;'"}
 
     def __init__(self,mode=None):
-        self.clear()
-        self.options = set()
         self.set_mode(mode)
+        self.options      = set()
+        self.clear()
+
+    def set_mode(self,mode):
+        assert (mode in self.VALID_MODES) or (mode is None)
+        self.mode = mode
 
     def clear(self):
-        """Clear the data; keep the formatting"""
+        """Clear the data and the formatting; keeps mode and options"""
         self.col_headings = []          # the col_headings; a list of lists
         self.data         = []          # the raw data; a list of lists
         self.omit_row     = []          # descriptions of rows that should be omitted
@@ -217,12 +311,11 @@ class ttable:
         self.autoescape    = True # default
         self.fontsize     = None
 
-    def set_fontsize(self,sz):
-        self.fontsize = sz
+
     def set_mode(self,mode):
-        if mode:
-            assert mode in self.VALID_MODES
+        assert (mode in self.VALID_MODES) or (mode is None)
         self.mode = mode
+
     def set_fontsize(self,ft): self.fontsize = ft
     def add_option(self,o): self.options.add(o)
     def set_option(self,o): self.options.add(o)
@@ -469,6 +562,10 @@ class ttable:
 
         if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
             raise ValueError("Invalid typsetting mode "+self.mode)
+
+        if self.mode not in [self.TEXT,self.LATEX,self.HTML]:
+            raise ValueError("Invalid typsetting mode "+self.mode)
+
         ret = [""]              # array of strings that will be concatenatted
 
         # If we need column totals, compute them
@@ -617,3 +714,17 @@ class ttable:
             self.add_head( [col[0] for col in cur.description] )
         [ self.add_data(row) for row in cur ]
             
+def demo():
+    doc = tytable()
+    doc.add_head(['State','Abbreviation','Population'])
+    doc.add_data(['Virginia','VA',8001045])
+    doc.add_data(['California','CA',37252895])
+    return doc
+
+
+if __name__=="__main__":
+    # Showcase different ways of making a document and render it each way:
+    doc = demo()
+    print(doc.prettyprint())
+    exit(0)
+

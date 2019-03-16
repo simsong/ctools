@@ -24,6 +24,8 @@ import copy
 import io
 import base64
 import codecs
+import os
+import os.path
 
 TAG_P = 'p'
 TAG_B  = 'b'
@@ -33,13 +35,23 @@ TAG_H2 = 'h2'
 TAG_H3 = 'h3'
 TAG_HTML = 'html'
 
-LATEX_TAGS = {TAG_HTML:r'',
-              TAG_P:'\n\n',
-              TAG_B:r'\textbf',
-              TAG_I:r'\textit',
-              TAG_H1:r'\section',
-              TAG_H2:r'\subsection',
-              TAG_H3:r'\subsubsection'}
+LATEX_PREAMBLE="""
+\\documentclass{article}
+\\usepackage{graphicx}
+\\begin{document}
+"""
+
+LATEX_TRAILER="""
+\\end{document}
+"""
+
+LATEX_TAGS = {TAG_HTML:(LATEX_PREAMBLE,LATEX_TRAILER),
+              TAG_P:('\n','\n\n'),
+              TAG_B:(r'\textbf{','}'),
+              TAG_I:(r'\textit{','}'),
+              TAG_H1:(r'\section{','}'),
+              TAG_H2:(r'\subsection{','}'),
+              TAG_H3:(r'\subsubsection{','}') }
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_P:('','\n\n'),
@@ -48,28 +60,29 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_H2:('## ',''),
                  TAG_H3:('### ','')}
 
-def render(doc,mode=ttable.HTML):
+def render(doc, format=ttable.HTML):
     """Custom rendering tool. Use the built-in rendering unless
     the Element has its own render method."""
 
     if hasattr(doc,'render'):
-        return doc.render(mode=mode)
+        return doc.render(format=format)
 
-    if mode==ttable.HTML:
+    if format==ttable.HTML:
         tbegin = f'<{doc.tag}>'
         tend   = f'</{doc.tag}>'
-    elif mode==ttable.LATEX:
-        tbegin = LATEX_TAGS[doc.tag] + '{'
-        tend   = '}'
-    elif mode==ttable.MARKDOWN:
+    elif format==ttable.LATEX or format=='tex':
+        (tbegin,tend) = LATEX_TAGS[doc.tag]
+    elif format==ttable.MARKDOWN:
         (tbegin,tend) = MARKDOWN_TAGS[doc.tag]
+    else:
+        raise RuntimeError("unknown format: {}".format(format))
 
     ret = []
     ret.append(tbegin)
     if doc.text!=None:
         ret.append(doc.text)
     for child in doc:
-        ret.append( render(child,mode=mode) )
+        ret.append( render(child,format=format) )
         if child.tail!=None:
             ret.append(child.tail)
     ret.append(tend)
@@ -88,33 +101,36 @@ class EmbeddedImageTag(xml.etree.ElementTree.Element):
         self.alt    = alt
         self.format = format
 
-    def render(self, alt="", mode=ttable.HTML):
-        if mode==ttable.HTML:
+    def render(self, alt="", format=ttable.HTML):
+        if format==ttable.HTML:
             return '<img alt="{}" src="data:image/{};base64,{}" />'.format(
                 self.alt,self.format,codecs.decode(base64.b64encode(self.buf)))
-        raise RuntimeError("unknown mode: {}".format(mode))
+        elif format==ttable.LATEX or format=='tex':
+            with open("image.png","wb") as f:
+                f.write(self.buf)
+            return '\\includegraphics{image}\n'
+        raise RuntimeError("unknown format: {}".format(format))
         
 
 class tydoc(xml.etree.ElementTree.Element):
     """Python class for representing arbitrary documents. Can render into
     ASCII, HTML and LaTeX"""
-    TEXT=ttable.TEXT
-    def __init__(self, mode=None):
+    def __init__(self, format=None):
         super().__init__('html')
         self.options = set()
 
-    def savehtml(self, filename,*,imagedir=".",**kwargs):
-        with open(filename,"w") as outfile:
-            outfile.write(render(self,mode=ttable.HTML))
-
     def save(self,filename,format=None,**kwargs):
         if not format:
-            format = os.path.splitext(filename)[1]
+            format = os.path.splitext(filename)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
-        if format=='html':
-            return savehtml(filename,**kwargs)
-        raise RuntimeError("Unknown format")
+
+        with open(filename,"w") as outfile:
+            outfile.write(render(self, format=format))
+
+    def prettyprint(self):
+        s = ET.tostring(doc,encoding='unicode')
+        return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
 
     def add(self, tag, *args):
         """Add an element with type 'tag' for each item in args.  If args has
@@ -183,8 +199,8 @@ class tydoc(xml.etree.ElementTree.Element):
         self.add(TAG_H3, *text)
         return self
 
-    def typeset(self, mode=None):
-        return render(self)
+    def typeset(self, format=None):
+        return render(self, format=format )
 
 # Add some covers for popular paragraph types
 def p(*text):
@@ -254,22 +270,10 @@ def demo4():
     return doc
 
 if __name__=="__main__":
+    # Showcase different ways of making a document and render it each way:
     showcase(demo1())
     showcase(demo2())
     showcase(demo3())
     showcase(demo4())
     exit(0)
 
-    # Let's try building a document
-    #bt.text = 'here'
-    ##doc.p(bt)
-    ET.SubElement(doc,bt)
-    if False:
-        doc.p("Third paragraph has at end ",bt)
-        doc.p(bt,"Fourh paragraph has bold at beginning")
-        doc.p("Fifth paragraph has ",bt," text in the middle.")
-    doc.typeset(mode=doc.TEXT)
-    print()
-    print()
-    print()
-    print(ET.tostring(doc.getroot(),encoding='unicode'))

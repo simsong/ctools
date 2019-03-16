@@ -27,8 +27,6 @@ if __name__=="__main__":
     plt.xlabel('time (s)')
     plt.ylabel('Undamped')
 
-
-
     # Make a document and put a plot in it
 
     doc = tydoc()
@@ -37,8 +35,8 @@ if __name__=="__main__":
           " to your documents")
     doc.insert_matplotlib(plt,dpi=72,pad_inches=0.1)
     doc.p("Pretty neat, eh?")
-    doc.savehtml("output.html",imagedir=".")
-
+    doc.save("output.html",imagedir=".")
+    doc.save("output.tex")
 
 
     
