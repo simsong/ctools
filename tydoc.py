@@ -18,8 +18,6 @@ __version__ = "0.0.1"
 
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
-from latex_tools import latex_escape
-from tytable import ttable
 import copy
 import io
 import base64
@@ -27,13 +25,23 @@ import codecs
 import os
 import os.path
 
-TAG_P = 'p'
-TAG_B  = 'b'
-TAG_I  = 'i'
-TAG_H1 = 'h1'
-TAG_H2 = 'h2'
-TAG_H3 = 'h3'
-TAG_HTML = 'html'
+
+from .latex_tools import latex_escape
+
+TAG_P    = 'P'
+TAG_B    = 'B'
+TAG_I    = 'I'
+TAG_H1   = 'H1'
+TAG_H2   = 'H2'
+TAG_H3   = 'H3'
+TAG_HTML = 'HTML'
+TAG_PRE  = 'PRE'
+TAG_TR   = 'TR'
+TAG_TH   = 'TH'
+TAG_TD   = 'TD'
+
+ATTR_VAL = 'v'                # where we keep the original values
+ATTR_TYPE = 't'              # the Python type of the value
 
 LATEX_PREAMBLE="""
 \\documentclass{article}
@@ -44,6 +52,11 @@ LATEX_PREAMBLE="""
 LATEX_TRAILER="""
 \\end{document}
 """
+
+FORMAT_HTML = 'html'
+FORMAT_LATEX = 'latex'
+FORMAT_TEX   = 'tex'
+FORMAT_MARKDOWN = 'md'
 
 LATEX_TAGS = {TAG_HTML:(LATEX_PREAMBLE,LATEX_TRAILER),
               TAG_P:('\n','\n\n'),
@@ -60,19 +73,19 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_H2:('## ',''),
                  TAG_H3:('### ','')}
 
-def render(doc, format=ttable.HTML):
+def render(doc, format=FORMAT_HTML):
     """Custom rendering tool. Use the built-in rendering unless
     the Element has its own render method."""
 
     if hasattr(doc,'render'):
         return doc.render(format=format)
 
-    if format==ttable.HTML:
+    if format==FORMAT_HTML:
         tbegin = f'<{doc.tag}>'
         tend   = f'</{doc.tag}>'
-    elif format==ttable.LATEX or format=='tex':
+    elif format==FORMAT_LATEX or format==FORMAT_TEX:
         (tbegin,tend) = LATEX_TAGS[doc.tag]
-    elif format==ttable.MARKDOWN:
+    elif format==FORMAT_MARKDOWN:
         (tbegin,tend) = MARKDOWN_TAGS[doc.tag]
     else:
         raise RuntimeError("unknown format: {}".format(format))
@@ -92,7 +105,13 @@ def render(doc, format=ttable.HTML):
 
     return "".join(flatten)
 
-class EmbeddedImageTag(xml.etree.ElementTree.Element):
+class TyTag(xml.etree.ElementTree.Element):
+    def prettyprint(self):
+        s = ET.tostring(doc,encoding='unicode')
+        return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
+    
+
+class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
         """Create an image. You must specify the format. 
         buf can be a string of a BytesIO"""
@@ -101,18 +120,18 @@ class EmbeddedImageTag(xml.etree.ElementTree.Element):
         self.alt    = alt
         self.format = format
 
-    def render(self, alt="", format=ttable.HTML):
-        if format==ttable.HTML:
+    def render(self, alt="", format=FORMAT_HTML):
+        if format==FORMAT_HTML:
             return '<img alt="{}" src="data:image/{};base64,{}" />'.format(
                 self.alt,self.format,codecs.decode(base64.b64encode(self.buf)))
-        elif format==ttable.LATEX or format=='tex':
+        elif format==FORMAT_LATEX or format=='tex':
             with open("image.png","wb") as f:
                 f.write(self.buf)
             return '\\includegraphics{image}\n'
         raise RuntimeError("unknown format: {}".format(format))
         
 
-class tydoc(xml.etree.ElementTree.Element):
+class tydoc(TyTag):
     """Python class for representing arbitrary documents. Can render into
     ASCII, HTML and LaTeX"""
     def __init__(self, format=None):
@@ -120,17 +139,23 @@ class tydoc(xml.etree.ElementTree.Element):
         self.options = set()
 
     def save(self,filename,format=None,**kwargs):
+        """Save to a filename or a file-like object"""
         if not format:
             format = os.path.splitext(filename)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
 
+        if isinstance(filename, io.IOBase):
+            filename.write(render(self, format=format))
+            return
+
         with open(filename,"w") as outfile:
             outfile.write(render(self, format=format))
+            return
 
-    def prettyprint(self):
-        s = ET.tostring(doc,encoding='unicode')
-        return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
+    def render(self, format=None):
+        """Return a string"""
+        return render(self, format=format )
 
     def add(self, tag, *args):
         """Add an element with type 'tag' for each item in args.  If args has
@@ -168,72 +193,186 @@ class tydoc(xml.etree.ElementTree.Element):
         buf.seek(0)
         self.insert_image(buf,format='png')
 
-
     def p(self, *text):
-        """Add one or more paragraph"""
+        """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
         self.add(TAG_P, *text)
         return self
         
-    def b(self, *text):
-        """Add one or more paragraph"""
-        self.add(TAG_B, *text)
-        return self
-
-    def i(self, *text):
-        """Add one or more paragraph"""
-        self.add(TAG_I, *text)
-        return self
-
     def h1(self, *text):
-        """Add one or more paragraph"""
+        """Add a H1"""
         self.add(TAG_H1, *text)
         return self
 
     def h2(self, *text):
-        """Add one or more paragraph"""
+        """Add a H2"""
         self.add(TAG_H2, *text)
         return self
 
     def h3(self, *text):
-        """Add one or more paragraph"""
+        """Add a H3"""
         self.add(TAG_H3, *text)
         return self
 
-    def typeset(self, format=None):
-        return render(self, format=format )
+    def pre(self, *text):
+        """Add a preformatted"""
+        self.add(TAG_PRE, *text)
+        return self
+
+    def table(self, **kwargs):
+        t = tytable()
+        self.insert(t)
+        return t
+
+################################################################
+### Improved tytable with the new API.
+### Class name has changed from ttable to tytable.
+### It now uses the XML ETree to represent the table.
+### Tables can then be rendered into HTML or another form.
+################################################################
+class tytable(TyTag):
+    """Python class for representing a table that can be rendered into
+    HTML or LaTeX or text.  Based on Simson Garfinkel's legacy
+    ttable() class, which was hack that evolved. This class has a
+    similar API, but it's not identical, so the old class appears
+    below.
+
+    Key differences:
+
+    1. Format must be specified in advance, and formatting is done
+       when data is put into the table.  If format is changed, table
+       is reformatted.
+
+    2. Orignal numeric data is kept as num= option
+    """
+
+    OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
+    OPTION_TABLE     = 'table'  # use LaTeX {table} enviornment
+    OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
+    OPTION_CENTER    = 'center'   # use LaTeX {center} environment
+    OPTION_NO_ESCAPE = 'noescape' # do not escape values
+    OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
+    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,OPTION_SUPPRESS_ZERO,OPTION_TABLE])
+    TEXT  = 'text'
+    LATEX = 'latex'
+    HTML  = 'html'
+    MARKDOWN = 'markdown'
+    VALID_MODES = set([TEXT,LATEX,HTML,MARKDOWN])
+    LATEX_COLSPEC = 'latex_colspec'
+
+    ALIGN_LEFT="LEFT"
+    ALIGN_CENTER="CENTER"
+    ALIGN_RIGHT="RIGHT"
+    VALID_ALIGNS = set([ALIGN_LEFT,ALIGN_CENTER,ALIGN_RIGHT])
+
+    DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
+    DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
+
+    def __init__(self):
+        super().__init__('table')
+        self.options = set()
+        self.clear()
+        self.text_format = "{}"
+        self.number_format = "{:,}"
+    
+    def set_latex_colspec(self,latex_colspec): 
+        """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
+        self.attrib[LATEX_COLSPEC] = latex_colspec
+
+    def latex_colspec(self):
+        """Figure out latex colspec"""
+        return self.attrib[LATEX_COLSPEC]
+
+    def add_row(self, cells):
+        """Add a row of cells to the table.
+        @param cells - a list of cells.
+        """
+        row = ET.SubElement(self,TAG_TR)
+        for cell in cells:
+            self.append(cell)
+
+    def make_cell(self, tag, value, attrs):
+        cell = ET.Element(tag,{**attrs,
+                                 ATTR_VAL:str(value),
+                                 ATTR_TYPE:str(type(value).__name__)
+                                 })
+        cell.text = str(value)
+        return cell
+
+    def add_row_values(self, tags, values, attrs={}):
+        """Create a row of cells and add it to the table.
+        @param tags - a list of tags
+        @param values - a list of values.  Each is automatically formatted.
+        """
+        # If tags is not a list, make it a list
+        if not isinstance(tags,list):
+            tags = [tags] * len(values)
+
+        if not isinstance(attrs,list):
+            attrs = [attrs] *len(values)
+
+        assert len(tags)==len(values)==len(attrs)
+        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,value,attrs)]
+        self.add_row(cells)
+        
+    def add_head(self, values):
+        self.add_row('TH',values)
+
+    def add_data(self, values):
+        self.add_row('TD',values)
+
+    def rows(self):
+        """Return the rows"""
+        return self.findall(".//TR")
+
+    def max_cols(self):
+        """Return the number of maximum number of cols in the data"""
+        return max( len(row.findall("*")) for row in self.rows())
+        
+        
+################################################################
+##
+## covers for making it easy to construct HTML
+##
+################################################################
 
 # Add some covers for popular paragraph types
 def p(*text):
-    """Return a pydoc with one or more paragraphs"""
+    """Return a paragraph. Text runs are combined"""
     return tydoc().p(*text)
 
+def h1(*text):
+    """Return a header 1"""
+    return tydoc().h1(*text)
+
+def h2(*text):
+    """Return a header 2"""
+    return tydoc().h2(*text)
+
+def h3(*text):
+    """Return a header 3"""
+    return tydoc().h3(*text)
+
+def pre(*text):
+    """Return preformatted text"""
+    return tydoc().pre(*text)
+
 def b(text):
-    """Return a pydoc with one or more bold runs"""
+    """Return a bold run"""
     e = ET.Element('b')
     e.text=text
     return e
 
-def i(*text):
-    """Return a pydoc with one or more bold runs"""
-    return tydoc().b(*text)
-
-def h1(*text):
-    """Return a pydoc with one or more bold runs"""
-    return tydoc().h1(*text)
-
-def h2(*text):
-    """Return a pydoc with one or more bold runs"""
-    return tydoc().h2(*text)
-
-def h3(*text):
-    """Return a pydoc with one or more bold runs"""
-    return tydoc().h3(*text)
+def i(text):
+    """Return an itallic run """
+    e = ET.Element('i')
+    e.text=text
+    return e
 
 def showcase(doc):
     print(ET.tostring(doc,encoding='unicode'))
     print(render(doc))
-    print(render(doc,mode=ttable.LATEX))
-    print(render(doc,mode=ttable.MARKDOWN))
+    print(render(doc,mode=FORMAT_LATEX))
+    print(render(doc,mode=FORMAT_MARKDOWN))
     print("----------")
 
 def demo1():
@@ -269,11 +408,20 @@ def demo4():
     doc.p("Second ",b('bold'), " Paragraph")
     return doc
 
+def tabdemo1():
+    doc = tydoc()
+    doc.h1("Table demo")
+    t = doc.table()
+    
+
 if __name__=="__main__":
-    # Showcase different ways of making a document and render it each way:
-    showcase(demo1())
-    showcase(demo2())
-    showcase(demo3())
-    showcase(demo4())
+    # Showcase different ways of making a document and render it each
+    # way:
+    if False:
+        showcase(demo1())
+        showcase(demo2())
+        showcase(demo3())
+        showcase(demo4())
+    showcase(tabdemo1())
     exit(0)
 

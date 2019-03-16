@@ -1,7 +1,12 @@
 # Some tests for tytable
 
+import sys
+import os
+import os.path
 
-from ctools.tytable import *
+sys.path.append( os.path.join( os.path.dirname(__file__), "../.."))
+
+from ctools.tydoc import *
 
 def test_ttable():
     a = ttable()
@@ -20,6 +25,6 @@ def test_tytable():
     a.add_row(['a','b','c'])
     a.add_row([1,2,3,4])
     a.add_row(['a','b','c','d','e'])
-    assert a.nrows()==4
-    assert a.ncols()==4
+    assert len(a.rows()) == 4
+    assert a.max_cols() == 5
     
