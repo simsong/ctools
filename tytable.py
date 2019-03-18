@@ -122,17 +122,17 @@ class tytable(xml.etree.ElementTree.Element):
     OPTION_CENTER    = 'center'   # use LaTeX {center} environment
     OPTION_NO_ESCAPE = 'noescape' # do not escape values
     OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
-    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,OPTION_SUPPRESS_ZERO,OPTION_TABLE])
+    VALID_OPTIONS = {OPTION_LONGTABLE, OPTION_TABULARX, OPTION_SUPPRESS_ZERO, OPTION_TABLE}
     TEXT  = 'text'
     LATEX = 'latex'
     HTML  = 'html'
     MARKDOWN = 'markdown'
-    VALID_MODES = set([TEXT,LATEX,HTML,MARKDOWN])
+    VALID_MODES = {TEXT, LATEX, HTML, MARKDOWN}
 
     ALIGN_LEFT="LEFT"
     ALIGN_CENTER="CENTER"
     ALIGN_RIGHT="RIGHT"
-    VALID_ALIGNS = set([ALIGN_LEFT,ALIGN_CENTER,ALIGN_RIGHT])
+    VALID_ALIGNS = {ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT}
 
     DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
     DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
@@ -181,7 +181,11 @@ class tytable(xml.etree.ElementTree.Element):
 
     def ncols(self):
         """Return the number of maximum number of cols in the data"""
-        
+        raise NotImplementedError("ncols not implemented yet")
+
+    def nrows(self):
+        """Return the number of maximum number of rows in the data"""
+        raise NotImplementedError("nrows not implemented yet")
 
 ################################################################
 ### Legacy system follows
@@ -276,8 +280,8 @@ class ttable:
     LEFT="LEFT"
     CENTER="CENTER"
     NL = {TEXT:'\n', LATEX:"\\\\ \n", HTML:''} # new line
-    VALID_MODES = set([TEXT,LATEX,HTML])
-    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,SUPPRESS_ZERO,OPTION_TABLE])
+    VALID_MODES = {TEXT,LATEX,HTML}
+    VALID_OPTIONS = {OPTION_LONGTABLE,OPTION_TABULARX,SUPPRESS_ZERO,OPTION_TABLE}
     DEFAULT_ALIGNMENT_NUMBER = RIGHT
     DEFAULT_ALIGNMENT_STRING = LEFT
     HTML_ALIGNMENT = {RIGHT:"style='text-align:right;'",
@@ -459,8 +463,8 @@ class ttable:
         ret = []
         if isinstance(row,Raw):
             return row.data
-        if self.mode == self.HTML:
-            return row.data
+        # if self.mode == self.HTML:
+        #     return row.data
         if self.mode == self.HTML:
             ret.append("<tr>")
         for colNumber in range(0,len(row)):
@@ -685,13 +689,14 @@ class ttable:
             if self.footer:
                 ret.append(self.footer)
                 ret.append("\n")
-            
+
         # Finally, add any variables that have been defined
         for (name,value) in self.variables.items():
             if self.mode == self.LATEX:
                 ret += latex_var(name,value)
             if self.mode == self.HTML:
-                ret += ["Note: ",name," is ", value, "<br>"]
+                ret += "".join(["Note: ",name," is ", value, "<br>"])
+
         outbuffer = "".join(ret)
         if out:
             out.write(outbuffer)
