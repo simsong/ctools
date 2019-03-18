@@ -324,7 +324,7 @@ class ttable:
     fontsize: int
 
     latex_colspec: Any
-    col_formatted_widths: List[int]
+    col_formatted_widths: List[int ]
 
     OPTION_LONGTABLE = 'longtable'
     OPTION_TABULARX = 'tabularx'
