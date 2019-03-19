@@ -17,6 +17,7 @@ import sqlite3
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+
 # not sure why this was put in, but it breaks calling tytable from this directory.
 #if __name__ == "__main__" or __package__=="":
 #    __package__ = "ctools"
@@ -632,11 +633,11 @@ class ttable:
         [ self.add_data(row) for row in cur ]
             
 def demo():
-    doc = tytable()
-    doc.add_head(['State','Abbreviation','Population'])
-    doc.add_data(['Virginia','VA',8001045])
-    doc.add_data(['California','CA',37252895])
-    return doc
+    d2 = tytable()
+    d2.add_head(['State','Abbreviation','Population'])
+    d2.add_data(['Virginia','VA',8001045])
+    d2.add_data(['California','CA',37252895])
+    return d2
 
 
 if __name__=="__main__":

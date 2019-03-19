@@ -24,9 +24,9 @@ import base64
 import codecs
 import os
 import os.path
+import sys
 
-
-from .latex_tools import latex_escape
+from latex_tools import latex_escape
 
 TAG_P    = 'P'
 TAG_B    = 'B'
@@ -58,6 +58,8 @@ FORMAT_LATEX = 'latex'
 FORMAT_TEX   = 'tex'
 FORMAT_MARKDOWN = 'md'
 
+CUSTOM_RENDERER = 'custom_renderer'
+
 LATEX_TAGS = {TAG_HTML:(LATEX_PREAMBLE,LATEX_TRAILER),
               TAG_P:('\n','\n\n'),
               TAG_B:(r'\textbf{','}'),
@@ -69,46 +71,45 @@ LATEX_TAGS = {TAG_HTML:(LATEX_PREAMBLE,LATEX_TRAILER),
 MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_P:('','\n\n'),
                  TAG_B:('**','**'),
-                 TAG_H1:('# ',''),
-                 TAG_H2:('## ',''),
-                 TAG_H3:('### ','')}
+                 TAG_H1:('# ','\n'),
+                 TAG_H2:('## ','\n'),
+                 TAG_H3:('### ','\n')}
 
-def render(doc, format=FORMAT_HTML):
-    """Custom rendering tool. Use the built-in rendering unless
-    the Element has its own render method."""
+def render(f, doc, format=FORMAT_HTML):
+    """Custom rendering tool. Use the built-in rendering unless the
+    Element has its own render method. Write results to f, which can
+    be a file or an iobuffer"""
 
-    if hasattr(doc,'render'):
-        return doc.render(format=format)
+    if hasattr(doc,CUSTOM_RENDERER):
+        return doc.custom_renderer(f, format=format)
 
     if format==FORMAT_HTML:
         tbegin = f'<{doc.tag}>'
         tend   = f'</{doc.tag}>'
     elif format==FORMAT_LATEX or format==FORMAT_TEX:
-        (tbegin,tend) = LATEX_TAGS[doc.tag]
+        (tbegin,tend) = LATEX_TAGS[doc.tag.upper()]
     elif format==FORMAT_MARKDOWN:
-        (tbegin,tend) = MARKDOWN_TAGS[doc.tag]
+        (tbegin,tend) = MARKDOWN_TAGS[doc.tag.upper()]
     else:
         raise RuntimeError("unknown format: {}".format(format))
 
-    ret = []
-    ret.append(tbegin)
+    f.write(tbegin)
     if doc.text!=None:
-        ret.append(doc.text)
+        f.write(doc.text)
     for child in doc:
-        ret.append( render(child,format=format) )
+        render(f, child, format=format)
         if child.tail!=None:
-            ret.append(child.tail)
-    ret.append(tend)
+            f.write(child.tail)
+    f.write(tend)
 
-    # Now do a flatten
-    flatten = [item for sublist in ret for item in sublist]
-
-    return "".join(flatten)
 
 class TyTag(xml.etree.ElementTree.Element):
     def prettyprint(self):
         s = ET.tostring(doc,encoding='unicode')
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
+    
+    def render(self,f, format='html'):
+        return render(f, self, format=format)
     
 
 class EmbeddedImageTag(TyTag):
@@ -120,14 +121,15 @@ class EmbeddedImageTag(TyTag):
         self.alt    = alt
         self.format = format
 
-    def render(self, alt="", format=FORMAT_HTML):
+    def custom_renderer(self, f, alt="", format=FORMAT_HTML):
         if format==FORMAT_HTML:
-            return '<img alt="{}" src="data:image/{};base64,{}" />'.format(
-                self.alt,self.format,codecs.decode(base64.b64encode(self.buf)))
-        elif format==FORMAT_LATEX or format=='tex':
-            with open("image.png","wb") as f:
-                f.write(self.buf)
-            return '\\includegraphics{image}\n'
+            f.write('<img alt="{}" src="data:image/{};base64,{}" />'.format(
+                self.alt,self.format,codecs.decode(base64.b64encode(self.buf))))
+        elif format in (FORMAT_LATEX, FORMAT_TEX):
+            fname = os.path.splitext(f.name)[0]+"_image.png"
+            with open(fname,"wb") as f2:
+                f2.write(self.buf)
+            f.write(f'\\includegraphics{fname}\n')
         raise RuntimeError("unknown format: {}".format(format))
         
 
@@ -138,24 +140,20 @@ class tydoc(TyTag):
         super().__init__('html')
         self.options = set()
 
-    def save(self,filename,format=None,**kwargs):
+    def save(self,fout,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
-            format = os.path.splitext(filename)[1].lower()
+            format = os.path.splitext(fout)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
 
-        if isinstance(filename, io.IOBase):
-            filename.write(render(self, format=format))
+        if isinstance(fout, io.IOBase):
+            self.render(fout, format=format)
             return
 
-        with open(filename,"w") as outfile:
-            outfile.write(render(self, format=format))
+        with open(fout,"w") as outfile:
+            self.render(fout, format=format)
             return
-
-    def render(self, format=None):
-        """Return a string"""
-        return render(self, format=format )
 
     def add(self, tag, *args):
         """Add an element with type 'tag' for each item in args.  If args has
@@ -220,7 +218,7 @@ class tydoc(TyTag):
 
     def table(self, **kwargs):
         t = tytable()
-        self.insert(t)
+        self.append(t)
         return t
 
 ################################################################
@@ -274,6 +272,31 @@ class tytable(TyTag):
         self.text_format = "{}"
         self.number_format = "{:,}"
     
+    def custom_renderer(self, f, alt="", format=FORMAT_HTML):
+        if format in (FORMAT_HTML):
+            f.write(ET.tostring(self,encoding='unicode'))
+        elif format in (FORMAT_LATEX,FORMAT_TEX):
+            self.custom_renderer_latex(f)
+        elif format in (FORMAT_MARKDOWN):
+            self.custom_renderer_md(f)
+        else:
+            RuntimeError("unknown format: {}".format(format))
+        
+    def custom_renderer_latex(self,f):
+        f.write("TODO: A latex table")
+
+    def custom_renderer_md(self,f):
+        for (rownumber,tr) in enumerate(self.findall(".//TR"),1):
+            cols = list(filter(lambda t:t.tag in (TAG_TH,TAG_TD), tr))
+            f.write('|')
+            f.write('|'.join([col.text for col in cols]))
+            f.write('|\n')
+            if rownumber==1:
+                f.write('|')
+                f.write('|'.join(['-'*len(col.text) for col in cols]))
+                f.write('|\n')
+
+
     def set_latex_colspec(self,latex_colspec): 
         """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
         self.attrib[LATEX_COLSPEC] = latex_colspec
@@ -288,7 +311,7 @@ class tytable(TyTag):
         """
         row = ET.SubElement(self,TAG_TR)
         for cell in cells:
-            self.append(cell)
+            row.append(cell)
 
     def make_cell(self, tag, value, attrs):
         cell = ET.Element(tag,{**attrs,
@@ -311,14 +334,14 @@ class tytable(TyTag):
             attrs = [attrs] *len(values)
 
         assert len(tags)==len(values)==len(attrs)
-        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,value,attrs)]
+        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,attrs)]
         self.add_row(cells)
         
     def add_head(self, values):
-        self.add_row('TH',values)
+        self.add_row_values('TH',values)
 
     def add_data(self, values):
-        self.add_row('TD',values)
+        self.add_row_values('TD',values)
 
     def rows(self):
         """Return the rows"""
@@ -369,16 +392,19 @@ def i(text):
     return e
 
 def showcase(doc):
-    print(ET.tostring(doc,encoding='unicode'))
-    print(render(doc))
-    print(render(doc,mode=FORMAT_LATEX))
-    print(render(doc,mode=FORMAT_MARKDOWN))
     print("----------")
+    print(ET.tostring(doc,encoding='unicode'))
+    print("\n----------")
+    doc.render(sys.stdout, format='html')
+    print("\n----------")
+    doc.render(sys.stdout, format='latex')
+    print("\n----------")
+    doc.render(sys.stdout, format='md')
+    print("\n==========")
 
 def demo1():
     # Verify that render works
     doc  = ET.fromstring("<html><p>First Paragraph</p><p>Second <b>bold</b> Paragraph</p></html>")
-    print("doc=",doc)
     return doc
 
 def demo2():
@@ -411,8 +437,11 @@ def demo4():
 def tabdemo1():
     doc = tydoc()
     doc.h1("Table demo")
-    t = doc.table()
-    
+    d2 = doc.table()
+    d2.add_head(['State','Abbreviation','Population'])
+    d2.add_data(['Virginia','VA',8001045])
+    d2.add_data(['California','CA',37252895])
+    return doc
 
 if __name__=="__main__":
     # Showcase different ways of making a document and render it each
