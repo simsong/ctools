@@ -26,6 +26,7 @@ import os
 import os.path
 import sys
 
+sys.path.append( os.path.dirname(__file__))
 from latex_tools import latex_escape
 
 TAG_P    = 'P'
@@ -111,6 +112,28 @@ class TyTag(xml.etree.ElementTree.Element):
     def render(self,f, format='html'):
         return render(f, self, format=format)
     
+    def options_as_set(self):
+        """Return all of the options as a set"""
+        try:
+            return set(self.attrib['OPTIONS'].split(','))
+        except KeyError as e:
+            return set()
+
+    def set_option(self, option):
+        """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
+        options = self.options_as_set()
+        options.add(option)
+        self.attrib['OPTIONS'] = ','.join(options)
+
+    def clear_option(self, option):
+        """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
+        options = self.options_as_set()
+        options.remove(option)
+        self.attrib['OPTIONS'] = ','.join(options)
+
+    def option(self, option):
+        """Return true if option is set."""
+        return option in self.options_as_set()
 
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
@@ -243,6 +266,7 @@ class tytable(TyTag):
     2. Orignal numeric data is kept as num= option
     """
 
+    # For the Python
     OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
     OPTION_TABLE     = 'table'  # use LaTeX {table} enviornment
     OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
@@ -283,7 +307,18 @@ class tytable(TyTag):
             RuntimeError("unknown format: {}".format(format))
         
     def custom_renderer_latex(self,f):
-        f.write("TODO: A latex table")
+        self.render_latex_table_header(f)
+        self.render_latex_table_body(f)
+        self.render_latex_table_footer(f)
+
+    def render_latex_table_header(self,f):
+        pass
+
+    def render_latex_table_body(self,f):
+        pass
+
+    def render_latex_table_footer(self,f):
+        pass
 
     def custom_renderer_md(self,f):
         for (rownumber,tr) in enumerate(self.findall(".//TR"),1):
