@@ -21,3 +21,11 @@ def test_tytag_option():
     assert t.option("BAR")==True
 
     
+def test_tytable():
+    t = tytable()
+    t.add_head(['x','x-squared','x-cubed'])
+    t.add_data([1,1,1])
+    t.add_data([2,4,8])
+    t.add_data([3,9,27])
+    assert float(t.get_cell(3,1).text) == 9
+

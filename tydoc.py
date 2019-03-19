@@ -25,6 +25,7 @@ import codecs
 import os
 import os.path
 import sys
+import uuid
 
 sys.path.append( os.path.dirname(__file__))
 from latex_tools import latex_escape
@@ -43,6 +44,8 @@ TAG_TD   = 'TD'
 
 ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
+
+ATTRIB_OPTIONS = 'OPTIONS'
 
 LATEX_PREAMBLE="""
 \\documentclass{article}
@@ -75,6 +78,32 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_H1:('# ','\n'),
                  TAG_H2:('## ','\n'),
                  TAG_H3:('### ','\n')}
+
+# For the Python
+OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
+OPTION_TABLE     = 'table'    # use LaTeX {table} enviornment
+OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
+OPTION_CENTER    = 'center'   # use LaTeX {center} environment
+OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
+OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
+LATEX_COLSPEC    = 'latex_colspec'
+
+ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
+ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
+ATTRIB_CAPTION     = 'CAPTION'
+ATTRIB_TITLE       = 'TITLE'
+ATTRIB_FOOTER      = 'FOOTER'
+ATTRIB_LABEL       = 'LABEL'
+
+ALIGN_LEFT   = "LEFT"
+ALIGN_CENTER = "CENTER"
+ALIGN_RIGHT  = "RIGHT"
+
+DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
+DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
+
+DEFAULT_TEXT_FORMAT = '{}'
+DEFAULT_NUMBER_FORMAT = '{:,}'
 
 def render(f, doc, format=FORMAT_HTML):
     """Custom rendering tool. Use the built-in rendering unless the
@@ -115,7 +144,7 @@ class TyTag(xml.etree.ElementTree.Element):
     def options_as_set(self):
         """Return all of the options as a set"""
         try:
-            return set(self.attrib['OPTIONS'].split(','))
+            return set(self.attrib[ATTRIB_OPTIONS].split(','))
         except KeyError as e:
             return set()
 
@@ -123,13 +152,13 @@ class TyTag(xml.etree.ElementTree.Element):
         """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
         options = self.options_as_set()
         options.add(option)
-        self.attrib['OPTIONS'] = ','.join(options)
+        self.attrib[ATTRIB_OPTIONS] = ','.join(options)
 
     def clear_option(self, option):
         """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
         options = self.options_as_set()
         options.remove(option)
-        self.attrib['OPTIONS'] = ','.join(options)
+        self.attrib[ATTRIB_OPTIONS] = ','.join(options)
 
     def option(self, option):
         """Return true if option is set."""
@@ -266,35 +295,18 @@ class tytable(TyTag):
     2. Orignal numeric data is kept as num= option
     """
 
-    # For the Python
-    OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
-    OPTION_TABLE     = 'table'  # use LaTeX {table} enviornment
-    OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
-    OPTION_CENTER    = 'center'   # use LaTeX {center} environment
-    OPTION_NO_ESCAPE = 'noescape' # do not escape values
-    OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
-    VALID_OPTIONS = set([OPTION_LONGTABLE,OPTION_TABULARX,OPTION_SUPPRESS_ZERO,OPTION_TABLE])
-    TEXT  = 'text'
-    LATEX = 'latex'
-    HTML  = 'html'
-    MARKDOWN = 'markdown'
-    VALID_MODES = set([TEXT,LATEX,HTML,MARKDOWN])
-    LATEX_COLSPEC = 'latex_colspec'
-
-    ALIGN_LEFT="LEFT"
-    ALIGN_CENTER="CENTER"
-    ALIGN_RIGHT="RIGHT"
     VALID_ALIGNS = set([ALIGN_LEFT,ALIGN_CENTER,ALIGN_RIGHT])
 
-    DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
-    DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
+
+    @staticmethod
+    def cells_in_row(tr):
+        return list( filter(lambda t:t.tag in (TAG_TH, TAG_TD), tr) )
 
     def __init__(self):
         super().__init__('table')
         self.options = set()
-        self.clear()
-        self.text_format = "{}"
-        self.number_format = "{:,}"
+        self.attrib[ATTRIB_TEXT_FORMAT]   = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
     
     def custom_renderer(self, f, alt="", format=FORMAT_HTML):
         if format in (FORMAT_HTML):
@@ -311,18 +323,88 @@ class tytable(TyTag):
         self.render_latex_table_body(f)
         self.render_latex_table_footer(f)
 
-    def render_latex_table_header(self,f):
-        pass
+    def render_latex_table_heading(self,f):
+        """Render the first set of rows that were added with the add_head() command"""
+        for tr in self.findall(".//TR"):
+            if 'head' in tr.attrib:
+                f.write('&'.join([col.text for col in tr]))
+                f.write('\n')
+            else:
+                break           # stop when we find the first that is not a head
+        
 
+    def render_latex_table_header(self,f):
+        myid = uuid.uuid4().hex
+        if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABLE and LONGTABLE conflict")
+        if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABULARX and LONGTABLE conflict")
+        if self.option(OPTION_TABLE):
+            # LaTeX table - a kind of float
+            f.write(r'\begin{table}')
+            try:
+                f.write(r"\caption{%s}" % self.attrib[ATTRIB_CAPTION])
+            except KeyError:
+                pass            # no caption
+            try:
+                f.write(r"\label{%s}" % myid)
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
+            except KeyError:
+                pass            # no caption
+            if self.option(OPTION_CENTER):
+                f.write(r'\begin{center}')
+        if self.option(OPTION_LONGTABLE):
+            f.write(r'\begin{longtable}{%s}' % self.latex_colspec())
+            try:
+                f.write(r"\caption{%s}" % self.attrib[ATTRIB_CAPTION])
+            except KeyError:
+                pass            # no caption
+            try:
+                f.write(r"\label{%s}" % myid)
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
+            except KeyError:
+                pass            # no caption
+            self.render_latex_table_heading(f)
+            f.write(r'\hline\endfirsthead')
+            f.write(r'\multicolumn{%d}{c}{(Table \ref{%s} continued)}' % (self.max_cols(), myid))
+            f.write(r'\hline\endhead')
+            f.write(r'\multicolumn{%d}{c}{(continued on next page)}' % (self.max_cols()))
+            f.write(r'\hline\endfoot')
+            f.write(r'\hline\hline\endlastfoot')
+        else:
+            # Not longtable, so regular table
+            if self.option(OPTION_TABULARX):
+                f.write(r'\begin{tabularx}{\textwidth}{%s}' % self.latex_colspec())
+            else:
+                f.write(r'\begin{tabular}{%s}' % self.latex_colspec())
+            self.render_latex_table_heading(f)
+            
     def render_latex_table_body(self,f):
-        pass
+        """Render the rows that were not added with add_head() command"""
+        in_head = True
+        for tr in self.findall(".//TR"):
+            if 'head' in tr.attrib and in_head:
+                continue
+            in_head = False
+            f.write(' & '.join([col.text for col in tr]))
+            f.write('\\\\\n')
 
     def render_latex_table_footer(self,f):
-        pass
+        if self.option(OPTION_LONGTABLE):
+            f.write(r'\end{longtable}')
+        else:
+            if self.option(OPTION_TABULARX):
+                f.write(r'\end{tabularx}')
+            else:
+                f.write(r'\end{tabular}')
+        if self.option(OPTION_CENTER):
+            f.write(r'\end{center}')
+        if self.option(OPTION_TABLE):
+            f.write(r'\end{table}')
 
     def custom_renderer_md(self,f):
         for (rownumber,tr) in enumerate(self.findall(".//TR"),1):
-            cols = list(filter(lambda t:t.tag in (TAG_TH,TAG_TD), tr))
+            cols = self.cells_in_row(tr)
             f.write('|')
             f.write('|'.join([col.text for col in cols]))
             f.write('|\n')
@@ -332,31 +414,45 @@ class tytable(TyTag):
                 f.write('|\n')
 
 
+    def set_title(self, title):
+        self.attrib[ATTRIB_TITLE] = title
+
+    def set_caption(self, caption):
+        self.attrib[ATTRIB_CAPTION] = caption
+
     def set_latex_colspec(self,latex_colspec): 
         """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
         self.attrib[LATEX_COLSPEC] = latex_colspec
 
     def latex_colspec(self):
         """Figure out latex colspec"""
-        return self.attrib[LATEX_COLSPEC]
+        try:
+            return self.attrib[LATEX_COLSPEC]
+        except KeyError as c:
+            return "TODO: LATEX_COLSPEC"
 
-    def add_row(self, cells):
+    def add_row(self, cells, row_attrib={}):
         """Add a row of cells to the table.
         @param cells - a list of cells.
         """
-        row = ET.SubElement(self,TAG_TR)
+        row = ET.SubElement(self,TAG_TR, attrib=row_attrib)
         for cell in cells:
             row.append(cell)
 
-    def make_cell(self, tag, value, attrs):
-        cell = ET.Element(tag,{**attrs,
+    def make_cell(self, tag, value, attrib):
+        """Given a tag, value and attributes, return a cell formatted with the default format"""
+        cell = ET.Element(tag,{**attrib,
                                  ATTR_VAL:str(value),
                                  ATTR_TYPE:str(type(value).__name__)
                                  })
-        cell.text = str(value)
+        try:
+            cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+        except ValueError as e:
+            cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
         return cell
 
-    def add_row_values(self, tags, values, attrs={}):
+
+    def add_row_values(self, tags, values, cell_attribs={}, *, row_attrib={}):
         """Create a row of cells and add it to the table.
         @param tags - a list of tags
         @param values - a list of values.  Each is automatically formatted.
@@ -365,27 +461,35 @@ class tytable(TyTag):
         if not isinstance(tags,list):
             tags = [tags] * len(values)
 
-        if not isinstance(attrs,list):
-            attrs = [attrs] *len(values)
+        if not isinstance(cell_attribs,list):
+            cell_attribs = [cell_attribs] *len(values)
 
-        assert len(tags)==len(values)==len(attrs)
-        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,attrs)]
-        self.add_row(cells)
+        assert len(tags)==len(values)==len(cell_attribs)
+        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
+        self.add_row(cells, row_attrib=row_attrib)
         
-    def add_head(self, values):
-        self.add_row_values('TH',values)
+    def add_head(self, values, row_attrib={}):
+        self.add_row_values('TH',values, row_attrib={'head':'1'})
 
-    def add_data(self, values):
-        self.add_row_values('TD',values)
+    def add_data(self, values, row_attrib={}):
+        self.add_row_values('TD',values, {}, row_attrib={})
 
     def rows(self):
         """Return the rows"""
         return self.findall(".//TR")
 
+    def row(self,n):
+        """Return the nth row; n starts at 0"""
+        # Note xpath starts at 1
+        return self.findall(".//TR[%d]" % (n+1))[0]
+
     def max_cols(self):
         """Return the number of maximum number of cols in the data"""
         return max( len(row.findall("*")) for row in self.rows())
         
+    def get_cell(self, row, col):
+        """Return the cell at row, col; both start at 0"""
+        return self.cells_in_row( self.row(row) ) [col]
         
 ################################################################
 ##
@@ -472,7 +576,18 @@ def demo4():
 def tabdemo1():
     doc = tydoc()
     doc.h1("Table demo")
+
     d2 = doc.table()
+    d2.set_option(OPTION_TABLE)
+    d2.add_head(['State','Abbreviation','Population'])
+    d2.add_data(['Virginia','VA',8001045])
+    d2.add_data(['California','CA',37252895])
+
+    for i in range(3):
+        print("data(%d,1)=%s" % (i,d2.get_cell(i,1).text))
+
+    d2 = doc.table()
+    d2.set_option(OPTION_LONGTABLE)
     d2.add_head(['State','Abbreviation','Population'])
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
