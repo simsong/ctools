@@ -4,13 +4,10 @@ import sys
 import os
 import os.path
 
-<<<<<<< HEAD
 sys.path.append( os.path.join( os.path.dirname(__file__), "../.."))
 
 from ctools.tydoc import *
-=======
-from ctools.tytable import ttable, tytable
->>>>>>> b88d626cc2e368b99697ec6b9bd56af7f6fbb3ec
+from ctools.tytable import ttable
 
 def test_ttable():
     a = ttable()
@@ -25,19 +22,11 @@ def test_ttable():
 
 def test_tytable():
     a = tytable()
-<<<<<<< HEAD
-    a.add_row([1,2,3])
-    a.add_row(['a','b','c'])
-    a.add_row([1,2,3,4])
-    a.add_row(['a','b','c','d','e'])
+    a.add_data([1,2,3])
+    a.add_data(['a','b','c'])
+    a.add_data([1,2,3,4])
+    a.add_data(['a','b','c','d','e'])
     assert len(a.rows()) == 4
     assert a.max_cols() == 5
-=======
-    a.add_row('td', [1,2,3])
-    a.add_row('td', ['a','b','c'])
-    a.add_row('td', [1,2,3,4])
-    a.add_row('td', ['a','b','c','d','e'])
-    assert a.nrows()==4
-    assert a.ncols()==4
->>>>>>> b88d626cc2e368b99697ec6b9bd56af7f6fbb3ec
+
     

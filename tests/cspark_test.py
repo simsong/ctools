@@ -5,7 +5,6 @@ import io
 
 #sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import ctools.cspark as cspark
 
@@ -33,8 +32,7 @@ def test_run_spark():
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
 
-    raise RuntimeWarning("WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in "
-                   "the test")
+    raise RuntimeWarning("""WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in the test""")
 
     if not cspark.spark_available():
         return                  # don't test if no spark is available
