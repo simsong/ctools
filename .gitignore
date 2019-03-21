@@ -86,3 +86,6 @@ venv.bak/
 venv/
 wheels/
 output.*
+*.aux
+*.pdf
+*.tex

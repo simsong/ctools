@@ -47,16 +47,6 @@ ATTR_TYPE = 't'              # the Python type of the value
 
 ATTRIB_OPTIONS = 'OPTIONS'
 
-LATEX_PREAMBLE="""
-\\documentclass{article}
-\\usepackage{graphicx}
-\\begin{document}
-"""
-
-LATEX_TRAILER="""
-\\end{document}
-"""
-
 FORMAT_HTML = 'html'
 FORMAT_LATEX = 'latex'
 FORMAT_TEX   = 'tex'
@@ -64,13 +54,12 @@ FORMAT_MARKDOWN = 'md'
 
 CUSTOM_RENDERER = 'custom_renderer'
 
-LATEX_TAGS = {TAG_HTML:(LATEX_PREAMBLE,LATEX_TRAILER),
-              TAG_P:('\n','\n\n'),
+LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_B:(r'\textbf{','}'),
               TAG_I:(r'\textit{','}'),
-              TAG_H1:(r'\section{','}'),
-              TAG_H2:(r'\subsection{','}'),
-              TAG_H3:(r'\subsubsection{','}') }
+              TAG_H1:(r'\section{','}\n'),
+              TAG_H2:(r'\subsection{','}\n'),
+              TAG_H3:(r'\subsubsection{','}\n') }
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_P:('','\n\n'),
@@ -90,6 +79,7 @@ LATEX_COLSPEC    = 'latex_colspec'
 
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
+ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
 ATTRIB_CAPTION     = 'CAPTION'
 ATTRIB_TITLE       = 'TITLE'
 ATTRIB_FOOTER      = 'FOOTER'
@@ -104,8 +94,9 @@ DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
 
 DEFAULT_TEXT_FORMAT = '{}'
 DEFAULT_NUMBER_FORMAT = '{:,}'
+DEFAULT_INTEGER_FORMAT = '{:,}'
 
-def render(f, doc, format=FORMAT_HTML):
+def render(doc, f, format=FORMAT_HTML):
     """Custom rendering tool. Use the built-in rendering unless the
     Element has its own render method. Write results to f, which can
     be a file or an iobuffer"""
@@ -113,21 +104,25 @@ def render(f, doc, format=FORMAT_HTML):
     if hasattr(doc,CUSTOM_RENDERER):
         return doc.custom_renderer(f, format=format)
 
-    if format==FORMAT_HTML:
-        tbegin = f'<{doc.tag}>'
-        tend   = f'</{doc.tag}>'
-    elif format==FORMAT_LATEX or format==FORMAT_TEX:
-        (tbegin,tend) = LATEX_TAGS[doc.tag.upper()]
-    elif format==FORMAT_MARKDOWN:
-        (tbegin,tend) = MARKDOWN_TAGS[doc.tag.upper()]
-    else:
-        raise RuntimeError("unknown format: {}".format(format))
+    tbegin = doc.tbegin(format=format) if hasattr(doc,"tbegin") else None
+    tend   = doc.tend(format=format)   if hasattr(doc,"tend") else None
+
+    if tbegin is None:
+        if format==FORMAT_HTML:
+            tbegin = f'<{doc.tag}>'
+            tend   = f'</{doc.tag}>'
+        elif format==FORMAT_LATEX or format==FORMAT_TEX:
+            (tbegin,tend) = LATEX_TAGS[doc.tag.upper()]
+        elif format==FORMAT_MARKDOWN:
+            (tbegin,tend) = MARKDOWN_TAGS[doc.tag.upper()]
+        else:
+            raise RuntimeError("unknown format: {}".format(format))
 
     f.write(tbegin)
     if doc.text!=None:
         f.write(doc.text)
     for child in doc:
-        render(f, child, format=format)
+        render(child, f, format=format)
         if child.tail!=None:
             f.write(child.tail)
     f.write(tend)
@@ -139,7 +134,7 @@ class TyTag(xml.etree.ElementTree.Element):
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
     
     def render(self,f, format='html'):
-        return render(f, self, format=format)
+        return render(self, f, format=format)
     
     def options_as_set(self):
         """Return all of the options as a set"""
@@ -184,27 +179,47 @@ class EmbeddedImageTag(TyTag):
             f.write(f'\\includegraphics{fname}\n')
         raise RuntimeError("unknown format: {}".format(format))
         
-
 class tydoc(TyTag):
     """Python class for representing arbitrary documents. Can render into
     ASCII, HTML and LaTeX"""
+
+    # We have a custom begin and end text for latex
+
     def __init__(self, format=None):
-        super().__init__('html')
+        super().__init__(TAG_HTML)
         self.options = set()
 
-    def save(self,fout,format=None,**kwargs):
+    def latex_package_list(self):
+        packages=['graphicx','tabularx','longtable']
+        return "".join([('\\usepackage{%s}\n' % package) for package in packages])
+
+
+    def tbegin(self, format=None):
+        """Provide custom tags for Latex"""
+        if format==FORMAT_LATEX:
+            return ("\\documentclass{article}\n" +
+                    self.latex_package_list() +
+                    "\\begin{document}\n")
+        return None
+
+    def tend(self, format=None):
+        if format==FORMAT_LATEX:
+            return "\\end{document}\n"
+        return None
+
+    def save(self,f_or_fname,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
             format = os.path.splitext(fout)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
 
-        if isinstance(fout, io.IOBase):
-            self.render(fout, format=format)
+        if isinstance(f_or_fname, io.IOBase):
+            self.render(f_or_fname, format=format)
             return
 
-        with open(fout,"w") as outfile:
-            self.render(fout, format=format)
+        with open(f_or_fname,"w") as f:
+            self.render(f, format=format)
             return
 
     def add(self, tag, *args):
@@ -307,6 +322,7 @@ class tytable(TyTag):
         self.options = set()
         self.attrib[ATTRIB_TEXT_FORMAT]   = DEFAULT_TEXT_FORMAT
         self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
     
     def custom_renderer(self, f, alt="", format=FORMAT_HTML):
         if format in (FORMAT_HTML):
@@ -323,16 +339,21 @@ class tytable(TyTag):
         self.render_latex_table_body(f)
         self.render_latex_table_footer(f)
 
+    def latex_cell_text(self,cell):
+        if self.option(OPTION_NO_ESCAPE):
+            return cell.text
+        else:
+            return latex_escape(cell.text)
+
     def render_latex_table_heading(self,f):
         """Render the first set of rows that were added with the add_head() command"""
         for tr in self.findall(".//TR"):
             if 'head' in tr.attrib:
-                f.write('&'.join([col.text for col in tr]))
-                f.write('\n')
+                f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
+                f.write('\\\\\n')
             else:
                 break           # stop when we find the first that is not a head
         
-
     def render_latex_table_header(self,f):
         myid = uuid.uuid4().hex
         if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
@@ -341,9 +362,9 @@ class tytable(TyTag):
             raise RuntimeError("options TABULARX and LONGTABLE conflict")
         if self.option(OPTION_TABLE):
             # LaTeX table - a kind of float
-            f.write(r'\begin{table}')
+            f.write('\\begin{table}\n')
             try:
-                f.write(r"\caption{%s}" % self.attrib[ATTRIB_CAPTION])
+                f.write("\\caption{%s}" % self.attrib[ATTRIB_CAPTION])
             except KeyError:
                 pass            # no caption
             try:
@@ -351,32 +372,34 @@ class tytable(TyTag):
                 f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
             except KeyError:
                 pass            # no caption
+            f.write("\n")
             if self.option(OPTION_CENTER):
-                f.write(r'\begin{center}')
+                f.write('\\begin{center}\n')
         if self.option(OPTION_LONGTABLE):
-            f.write(r'\begin{longtable}{%s}' % self.latex_colspec())
+            f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
             try:
-                f.write(r"\caption{%s}" % self.attrib[ATTRIB_CAPTION])
+                f.write("\\caption{%s}\n" % self.attrib[ATTRIB_CAPTION])
             except KeyError:
                 pass            # no caption
             try:
-                f.write(r"\label{%s}" % myid)
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
+                f.write("\\label{%s}" % myid)
+                f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
             except KeyError:
                 pass            # no caption
+            f.write("\n")
             self.render_latex_table_heading(f)
-            f.write(r'\hline\endfirsthead')
-            f.write(r'\multicolumn{%d}{c}{(Table \ref{%s} continued)}' % (self.max_cols(), myid))
-            f.write(r'\hline\endhead')
-            f.write(r'\multicolumn{%d}{c}{(continued on next page)}' % (self.max_cols()))
-            f.write(r'\hline\endfoot')
-            f.write(r'\hline\hline\endlastfoot')
+            f.write('\\hline\\endfirsthead\n')
+            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), myid))
+            f.write('\\hline\\endhead\n')
+            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (self.max_cols()))
+            f.write('\\hline\\endfoot\n')
+            f.write('\\hline\\hline\n\\endlastfoot\n')
         else:
             # Not longtable, so regular table
             if self.option(OPTION_TABULARX):
-                f.write(r'\begin{tabularx}{\textwidth}{%s}' % self.latex_colspec())
+                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
             else:
-                f.write(r'\begin{tabular}{%s}' % self.latex_colspec())
+                f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
             self.render_latex_table_heading(f)
             
     def render_latex_table_body(self,f):
@@ -385,22 +408,24 @@ class tytable(TyTag):
         for tr in self.findall(".//TR"):
             if 'head' in tr.attrib and in_head:
                 continue
-            in_head = False
-            f.write(' & '.join([col.text for col in tr]))
+            if in_head:
+                in_head = False
+                f.write("\\hline\n")
+            f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
             f.write('\\\\\n')
 
     def render_latex_table_footer(self,f):
         if self.option(OPTION_LONGTABLE):
-            f.write(r'\end{longtable}')
+            f.write('\\end{longtable}\n')
         else:
             if self.option(OPTION_TABULARX):
-                f.write(r'\end{tabularx}')
+                f.write('\\end{tabularx}\n')
             else:
-                f.write(r'\end{tabular}')
+                f.write('\\end{tabular}\n')
         if self.option(OPTION_CENTER):
-            f.write(r'\end{center}')
+            f.write('\\end{center}\n')
         if self.option(OPTION_TABLE):
-            f.write(r'\end{table}')
+            f.write('\\end{table}\n')
 
     def custom_renderer_md(self,f):
         for (rownumber,tr) in enumerate(self.findall(".//TR"),1):
@@ -421,15 +446,17 @@ class tytable(TyTag):
         self.attrib[ATTRIB_CAPTION] = caption
 
     def set_latex_colspec(self,latex_colspec): 
-        """LaTeX colspec is just used when typesetting with latex. If one is not set, it auto-generated"""
+        """LaTeX colspec is just used when typesetting with latex. If one is
+not set, it auto-generated"""
+
         self.attrib[LATEX_COLSPEC] = latex_colspec
 
     def latex_colspec(self):
-        """Figure out latex colspec"""
+        """Use the user-supplied LATEX COLSPEC; otherwise figure one out"""
         try:
             return self.attrib[LATEX_COLSPEC]
         except KeyError as c:
-            return "TODO: LATEX_COLSPEC"
+            return "l"*self.max_cols()
 
     def add_row(self, cells, row_attrib={}):
         """Add a row of cells to the table.
@@ -439,16 +466,25 @@ class tytable(TyTag):
         for cell in cells:
             row.append(cell)
 
+    def format_cell(self, cell):
+        """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
+        value = eval(cell.attrib[ATTR_TYPE])(cell.attrib[ATTR_VAL])
+        try:
+            if cell.attrib[ATTR_TYPE]=='int':
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+            else:
+                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+        except ValueError as e:
+            cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+        return cell
+
     def make_cell(self, tag, value, attrib):
         """Given a tag, value and attributes, return a cell formatted with the default format"""
         cell = ET.Element(tag,{**attrib,
                                  ATTR_VAL:str(value),
                                  ATTR_TYPE:str(type(value).__name__)
                                  })
-        try:
-            cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
-        except ValueError as e:
-            cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+        self.format_cell(cell)
         return cell
 
 
@@ -491,6 +527,10 @@ class tytable(TyTag):
         """Return the cell at row, col; both start at 0"""
         return self.cells_in_row( self.row(row) ) [col]
         
+    def col(self,n):
+        """Returns all the cells in column n"""
+        return [row[n] for row in self.rows()]
+
 ################################################################
 ##
 ## covers for making it easy to construct HTML
@@ -579,12 +619,11 @@ def tabdemo1():
 
     d2 = doc.table()
     d2.set_option(OPTION_TABLE)
-    d2.add_head(['State','Abbreviation','Population'])
-    d2.add_data(['Virginia','VA',8001045])
-    d2.add_data(['California','CA',37252895])
+    d2.add_head(['State','Abbreviation','Rank','Population','% Change'])
+    d2.add_data(['California','CA',1,37252895,10.0])
+    d2.add_data(['Virginia','VA',12,8001045,13.0])
 
-    for i in range(3):
-        print("data(%d,1)=%s" % (i,d2.get_cell(i,1).text))
+    doc.p("")
 
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
