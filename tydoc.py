@@ -41,6 +41,7 @@ TAG_PRE  = 'PRE'
 TAG_TR   = 'TR'
 TAG_TH   = 'TH'
 TAG_TD   = 'TD'
+TAG_TABLE = 'TABLE'
 
 ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
@@ -54,14 +55,19 @@ FORMAT_MARKDOWN = 'md'
 
 CUSTOM_RENDERER = 'custom_renderer'
 
+# Automatically put a newline in the HTML stream after one of these tag blocks
+HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR])
+
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
-              TAG_B:(r'\textbf{','}'),
-              TAG_I:(r'\textit{','}'),
-              TAG_H1:(r'\section{','}\n'),
-              TAG_H2:(r'\subsection{','}\n'),
-              TAG_H3:(r'\subsubsection{','}\n') }
+              TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
+              TAG_B:('\\textbf{','}'),
+              TAG_I:('\\textit{','}'),
+              TAG_H1:('\\section{','}\n'),
+              TAG_H2:('\\subsection{','}\n'),
+              TAG_H3:('\\subsubsection{','}\n') }
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
+                 TAG_PRE:("```","```"),
                  TAG_P:('','\n\n'),
                  TAG_B:('**','**'),
                  TAG_H1:('# ','\n'),
@@ -81,6 +87,7 @@ ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
 ATTRIB_CAPTION     = 'CAPTION'
+ATTRIB_FONT_SIZE   = 'FONTSIZE'
 ATTRIB_TITLE       = 'TITLE'
 ATTRIB_FOOTER      = 'FOOTER'
 ATTRIB_LABEL       = 'LABEL'
@@ -126,7 +133,37 @@ def render(doc, f, format=FORMAT_HTML):
         if child.tail!=None:
             f.write(child.tail)
     f.write(tend)
+    if doc.tag.upper() in HTML_NL_TAGS:
+        f.write("\n")
 
+
+################################################################
+# some formatting codes
+#
+def safenum(v):
+    """Return v as an int if possible, then as a float, otherwise return it as is"""
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        pass
+    try:
+        return float(v)
+    except (ValueError, TypeError):
+        pass
+    return v
+
+
+def scalenum(v, minscale=0):
+    """Like safenum, but automatically add K, M, G, or T as appropriate"""
+    v = safenum(v)
+    if type(v) == int:
+        for (div, suffix) in [[1_000_000_000_000, 'T'], [1_000_000_000, 'G'], [1_000_000, 'M'], [1_000, 'K']]:
+            if (v > div) and (v > minscale):
+                return str(v // div) + suffix
+    return v
+
+
+################################################################
 
 class TyTag(xml.etree.ElementTree.Element):
     def prettyprint(self):
@@ -210,7 +247,7 @@ class tydoc(TyTag):
     def save(self,f_or_fname,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
-            format = os.path.splitext(fout)[1].lower()
+            format = os.path.splitext(f_or_fname)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
 
@@ -445,6 +482,9 @@ class tytable(TyTag):
     def set_caption(self, caption):
         self.attrib[ATTRIB_CAPTION] = caption
 
+    def set_fontsize(self, size):
+        self.attrib[ATTRIB_FONT_SIZE] = str(size)
+
     def set_latex_colspec(self,latex_colspec): 
         """LaTeX colspec is just used when typesetting with latex. If one is
 not set, it auto-generated"""
@@ -509,6 +549,10 @@ not set, it auto-generated"""
 
     def add_data(self, values, row_attrib={}):
         self.add_row_values('TD',values, {}, row_attrib={})
+
+    def add_data_array(self, rows):
+        for row in rows:
+            self.add_data(row)
 
     def rows(self):
         """Return the rows"""
