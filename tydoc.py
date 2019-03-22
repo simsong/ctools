@@ -42,6 +42,7 @@ TAG_TR   = 'TR'
 TAG_TH   = 'TH'
 TAG_TD   = 'TD'
 TAG_TABLE = 'TABLE'
+TAG_CAPTION = 'CAPTION'
 
 ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
@@ -54,6 +55,7 @@ FORMAT_TEX   = 'tex'
 FORMAT_MARKDOWN = 'md'
 
 CUSTOM_RENDERER = 'custom_renderer'
+CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR])
@@ -86,7 +88,6 @@ LATEX_COLSPEC    = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
-ATTRIB_CAPTION     = 'CAPTION'
 ATTRIB_FONT_SIZE   = 'FONTSIZE'
 ATTRIB_TITLE       = 'TITLE'
 ATTRIB_FOOTER      = 'FOOTER'
@@ -127,7 +128,10 @@ def render(doc, f, format=FORMAT_HTML):
 
     f.write(tbegin)
     if doc.text!=None:
-        f.write(doc.text)
+        if hasattr(doc,CUSTOM_WRITE_TEXT):
+            doc.custom_text(f, format=format)
+        else:
+            f.write( doc.text )
     for child in doc:
         render(child, f, format=format)
         if child.tail!=None:
@@ -173,6 +177,15 @@ class TyTag(xml.etree.ElementTree.Element):
     def render(self,f, format='html'):
         return render(self, f, format=format)
     
+    def write_text(self,f, format='html'):
+        if format==FORMAT_LATEX:
+            if option( OPTION_NO_ESCAPE) :
+                f.write( self.text )
+            else:
+                f.write( latex_escape( self.text ))
+        else:
+            f.write( self.text )
+
     def options_as_set(self):
         """Return all of the options as a set"""
         try:
@@ -264,7 +277,7 @@ class tydoc(TyTag):
         elements inside it, add them as subelements, with text set to
         the tail."""
 
-        e       = ET.SubElement(self, tag)
+        e       = TyTag(tag)
         lastTag = None
         for arg in args:
             if not isinstance(arg, ET.Element):
@@ -480,7 +493,11 @@ class tytable(TyTag):
         self.attrib[ATTRIB_TITLE] = title
 
     def set_caption(self, caption):
-        self.attrib[ATTRIB_CAPTION] = caption
+        #  TODO: Validate that this is first
+        """The <caption> tag must be inserted immediately after the <table> tag.
+        https://www.w3schools.com/tags/tag_caption.asp
+        """
+        self.add(TAG_CAPTION, caption)
 
     def set_fontsize(self, size):
         self.attrib[ATTRIB_FONT_SIZE] = str(size)
@@ -508,7 +525,19 @@ not set, it auto-generated"""
 
     def format_cell(self, cell):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
-        value = eval(cell.attrib[ATTR_TYPE])(cell.attrib[ATTR_VAL])
+        try:
+            typename = cell.attrib[ATTR_TYPE]
+            typeval  = cell.attrib[ATTR_VAL]
+        except KeyError:
+            return cell
+
+        if typename is None:
+            return cell
+
+        try:
+            value = eval(typename)(typeval)
+        except Exception as e:
+            return cell
         try:
             if cell.attrib[ATTR_TYPE]=='int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
@@ -553,6 +582,14 @@ not set, it auto-generated"""
     def add_data_array(self, rows):
         for row in rows:
             self.add_data(row)
+
+    def caption(self):
+        """Return the <caption> tag text"""
+        try:
+            c = self.findall(".//CAPTION")
+            return c[0].text
+        except (KeyError,IndexError) as e:
+            return None
 
     def rows(self):
         """Return the rows"""
