@@ -536,6 +536,7 @@ class ttable:
 
         if mode:
             self.set_mode(mode)
+
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
             raise ValueError("Invalid typsetting mode " + self.mode)
 
