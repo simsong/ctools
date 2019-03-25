@@ -464,13 +464,12 @@ class tytable(TyTag):
         if self.option(OPTION_TABLE):
             # LaTeX table - a kind of float
             f.write('\\begin{table}\n')
+            caption = self.caption()
+            if caption is not None:
+                f.write("\\caption{%s}" % caption)
             try:
-                f.write("\\caption{%s}" % self.attrib[ATTRIB_CAPTION])
-            except KeyError:
-                pass            # no caption
-            try:
-                f.write(r"\label{%s}" % myid)
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
+                f.write(r"\label{%s}" % myid) # always put in myid
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL]) # put in label if provided
             except KeyError:
                 pass            # no caption
             f.write("\n")
@@ -478,12 +477,11 @@ class tytable(TyTag):
                 f.write('\\begin{center}\n')
         if self.option(OPTION_LONGTABLE):
             f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
+            caption = self.caption()
+            if caption is not None:
+                f.write("\\caption{%s}\n" % caption)
             try:
-                f.write("\\caption{%s}\n" % self.attrib[ATTRIB_CAPTION])
-            except KeyError:
-                pass            # no caption
-            try:
-                f.write("\\label{%s}" % myid)
+                f.write("\\label{%s}" % myid) # always output myid
                 f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
             except KeyError:
                 pass            # no caption
@@ -649,8 +647,7 @@ not set, it auto-generated"""
 
     def row(self,n):
         """Return the nth row; n starts at 0"""
-        # Note xpath starts at 1
-        return self.findall(".//TR[%d]" % (n+1))[0]
+        return self.rows()[n]
 
     def max_cols(self):
         """Return the number of maximum number of cols in the data"""

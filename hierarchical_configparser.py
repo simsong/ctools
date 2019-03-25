@@ -25,7 +25,6 @@ INCLUDE='include'
 
 def fixpath(base,name):
     """If name is not an absolute path name, make it relative to the directory of base"""
-    assert base[0]=='/'
     if name[0]=='/': 
         return name
     return os.path.join(os.path.dirname(base), name)
