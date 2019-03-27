@@ -184,7 +184,13 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     print("=== RUNNING SPARK ===")
     print("$ cd {}".format(os.getcwd()))
     print("$ {}".format(" ".join(cmd)))
-    os.execvp(cmd[0],cmd)
+
+    ### If we are running under py.test, use `call`, so we return.
+    ### otherwise use execvp, so we do not return.
+    if os.environ['PYTEST_CURRENT_TEST']:
+        subprocess.call(cmd)
+    else:
+        os.execvp(cmd[0],cmd)
     
 
 def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},

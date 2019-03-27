@@ -15,7 +15,7 @@ MYDIR=os.path.dirname(__file__)
 
 def test_fixpath():
     assert fixpath("/a/b/c", "/a/b") == "/a/b"
-    assert fixpath("/a/b/c", "b") == "/a/b/b"
+    assert fixpath("/a/b/c", "b") == os.path.join("/a/b","b")
 
 
 def test_hiearchical_configparser1():
@@ -54,7 +54,7 @@ def test_hiearchical_configparser3():
     hcf = HierarchicalConfigParser()
     hcf.read(MYDIR + "/hcf_file3.ini")
     print("and we got:")
-    hcf.write(open("/dev/stdout", "w"))
+    hcf.write(sys.stdout)
     assert hcf['a']['color'] == 'file2-a'
     assert hcf['a']['second'] == 'file2-a'
     assert hcf['b']['color'] == 'file2-b'

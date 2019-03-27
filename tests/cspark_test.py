@@ -25,9 +25,10 @@ def test_spark_submit_cmd():
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
     
+
 TEST_RUN_SPARK_FILENAME='TEST_RUN_SPARK_FILENAME'
-def test_run_spark():
-    # Run a spark job and then check to make sure we got the result.
+def test_spark_submit():
+    # Run a spark job that we create and check to make sure we got the result.
     # To get the result back, we have to save it in a file. But we only want to call
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
@@ -36,6 +37,8 @@ def test_run_spark():
 
     if not cspark.spark_available():
         return                  # don't test if no spark is available
+
+    # spark-submit will run in a subprocess
 
     if TEST_RUN_SPARK_FILENAME not in os.environ:
         import tempfile
