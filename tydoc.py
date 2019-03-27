@@ -121,6 +121,9 @@ def render(doc, f, format=FORMAT_HTML):
     Element has its own render method. Write results to f, which can
     be a file or an iobuffer"""
 
+    if format not in (FORMAT_HTML, FORMAT_LATEX, FORMAT_TEX, FORMAT_MARKDOWN):
+        raise RuntimeError("Unsupported format: "+format)
+
     if hasattr(doc,CUSTOM_RENDERER):
         return doc.custom_renderer(f, format=format)
 
@@ -149,6 +152,21 @@ def render(doc, f, format=FORMAT_HTML):
 
 
 class TyTag(xml.etree.ElementTree.Element):
+    def save(self,f_or_fname,format=None,**kwargs):
+        """Save to a filename or a file-like object"""
+        if not format:
+            format = os.path.splitext(fout)[1].lower()
+            if format[0:1]=='.':
+                format=format[1:]
+
+        if isinstance(f_or_fname, io.IOBase):
+            self.render(f_or_fname, format=format)
+            return
+
+        with open(f_or_fname,"w") as f:
+            self.render(f, format=format)
+            return
+
     def prettyprint(self):
         s = ET.tostring(doc,encoding='unicode')
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
@@ -249,21 +267,6 @@ class tydoc(TyTag):
         if format==FORMAT_LATEX:
             return "\\end{document}\n"
         return None
-
-    def save(self,f_or_fname,format=None,**kwargs):
-        """Save to a filename or a file-like object"""
-        if not format:
-            format = os.path.splitext(fout)[1].lower()
-            if format[0:1]=='.':
-                format=format[1:]
-
-        if isinstance(f_or_fname, io.IOBase):
-            self.render(f_or_fname, format=format)
-            return
-
-        with open(f_or_fname,"w") as f:
-            self.render(f, format=format)
-            return
 
     def insert_image(self, buf, *, format):
         if isinstance(buf,io.BytesIO):
