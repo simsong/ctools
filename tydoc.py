@@ -7,14 +7,29 @@ Module for typesetting documents in ASCII, LaTeX, and HTML.  Perhaps even CSV!
 Simson Garfinkel, 2019-
 
 This python is getting better, but still, please let me clean it up before you copy it.
-tydoc is the main typesetting class. It builds an abstract representation of a document 
-in memory then typesets with output in Text, HTML or LateX. 
-It can do fancy things like create headers and paragraphs. 
+Documents are stored internally as a python XML Element Tree, with these modifications:
 
-We may rewrite this to do everything with XML internally. 
+- For many tags, we use a subclass of xml.etree.ElementTree that adds more methods.
+- Some metdata that's important for LaTeX is stored as attributes in the nodes.
+- Although you *can* use ET.tostring() to generate HTML, this module has a set of rendering
+  classes that can save as HTML, MarkDown or LaTeX, and that make prettier HTML.
+
+Special classes to consider:
+
+TyTag - subclass of xml.etree.ElementTree, supports an options
+        framework that includes round-tripping into HTML. Options are text
+        tags that can be added or removed to control how something formats or
+        is typeset.
+
+tydoc   - the root element. Typsets as <html>. 
+          Includes methods to make it easy to construct complex text documents.
+          
+
+tytable - a class for tables. Lots of methods for adding content and formatting.
+
 """
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
@@ -43,6 +58,9 @@ TAG_TH   = 'TH'
 TAG_TD   = 'TD'
 TAG_TABLE = 'TABLE'
 TAG_CAPTION = 'CAPTION'
+TAG_THEAD = 'THEAD'
+TAG_TBODY = 'TBODY'
+TAG_TFOOT = 'TFOOT'
 
 ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
@@ -209,6 +227,29 @@ class TyTag(xml.etree.ElementTree.Element):
         """Return true if option is set."""
         return option in self.options_as_set()
 
+    def add(self, tag, *args):
+        """Add an element with type 'tag' for each item in args.  If args has
+        elements inside it, add them as subelements, with text set to
+        the tail."""
+
+        e       = ET.SubElement(self, tag)
+        lastTag = None
+        for arg in args:
+            if not isinstance(arg, ET.Element):
+                if lastTag is not None:
+                    if lastTag.tail == None:
+                        lastTag.tail = ""
+                    lastTag.tail  += str(arg)
+                else:
+                    if e.text == None:
+                        e.text = ""
+                    e.text += str(arg)
+            else:
+                # Copy the tag into place
+                lastTag = copy.deepcopy(arg)
+                e.append(lastTag)
+        return self
+
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
         """Create an image. You must specify the format. 
@@ -347,17 +388,23 @@ class tydoc(TyTag):
 class tytable(TyTag):
     """Python class for representing a table that can be rendered into
     HTML or LaTeX or text.  Based on Simson Garfinkel's legacy
-    ttable() class, which was hack that evolved. This class has a
-    similar API, but it's not identical, so the old class appears
-    below.
+    ttable() class, which was a hack that evolved. This class has a
+    similar API, but it is a complete rewrite. Most of the old API is 
+    preserved, but it's not identical, so the original ttable is available 
+    in the tytable.ttable() module. We apologize for the name confusion between
+    tytable.ttable() (the ttable class in the typeset-table module) and the 
+    tydoc.tytable() class (the typeset table class in the typset document module.)
 
-    Key differences:
+    Note:
 
-    1. Format must be specified in advance, and formatting is done
+    1. Format for table cells must be specified in advance, and formatting is done
        when data is put into the table.  If format is changed, table
        is reformatted.
 
-    2. Orignal numeric data is kept as num= option
+    2. Orignal numeric data and type are kept as HTML attribs.
+
+    3. Creating a <table> HTML tag automatically creates child <thead>, <tbody> and <tfoot> nodes.
+       Most people don't know that these tags even exist, but the browsers do.
     """
 
     VALID_ALIGNS = set([ALIGN_LEFT,ALIGN_CENTER,ALIGN_RIGHT])
@@ -369,10 +416,16 @@ class tytable(TyTag):
 
     def __init__(self):
         super().__init__('table')
+        
         self.options = set()
         self.attrib[ATTRIB_TEXT_FORMAT]   = DEFAULT_TEXT_FORMAT
         self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
+        # Create the layout of the generic table
+        self.add(TAG_CAPTION)
+        self.add(TAG_THEAD)
+        self.add(TAG_TBODY)
+        self.add(TAG_TFOOT)
     
     def custom_renderer(self, f, alt="", format=FORMAT_HTML):
         if format in (FORMAT_HTML):
@@ -385,9 +438,11 @@ class tytable(TyTag):
             RuntimeError("unknown format: {}".format(format))
         
     def custom_renderer_latex(self,f):
-        self.render_latex_table_header(f)
+        self.render_latex_table_head(f)
+        f.write("\\hline\n")
         self.render_latex_table_body(f)
-        self.render_latex_table_footer(f)
+        f.write("\\hline\n")
+        self.render_latex_table_foot(f)
 
     def latex_cell_text(self,cell):
         if self.option(OPTION_NO_ESCAPE):
@@ -395,16 +450,12 @@ class tytable(TyTag):
         else:
             return latex_escape(cell.text)
 
-    def render_latex_table_heading(self,f):
+    def render_latex_table_row(self,f,tr):
         """Render the first set of rows that were added with the add_head() command"""
-        for tr in self.findall(".//TR"):
-            if 'head' in tr.attrib:
-                f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
-                f.write('\\\\\n')
-            else:
-                break           # stop when we find the first that is not a head
+        f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
+        f.write('\\\\\n')
         
-    def render_latex_table_header(self,f):
+    def render_latex_table_head(self,f):
         myid = uuid.uuid4().hex
         if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
             raise RuntimeError("options TABLE and LONGTABLE conflict")
@@ -437,7 +488,8 @@ class tytable(TyTag):
             except KeyError:
                 pass            # no caption
             f.write("\n")
-            self.render_latex_table_heading(f)
+            for tr in self.findall("./THEAD/TR"):
+                self.render_latex_table_row(f,tr)
             f.write('\\hline\\endfirsthead\n')
             f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), myid))
             f.write('\\hline\\endhead\n')
@@ -450,21 +502,17 @@ class tytable(TyTag):
                 f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
             else:
                 f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
-            self.render_latex_table_heading(f)
+            for tr in self.findall("./THEAD/TR"):
+                self.render_latex_table_row(f,tr)
             
     def render_latex_table_body(self,f):
         """Render the rows that were not added with add_head() command"""
-        in_head = True
-        for tr in self.findall(".//TR"):
-            if 'head' in tr.attrib and in_head:
-                continue
-            if in_head:
-                in_head = False
-                f.write("\\hline\n")
-            f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
-            f.write('\\\\\n')
+        for tr in self.findall("./TBODY/TR"):
+            self.render_latex_table_row(f,tr)
 
-    def render_latex_table_footer(self,f):
+    def render_latex_table_foot(self,f):
+        for tr in self.findall("./TFOOT/TR"):
+            self.render_latex_table_row(f,tr)
         if self.option(OPTION_LONGTABLE):
             f.write('\\end{longtable}\n')
         else:
@@ -515,11 +563,12 @@ not set, it auto-generated"""
         except KeyError as c:
             return "l"*self.max_cols()
 
-    def add_row(self, cells, row_attrib={}):
+    def add_row(self, where, cells, row_attrib={}):
         """Add a row of cells to the table.
         @param cells - a list of cells.
         """
-        row = ET.SubElement(self,TAG_TR, attrib=row_attrib)
+        where_node = self.findall(f".//{where}")[0]
+        row = ET.SubElement(where_node,TAG_TR, attrib=row_attrib)
         for cell in cells:
             row.append(cell)
 
@@ -557,7 +606,7 @@ not set, it auto-generated"""
         return cell
 
 
-    def add_row_values(self, tags, values, cell_attribs={}, *, row_attrib={}):
+    def add_row_values(self, where, tags, values, cell_attribs={}, *, row_attrib={}):
         """Create a row of cells and add it to the table.
         @param tags - a list of tags
         @param values - a list of values.  Each is automatically formatted.
@@ -571,13 +620,16 @@ not set, it auto-generated"""
 
         assert len(tags)==len(values)==len(cell_attribs)
         cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
-        self.add_row(cells, row_attrib=row_attrib)
+        self.add_row(where, cells, row_attrib=row_attrib)
         
     def add_head(self, values, row_attrib={}):
-        self.add_row_values('TH',values, row_attrib={'head':'1'})
+        self.add_row_values(TAG_THEAD, 'TH',values)
 
     def add_data(self, values, row_attrib={}):
-        self.add_row_values('TD',values, {}, row_attrib={})
+        self.add_row_values(TAG_TBODY, 'TD',values)
+
+    def add_foot(self, values, row_attrib={}):
+        self.add_row_values(TAG_TFOOT, 'TD',values)
 
     def add_data_array(self, rows):
         for row in rows:
