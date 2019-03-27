@@ -73,15 +73,21 @@ FORMAT_TEX   = 'tex'
 FORMAT_MARKDOWN = 'md'
 
 CUSTOM_RENDERER = 'custom_renderer'
+CUSTOM_WRITE_TEXT = 'custom_write_text'
+
+# Automatically put a newline in the HTML stream after one of these tag blocks
+HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR])
 
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
-              TAG_B:(r'\textbf{','}'),
-              TAG_I:(r'\textit{','}'),
-              TAG_H1:(r'\section{','}\n'),
-              TAG_H2:(r'\subsection{','}\n'),
-              TAG_H3:(r'\subsubsection{','}\n') }
+              TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
+              TAG_B:('\\textbf{','}'),
+              TAG_I:('\\textit{','}'),
+              TAG_H1:('\\section{','}\n'),
+              TAG_H2:('\\subsection{','}\n'),
+              TAG_H3:('\\subsubsection{','}\n') }
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
+                 TAG_PRE:("```","```"),
                  TAG_P:('','\n\n'),
                  TAG_B:('**','**'),
                  TAG_H1:('# ','\n'),
@@ -100,7 +106,7 @@ LATEX_COLSPEC    = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
-ATTRIB_CAPTION     = 'CAPTION'
+ATTRIB_FONT_SIZE   = 'FONTSIZE'
 ATTRIB_TITLE       = 'TITLE'
 ATTRIB_FOOTER      = 'FOOTER'
 ATTRIB_LABEL       = 'LABEL'
@@ -143,13 +149,46 @@ def render(doc, f, format=FORMAT_HTML):
 
     f.write(tbegin)
     if doc.text!=None:
-        f.write(doc.text)
+        if hasattr(doc,CUSTOM_WRITE_TEXT):
+            doc.custom_text(f, format=format)
+        else:
+            f.write( doc.text )
     for child in doc:
         render(child, f, format=format)
         if child.tail!=None:
             f.write(child.tail)
     f.write(tend)
+    if doc.tag.upper() in HTML_NL_TAGS:
+        f.write("\n")
 
+
+################################################################
+# some formatting codes
+#
+def safenum(v):
+    """Return v as an int if possible, then as a float, otherwise return it as is"""
+    try:
+        return int(v)
+    except (ValueError, TypeError):
+        pass
+    try:
+        return float(v)
+    except (ValueError, TypeError):
+        pass
+    return v
+
+
+def scalenum(v, minscale=0):
+    """Like safenum, but automatically add K, M, G, or T as appropriate"""
+    v = safenum(v)
+    if type(v) == int:
+        for (div, suffix) in [[1_000_000_000_000, 'T'], [1_000_000_000, 'G'], [1_000_000, 'M'], [1_000, 'K']]:
+            if (v > div) and (v > minscale):
+                return str(v // div) + suffix
+    return v
+
+
+################################################################
 
 class TyTag(xml.etree.ElementTree.Element):
     def save(self,f_or_fname,format=None,**kwargs):
@@ -174,6 +213,15 @@ class TyTag(xml.etree.ElementTree.Element):
     def render(self,f, format='html'):
         return render(self, f, format=format)
     
+    def write_text(self,f, format='html'):
+        if format==FORMAT_LATEX:
+            if option( OPTION_NO_ESCAPE) :
+                f.write( self.text )
+            else:
+                f.write( latex_escape( self.text ))
+        else:
+            f.write( self.text )
+
     def options_as_set(self):
         """Return all of the options as a set"""
         try:
@@ -396,13 +444,12 @@ class tytable(TyTag):
         if self.option(OPTION_TABLE):
             # LaTeX table - a kind of float
             f.write('\\begin{table}\n')
+            caption = self.caption()
+            if caption is not None:
+                f.write("\\caption{%s}" % caption)
             try:
-                f.write("\\caption{%s}" % self.attrib[ATTRIB_CAPTION])
-            except KeyError:
-                pass            # no caption
-            try:
-                f.write(r"\label{%s}" % myid)
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
+                f.write(r"\label{%s}" % myid) # always put in myid
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL]) # put in label if provided
             except KeyError:
                 pass            # no caption
             f.write("\n")
@@ -410,12 +457,11 @@ class tytable(TyTag):
                 f.write('\\begin{center}\n')
         if self.option(OPTION_LONGTABLE):
             f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
+            caption = self.caption()
+            if caption is not None:
+                f.write("\\caption{%s}\n" % caption)
             try:
-                f.write("\\caption{%s}\n" % self.attrib[ATTRIB_CAPTION])
-            except KeyError:
-                pass            # no caption
-            try:
-                f.write("\\label{%s}" % myid)
+                f.write("\\label{%s}" % myid) # always output myid
                 f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
             except KeyError:
                 pass            # no caption
@@ -473,7 +519,14 @@ class tytable(TyTag):
         self.attrib[ATTRIB_TITLE] = title
 
     def set_caption(self, caption):
-        self.attrib[ATTRIB_CAPTION] = caption
+        #  TODO: Validate that this is first
+        """The <caption> tag must be inserted immediately after the <table> tag.
+        https://www.w3schools.com/tags/tag_caption.asp
+        """
+        self.add(TAG_CAPTION, caption)
+
+    def set_fontsize(self, size):
+        self.attrib[ATTRIB_FONT_SIZE] = str(size)
 
     def set_latex_colspec(self,latex_colspec): 
         """LaTeX colspec is just used when typesetting with latex. If one is
@@ -499,7 +552,19 @@ not set, it auto-generated"""
 
     def format_cell(self, cell):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
-        value = eval(cell.attrib[ATTR_TYPE])(cell.attrib[ATTR_VAL])
+        try:
+            typename = cell.attrib[ATTR_TYPE]
+            typeval  = cell.attrib[ATTR_VAL]
+        except KeyError:
+            return cell
+
+        if typename is None:
+            return cell
+
+        try:
+            value = eval(typename)(typeval)
+        except Exception as e:
+            return cell
         try:
             if cell.attrib[ATTR_TYPE]=='int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
@@ -544,14 +609,25 @@ not set, it auto-generated"""
     def add_foot(self, values, row_attrib={}):
         self.add_row_values(TAG_TFOOT, 'TD',values)
 
+    def add_data_array(self, rows):
+        for row in rows:
+            self.add_data(row)
+
+    def caption(self):
+        """Return the <caption> tag text"""
+        try:
+            c = self.findall(".//CAPTION")
+            return c[0].text
+        except (KeyError,IndexError) as e:
+            return None
+
     def rows(self):
         """Return the rows"""
         return self.findall(".//TR")
 
     def row(self,n):
         """Return the nth row; n starts at 0"""
-        # Note xpath starts at 1
-        return self.findall(".//TR[%d]" % (n+1))[0]
+        return self.rows()[n]
 
     def max_cols(self):
         """Return the number of maximum number of cols in the data"""

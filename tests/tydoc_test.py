@@ -29,6 +29,12 @@ def test_tytable_access():
     t.add_data([1,1,1])
     t.add_data([2,4,8])
     t.add_data([3,9,27])
+    for row in t.rows():
+        s = ET.tostring(row,encoding='unicode')
+        print(s)
+    assert t.get_cell(0,1).text == 'x-squared'
+    assert float(t.get_cell(1,1).text) == 1
+    assert float(t.get_cell(2,1).text) == 4
     assert float(t.get_cell(3,1).text) == 9
 
 def test_tydoc_latex():
