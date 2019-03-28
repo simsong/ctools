@@ -45,6 +45,8 @@ import uuid
 sys.path.append( os.path.dirname(__file__))
 from latex_tools import latex_escape
 
+TAG_HEAD = 'HEAD'
+TAG_BODY = 'BODY'
 TAG_P    = 'P'
 TAG_B    = 'B'
 TAG_I    = 'I'
@@ -57,6 +59,7 @@ TAG_TR   = 'TR'
 TAG_TH   = 'TH'
 TAG_TD   = 'TD'
 TAG_TABLE = 'TABLE'
+TAG_TITLE = 'TITLE'
 TAG_CAPTION = 'CAPTION'
 TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
@@ -76,7 +79,7 @@ CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
-HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR])
+HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR,TAG_HEAD,TAG_BODY,TAG_HTML])
 
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
@@ -84,15 +87,23 @@ LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_I:('\\textit{','}'),
               TAG_H1:('\\section{','}\n'),
               TAG_H2:('\\subsection{','}\n'),
-              TAG_H3:('\\subsubsection{','}\n') }
+              TAG_H3:('\\subsubsection{','}\n'),
+              TAG_HEAD:('',''),
+              TAG_BODY:('',''),
+              TAG_TITLE:('\\title{','}\n\\maketitle\n')
+              }
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_PRE:("```","```"),
+                 TAG_TITLE:('# ','\n'),
                  TAG_P:('','\n\n'),
                  TAG_B:('**','**'),
                  TAG_H1:('# ','\n'),
                  TAG_H2:('## ','\n'),
-                 TAG_H3:('### ','\n')}
+                 TAG_H3:('### ','\n'),
+                 TAG_HEAD:('',''),
+                 TAG_BODY:('','')
+                 }
 
 # For the Python
 OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
@@ -101,6 +112,7 @@ OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
 OPTION_CENTER    = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
 OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
+OPTION_DATATABLES = 'datatables' # 
 LATEX_COLSPEC    = 'latex_colspec'
 
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
@@ -182,7 +194,10 @@ def scalenum(v, minscale=0):
     """Like safenum, but automatically add K, M, G, or T as appropriate"""
     v = safenum(v)
     if type(v) == int:
-        for (div, suffix) in [[1_000_000_000_000, 'T'], [1_000_000_000, 'G'], [1_000_000, 'M'], [1_000, 'K']]:
+        for (div, suffix) in [[1_000_000_000_000, 'T'],
+                              [1_000_000_000, 'G'],
+                              [1_000_000, 'M'],
+                              [1_000, 'K']]:
             if (v > div) and (v > minscale):
                 return str(v // div) + suffix
     return v
@@ -191,6 +206,10 @@ def scalenum(v, minscale=0):
 ################################################################
 
 class TyTag(xml.etree.ElementTree.Element):
+    def __init__(self, tag, attrib={}, **extra):
+        super().__init__(tag, attrib, **extra)
+        self.myid = uuid.uuid4().hex
+
     def save(self,f_or_fname,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
@@ -207,7 +226,7 @@ class TyTag(xml.etree.ElementTree.Element):
             return
 
     def prettyprint(self):
-        s = ET.tostring(doc,encoding='unicode')
+        s = ET.tostring(self,encoding='unicode')
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
     
     def render(self,f, format='html'):
@@ -248,9 +267,13 @@ class TyTag(xml.etree.ElementTree.Element):
     def add(self, tag, *args):
         """Add an element with type 'tag' for each item in args.  If args has
         elements inside it, add them as subelements, with text set to
-        the tail."""
+        the tail. Returns the tag that is added."""
 
-        e       = ET.SubElement(self, tag)
+        print("add tag",tag,"to",self.tag)
+        #e       = ET.SubElement(self, tag)
+        e       = TyTag(tag)
+        self.append(e)
+
         lastTag = None
         for arg in args:
             if not isinstance(arg, ET.Element):
@@ -266,7 +289,7 @@ class TyTag(xml.etree.ElementTree.Element):
                 # Copy the tag into place
                 lastTag = copy.deepcopy(arg)
                 e.append(lastTag)
-        return self
+        return e
 
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
@@ -296,6 +319,8 @@ class tydoc(TyTag):
 
     def __init__(self, format=None):
         super().__init__(TAG_HTML)
+        self.head = self.add(TAG_HEAD)
+        self.body = self.add(TAG_BODY)
         self.options = set()
 
     def latex_package_list(self):
@@ -309,12 +334,21 @@ class tydoc(TyTag):
             return ("\\documentclass{article}\n" +
                     self.latex_package_list() +
                     "\\begin{document}\n")
-        return None
+        elif format==FORMAT_HTML:
+            return '\n'.join(['<!DOCTYPE html>',
+                              '<html>',
+                              '<meta http-equiv="Content-type" content="text/html; charset=utf-8">',
+                              ''])
+        else:
+            return None
 
     def tend(self, format=None):
         if format==FORMAT_LATEX:
             return "\\end{document}\n"
-        return None
+        elif format==FORMAT_HTML:
+            return '</html>\n'
+        else:
+            return None
 
     def insert_image(self, buf, *, format):
         if isinstance(buf,io.BytesIO):
@@ -329,35 +363,51 @@ class tydoc(TyTag):
         buf.seek(0)
         self.insert_image(buf,format='png')
 
+    def set_title(self, *text):
+        self.head.add(TAG_TITLE, *text)
+
     def p(self, *text):
         """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
-        self.add(TAG_P, *text)
+        self.body.add(TAG_P, *text)
         return self
         
     def h1(self, *text):
         """Add a H1"""
-        self.add(TAG_H1, *text)
+        self.body.add(TAG_H1, *text)
         return self
 
     def h2(self, *text):
         """Add a H2"""
-        self.add(TAG_H2, *text)
+        self.body.add(TAG_H2, *text)
         return self
 
     def h3(self, *text):
         """Add a H3"""
-        self.add(TAG_H3, *text)
+        self.body.add(TAG_H3, *text)
         return self
 
     def pre(self, *text):
         """Add a preformatted"""
-        self.add(TAG_PRE, *text)
+        self.body.add(TAG_PRE, *text)
         return self
 
     def table(self, **kwargs):
         t = tytable()
-        self.append(t)
+        self.body.append(t)
         return t
+
+    def stylesheet(self, url):
+        self.head.append(TyTag('link',{'rel':"stylesheet",
+                                       'type':"text/css",
+                                       'href':url}))
+    def script(self, url):
+        self.head.append(TyTag('script',{'type':"text/javascript",
+                                         'src':url}))
+
+
+
+
+
 
 ################################################################
 ### Improved tytable with the new API.
@@ -394,13 +444,14 @@ class tytable(TyTag):
     def cells_in_row(tr):
         return list( filter(lambda t:t.tag in (TAG_TH, TAG_TD), tr) )
 
-    def __init__(self):
-        super().__init__('table')
+    def __init__(self,attrib={},**extra):
+        super().__init__('table',attrib=attrib,**extra)
         
         self.options = set()
-        self.attrib[ATTRIB_TEXT_FORMAT]   = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
+
         # Create the layout of the generic table
         self.add(TAG_CAPTION)
         self.add(TAG_THEAD)
@@ -436,7 +487,6 @@ class tytable(TyTag):
         f.write('\\\\\n')
         
     def render_latex_table_head(self,f):
-        myid = uuid.uuid4().hex
         if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
             raise RuntimeError("options TABLE and LONGTABLE conflict")
         if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
@@ -448,7 +498,7 @@ class tytable(TyTag):
             if caption is not None:
                 f.write("\\caption{%s}" % caption)
             try:
-                f.write(r"\label{%s}" % myid) # always put in myid
+                f.write(r"\label{%s}" % self.myid) # always put in myid
                 f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL]) # put in label if provided
             except KeyError:
                 pass            # no caption
@@ -461,7 +511,7 @@ class tytable(TyTag):
             if caption is not None:
                 f.write("\\caption{%s}\n" % caption)
             try:
-                f.write("\\label{%s}" % myid) # always output myid
+                f.write("\\label{%s}" % self.myid) # always output myid
                 f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
             except KeyError:
                 pass            # no caption
@@ -469,9 +519,11 @@ class tytable(TyTag):
             for tr in self.findall("./THEAD/TR"):
                 self.render_latex_table_row(f,tr)
             f.write('\\hline\\endfirsthead\n')
-            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), myid))
+            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' 
+                    % (self.max_cols(), self.myid))
             f.write('\\hline\\endhead\n')
-            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (self.max_cols()))
+            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n'
+                    % (self.max_cols()))
             f.write('\\hline\\endfoot\n')
             f.write('\\hline\\hline\n\\endlastfoot\n')
         else:
@@ -504,19 +556,27 @@ class tytable(TyTag):
             f.write('\\end{table}\n')
 
     def custom_renderer_md(self,f):
-        for (rownumber,tr) in enumerate(self.findall(".//TR"),1):
-            cols = self.cells_in_row(tr)
-            f.write('|')
-            f.write('|'.join([col.text for col in cols]))
-            f.write('|\n')
-            if rownumber==1:
-                f.write('|')
-                f.write('|'.join(['-'*len(col.text) for col in cols]))
-                f.write('|\n')
+        """Output the table as markdown. Assumes the first row is the header."""
+        # Calculate the maxim width of each column
+        all_cols = [self.col(n) for n in range(self.max_cols())]
+        col_maxwidths = [max( [len(str(cell.text)) for cell in col] ) for col in all_cols]
 
+        fmt = "|" + "|".join([('{:' + str(width) + '}') for width in col_maxwidths]) + "|"
 
-    def set_title(self, title):
-        self.attrib[ATTRIB_TITLE] = title
+        for (rownumber,tr) in enumerate(self.findall(".//TR"),0):
+            # Pad this row out if it needs padding
+            # Markdown tables don't support col span
+            row_cols = self.cells_in_row(tr)
+            row = [col.text for col in row_cols]
+            if len(row) < len(all_cols):
+                row = row + [''] * (cols-len(row))
+            f.write(fmt.format(*row))
+            f.write("\n")
+            # Add the lines
+            if rownumber==0:
+                lines = ['-' * width for width in col_maxwidths]
+                f.write(fmt.format(*lines))
+                f.write("\n")
 
     def set_caption(self, caption):
         #  TODO: Validate that this is first
@@ -601,13 +661,13 @@ not set, it auto-generated"""
         self.add_row(where, cells, row_attrib=row_attrib)
         
     def add_head(self, values, row_attrib={}):
-        self.add_row_values(TAG_THEAD, 'TH',values)
+        self.add_row_values(TAG_THEAD, 'TH', values)
 
     def add_data(self, values, row_attrib={}):
-        self.add_row_values(TAG_TBODY, 'TD',values)
+        self.add_row_values(TAG_TBODY, 'TD', values)
 
     def add_foot(self, values, row_attrib={}):
-        self.add_row_values(TAG_TFOOT, 'TD',values)
+        self.add_row_values(TAG_TFOOT, 'TD', values)
 
     def add_data_array(self, rows):
         for row in rows:
@@ -630,7 +690,7 @@ not set, it auto-generated"""
         return self.rows()[n]
 
     def max_cols(self):
-        """Return the number of maximum number of cols in the data"""
+        """Return the number of maximum number of cols in the data. Expensive to calculate"""
         return max( len(row.findall("*")) for row in self.rows())
         
     def get_cell(self, row, col):
@@ -640,6 +700,7 @@ not set, it auto-generated"""
     def col(self,n):
         """Returns all the cells in column n"""
         return [row[n] for row in self.rows()]
+
 
 ################################################################
 ##
@@ -682,12 +743,12 @@ def i(text):
 
 def showcase(doc):
     print("----------")
-    print(ET.tostring(doc,encoding='unicode'))
-    print("\n----------")
+    #print(ET.tostring(doc,encoding='unicode'))
+    print("\n---HTML---")
     doc.render(sys.stdout, format='html')
-    print("\n----------")
+    print("\n---LATEX---")
     doc.render(sys.stdout, format='latex')
-    print("\n----------")
+    print("\n---MD---")
     doc.render(sys.stdout, format='md')
     print("\n==========")
 
@@ -725,6 +786,7 @@ def demo4():
 
 def tabdemo1():
     doc = tydoc()
+    doc.set_title("Test Document")
     doc.h1("Table demo")
 
     d2 = doc.table()
@@ -741,6 +803,15 @@ def tabdemo1():
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
     return doc
+
+def datatables():
+    doc = tydoc()
+    doc.script('https://code.jquery.com/jquery-3.3.1.js')
+    doc.script('https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js')
+    t = doc.table(attrib={'id':'1234'})
+
+
+
 
 if __name__=="__main__":
     # Showcase different ways of making a document and render it each
