@@ -69,6 +69,7 @@ ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
 
 ATTRIB_OPTIONS = 'OPTIONS'
+ATTRIB_ALIGN   = 'ALIGN'
 
 FORMAT_HTML = 'html'
 FORMAT_LATEX = 'latex'
@@ -644,11 +645,16 @@ not set, it auto-generated"""
         return cell
 
 
-    def add_row_values(self, where, tags, values, cell_attribs={}, *, row_attrib={}):
+    def add_row_values(self, where, tags, values, *, cell_attribs={}, row_attrib={}):
         """Create a row of cells and add it to the table.
-        @param tags - a list of tags
+        @param where  - should be TAG_THEAD/TAG_TBODY/TAG_TFOOT
+        @param tags   - a single tag, or a list of tags. 
         @param values - a list of values.  Each is automatically formatted.
+        @param cell_attribs - a single cell attrib, or a list of attribs
+        @param row_attrib - a single attrib for the row, or a list of attribs
         """
+        assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
+
         # If tags is not a list, make it a list
         if not isinstance(tags,list):
             tags = [tags] * len(values)
@@ -660,13 +666,13 @@ not set, it auto-generated"""
         cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
         self.add_row(where, cells, row_attrib=row_attrib)
         
-    def add_head(self, values, row_attrib={}):
+    def add_head(self, values, row_attrib={}, cell_attribs={}):
         self.add_row_values(TAG_THEAD, 'TH', values)
 
-    def add_data(self, values, row_attrib={}):
+    def add_data(self, values, row_attrib={}, cell_attribs={}):
         self.add_row_values(TAG_TBODY, 'TD', values)
 
-    def add_foot(self, values, row_attrib={}):
+    def add_foot(self, values, row_attrib={}, cell_attribs={}):
         self.add_row_values(TAG_TFOOT, 'TD', values)
 
     def add_data_array(self, rows):
@@ -799,9 +805,9 @@ def tabdemo1():
 
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
-    d2.add_head(['State','Abbreviation','Population'])
-    d2.add_data(['Virginia','VA',8001045])
-    d2.add_data(['California','CA',37252895])
+    d2.add_head(['State','Abbreviation','Population'],cell_attribs={ATTRIB_ALIGN:ALIGN_CENTER})
+    d2.add_data(['Virginia','VA',8001045],cell_attribs=[{},{},{ATTRIB_ALIGN:ALIGN_RIGHT}])
+    d2.add_data(['California','CA',37252895],cell_attribs=[{},{},{ATTRIB_ALIGN:ALIGN_RIGHT}])
     return doc
 
 def datatables():
