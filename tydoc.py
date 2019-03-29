@@ -663,17 +663,21 @@ not set, it auto-generated"""
             cell_attribs = [cell_attribs] *len(values)
 
         assert len(tags)==len(values)==len(cell_attribs)
+        print("tags:",tags)
+        print("values:",values)
+        print("cell_attribs:",cell_attribs)
         cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
+        print("cells:",cells)
         self.add_row(where, cells, row_attrib=row_attrib)
         
     def add_head(self, values, row_attrib={}, cell_attribs={}):
-        self.add_row_values(TAG_THEAD, 'TH', values)
+        self.add_row_values(TAG_THEAD, 'TH', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
 
     def add_data(self, values, row_attrib={}, cell_attribs={}):
-        self.add_row_values(TAG_TBODY, 'TD', values)
+        self.add_row_values(TAG_TBODY, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
 
     def add_foot(self, values, row_attrib={}, cell_attribs={}):
-        self.add_row_values(TAG_TFOOT, 'TD', values)
+        self.add_row_values(TAG_TFOOT, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
 
     def add_data_array(self, rows):
         for row in rows:
@@ -748,8 +752,8 @@ def i(text):
     return e
 
 def showcase(doc):
-    print("----------")
-    #print(ET.tostring(doc,encoding='unicode'))
+    print("---DOM---")
+    print(ET.tostring(doc,encoding='unicode'))
     print("\n---HTML---")
     doc.render(sys.stdout, format='html')
     print("\n---LATEX---")

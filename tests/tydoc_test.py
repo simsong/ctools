@@ -37,6 +37,25 @@ def test_tytable_access():
     assert float(t.get_cell(2,1).text) == 4
     assert float(t.get_cell(3,1).text) == 9
 
+def test_tytable_attribs():
+    d2 = tytable()
+    d2.set_option(OPTION_LONGTABLE)
+    d2.add_head(['State','Abbreviation','Population'],cell_attribs={ATTRIB_ALIGN:ALIGN_CENTER})
+    d2.add_data(['Virginia','VA',8001045],
+                cell_attribs=[{},{ATTRIB_ALIGN:ALIGN_CENTER},{ATTRIB_ALIGN:ALIGN_RIGHT}])
+    d2.add_data(['California','CA',37252895],
+                cell_attribs=[{},{ATTRIB_ALIGN:ALIGN_CENTER},{ATTRIB_ALIGN:ALIGN_RIGHT}])
+    s = ET.tostring(d2,encoding='unicode')
+    assert 'CENTER' in s
+    assert d2.get_cell(0,0).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
+    assert d2.get_cell(0,1).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
+    assert d2.get_cell(0,2).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
+    assert ATTRIB_ALIGN not in d2.get_cell(1,0).attrib
+    assert d2.get_cell(1,1).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
+    assert d2.get_cell(1,2).attrib[ATTRIB_ALIGN]==ALIGN_RIGHT
+
+    
+
 def test_tydoc_latex():
     """Create a document that tries lots of features and then make a LaTeX document and run LaTeX"""
 
