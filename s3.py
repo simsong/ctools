@@ -271,8 +271,7 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
         os.unlink(cache_name)
 
     if cache and ('w' not in mode):
-        if not os.path.exists(READTHROUGH_CACHE_DIR):
-            os.mkdir(READTHROUGH_CACHE_DIR)
+        os.makedirs(READTHROUGH_CACHE_DIR,exist_ok=True)
         if os.path.exists(cache_name):
             return open(cache_name, mode=mode, encoding=encoding)
         
