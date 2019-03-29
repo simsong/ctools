@@ -252,7 +252,10 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
     auxfilename = os.path.splitext( os.path.basename(filename))[0] + ".aux"
     assert os.path.exists(logfilename)
-    assert os.path.exists(auxfilename)
+
+    if not os.path.exists(auxfilename):
+        raise FileNotFoundError("auxfile {} not created. filename: {}".format(auxfilename,filename))
+
 
     if callback_log: callback_log(open(logfilename,"r"))
     if callback_aux: callback_aux(open(auxfilename,"r"))
@@ -278,7 +281,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         os.chdir(cwd)           
 
     # Restore enviornment
-    if texinputs:
+    if texinputs is not None:
         if oldenv:
             os.environ[TEXINPUTS] = oldenv
         else:
@@ -324,7 +327,7 @@ def inspect_json_all_pages_have_same_orientation(info):
         return info[PAGES][0][ORIENTATION]
     return None
 
-def inspect_pdf(pdf_fname):
+def inspect_pdf(pdf_fname,texinputs=None):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and detemrine each page's orientation and size.
     Returns a dictionary containing the following properties:
     [FILENAME] - filename
@@ -377,7 +380,7 @@ def inspect_pdf(pdf_fname):
         tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
         tmp.flush()             # Make sure contents are written out
         tmp.close()             # Windows compatiability 
-        run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True)
+        run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True, texinputs=texinputs)
         os.unlink( tmp.name)
     return ret
 
