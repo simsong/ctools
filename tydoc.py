@@ -97,7 +97,7 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_H2:('## ','\n'),
                  TAG_H3:('### ','\n'),
                  TAG_HR:('='*64,'\n')
-                 o}
+                 }
 
 # For the Python
 OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
@@ -273,7 +273,10 @@ class EmbeddedImageTag(TyTag):
             with open(fname,"wb") as f2:
                 f2.write(self.buf)
             f.write(f'\\includegraphics{fname}\n')
-        raise RuntimeError("unknown format: {}".format(format))
+        elif format==FORMAT_MARKDOWN:
+            raise RuntimeError("markdown embedded images not supported yet")
+        else:
+            raise RuntimeError("unknown format: {}".format(format))
         
 class tydoc(TyTag):
     """Python class for representing arbitrary documents. Can render into
@@ -377,6 +380,11 @@ class tydoc(TyTag):
     def pre(self, *text):
         """Add a preformatted"""
         self.add(TAG_PRE, *text)
+        return self
+
+    def hr(self):
+        """Add a horizontal rule"""
+        self.add(TAG_HR)
         return self
 
     def table(self, **kwargs):
