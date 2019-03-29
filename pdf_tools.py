@@ -57,10 +57,10 @@ def quit_word():
         word = win32com.client.Dispatch("Word.Application")
         word.Quit()
 
-def convert_document_to_pdf(infile):
+def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
     """Convert a .doc, .docx, or .rtf file to PDF. Converted file has the
     same pathname, except .docx and been changed to .pdf. Throws an
-    exception if it can't convert.
+    exception if it can't convert.  TopMargin and BottomMargin are in points.
     """
     import os.path
     if not os.path.exists(infile):
@@ -72,7 +72,6 @@ def convert_document_to_pdf(infile):
     
     print("CONVERT {}".format(infile))
     print("    --> {}".format(outfile))
-    import sys                  # this shouldn't be needed, but it is...?
     if sys.platform=='win32':
         try:
             import os,win32com.client,pywintypes
@@ -82,14 +81,20 @@ def convert_document_to_pdf(infile):
             raise e
 
         wdFormatPDF = 17
-        in_file = os.path.abspath(infile)
+        in_file  = os.path.abspath(infile)
         out_file = os.path.abspath(outfile)
-        word = win32com.client.Dispatch("Word.Application")
+        word     = win32com.client.Dispatch("Word.Application")
+        
         try:
             doc = word.Documents.Open(in_file)
+            if TopMargin is not None:
+                doc.PageSetup.TopMargin = TopMargin
+            if BottomMargin is not None:
+                doc.PageSetup.BottomMargin = BottomMargin
             doc.SaveAs(out_file, FileFormat=wdFormatPDF)
             doc.Close()
             word.Quit()
+            assert os.path.exists(out_file)
         except pywintypes.com_error as e:
             print("")
             print("**** CANNOT CONVERT: {} *****".format(infile))
