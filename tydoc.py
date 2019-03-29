@@ -56,6 +56,7 @@ TAG_PRE  = 'PRE'
 TAG_TR   = 'TR'
 TAG_TH   = 'TH'
 TAG_TD   = 'TD'
+TAG_HR   = 'HR'
 TAG_TABLE = 'TABLE'
 TAG_CAPTION = 'CAPTION'
 TAG_THEAD = 'THEAD'
@@ -84,7 +85,9 @@ LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_I:('\\textit{','}'),
               TAG_H1:('\\section{','}\n'),
               TAG_H2:('\\subsection{','}\n'),
-              TAG_H3:('\\subsubsection{','}\n') }
+              TAG_H3:('\\subsubsection{','}\n'),
+              TAG_HR:('',''),   # do something better
+}
 
 MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_PRE:("```","```"),
@@ -92,7 +95,9 @@ MARKDOWN_TAGS = {TAG_HTML:('',''),
                  TAG_B:('**','**'),
                  TAG_H1:('# ','\n'),
                  TAG_H2:('## ','\n'),
-                 TAG_H3:('### ','\n')}
+                 TAG_H3:('### ','\n'),
+                 TAG_HR:('='*64,'\n')
+                 o}
 
 # For the Python
 OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
