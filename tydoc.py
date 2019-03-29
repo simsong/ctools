@@ -562,22 +562,41 @@ class tytable(TyTag):
         all_cols = [self.col(n) for n in range(self.max_cols())]
         col_maxwidths = [max( [len(str(cell.text)) for cell in col] ) for col in all_cols]
 
-        fmt = "|" + "|".join([('{:' + str(width) + '}') for width in col_maxwidths]) + "|"
 
         for (rownumber,tr) in enumerate(self.findall(".//TR"),0):
+            # Get the cells for this row
+            row_cells = self.cells_in_row(tr)
+
             # Pad this row out if it needs padding
             # Markdown tables don't support col span
-            row_cols = self.cells_in_row(tr)
-            row = [col.text for col in row_cols]
-            if len(row) < len(all_cols):
-                row = row + [''] * (cols-len(row))
-            f.write(fmt.format(*row))
-            f.write("\n")
-            # Add the lines
+            if len(row_cells) < len(all_cols):
+                row_cells.extend([TyTag(TAG_TD)] * (cols-len(row)))
+
+            # Make up the format string for this row based on the cell attributes
+
+            fmts = []
+            for (cell,maxwidth) in zip(row_cells,col_maxwidths):
+                if cell.attrib.get(ATTRIB_ALIGN,"")==ALIGN_LEFT:
+                    align='<'
+                elif cell.attrib.get(ATTRIB_ALIGN,"")==ALIGN_CENTER:
+                    align='^'
+                elif cell.attrib.get(ATTRIB_ALIGN,"")==ALIGN_RIGHT:
+                    align='>'
+                else:
+                    align=''
+                fmts.append("{:" + align + str(maxwidth) +"}")
+            fmt = "|" + "|".join(fmts) + "|\n"
+
+            # Get the text we will format
+            row_texts = [cell.text for cell in row_cells]
+
+            # Write it out, formatted
+            f.write(fmt.format(*row_texts))
+
+            # Add a line between the first row and the rest.
             if rownumber==0:
                 lines = ['-' * width for width in col_maxwidths]
                 f.write(fmt.format(*lines))
-                f.write("\n")
 
     def set_caption(self, caption):
         #  TODO: Validate that this is first
@@ -662,7 +681,9 @@ not set, it auto-generated"""
         if not isinstance(cell_attribs,list):
             cell_attribs = [cell_attribs] *len(values)
 
-        assert len(tags)==len(values)==len(cell_attribs)
+        if not (len(tags)==len(values)==len(cell_attribs)):
+            raise ValueError("tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(
+                    len(tags),len(values),len(cell_attribs)))
         print("tags:",tags)
         print("values:",values)
         print("cell_attribs:",cell_attribs)
@@ -799,19 +820,22 @@ def tabdemo1():
     doc.set_title("Test Document")
     doc.h1("Table demo")
 
+    lcr = [{},{ATTRIB_ALIGN:ALIGN_CENTER},{ATTRIB_ALIGN:ALIGN_RIGHT}]
+    lcrr = lcr + [{ATTRIB_ALIGN:ALIGN_RIGHT},{ATTRIB_ALIGN:ALIGN_RIGHT}]
+    print(lcrr)
+
     d2 = doc.table()
     d2.set_option(OPTION_TABLE)
     d2.add_head(['State','Abbreviation','Rank','Population','% Change'])
-    d2.add_data(['California','CA',1,37252895,10.0])
-    d2.add_data(['Virginia','VA',12,8001045,13.0])
+    d2.add_data(['California','CA',1,37252895,10.0],cell_attribs=lcrr)
+    d2.add_data(['Virginia','VA',12,8001045,13.0],cell_attribs=lcrr)
 
     doc.p("")
-
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
     d2.add_head(['State','Abbreviation','Population'],cell_attribs={ATTRIB_ALIGN:ALIGN_CENTER})
-    d2.add_data(['Virginia','VA',8001045],cell_attribs=[{},{},{ATTRIB_ALIGN:ALIGN_RIGHT}])
-    d2.add_data(['California','CA',37252895],cell_attribs=[{},{},{ATTRIB_ALIGN:ALIGN_RIGHT}])
+    d2.add_data(['Virginia','VA',8001045], cell_attribs=lcr)
+    d2.add_data(['California','CA',37252895], cell_attribs=lcr)
     return doc
 
 def datatables():
