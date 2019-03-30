@@ -78,3 +78,33 @@ def test_tydoc_latex():
     doc.save("tydoc.tex", format="latex")
     run_latex("tydoc.tex")
 
+def test_tydoc_toc():
+    """Test the Tydoc table of contents feature."""
+    doc = tydoc()
+    doc.h1("First Head1")
+    doc.p("blah blah blah")
+    doc.h1("Second Head1 2")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.1")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.2")
+    doc.p("blah blah blah")
+    doc.h3("Head 2.2.1")
+    doc.p("blah blah blah")
+    doc.h1("Third Head1 3")
+    doc.p("blah blah blah")
+    doc.set_option(OPTION_TOC)
+
+    # TOC is a set of all the elements that make up a TOC
+    toc1 = doc.toc(level=1)
+    assert len(toc1)==3
+
+    toc2 = doc.toc(level=2)
+    assert len(toc2)==5
+
+    toc3 = doc.toc(level=3)
+    assert len(toc3)==6
+
+    toc4 = doc.toc(level=4)
+    assert len(toc3)==len(toc4)
+

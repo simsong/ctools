@@ -64,6 +64,7 @@ TAG_CAPTION = 'CAPTION'
 TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
 TAG_TFOOT = 'TFOOT'
+TAG_TOC   = 'X-TOC'             # a custom tag; should not appear in output
 
 ATTR_VAL = 'v'                # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
@@ -114,6 +115,8 @@ OPTION_CENTER    = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
 OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
 OPTION_DATATABLES = 'datatables' # 
+OPTION_TOC       = 'toc'         #  automatically create a TOC
+
 LATEX_COLSPEC    = 'latex_colspec'
 
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
@@ -270,8 +273,7 @@ class TyTag(xml.etree.ElementTree.Element):
         elements inside it, add them as subelements, with text set to
         the tail. Returns the tag that is added."""
 
-        print("add tag",tag,"to",self.tag)
-        #e       = ET.SubElement(self, tag)
+        # Make the tag and add it. The add in the text or sub-tags
         e       = TyTag(tag)
         self.append(e)
 
@@ -313,21 +315,23 @@ class EmbeddedImageTag(TyTag):
         raise RuntimeError("unknown format: {}".format(format))
         
 class tydoc(TyTag):
-    """Python class for representing arbitrary documents. Can render into
-    ASCII, HTML and LaTeX"""
+    """Python class for building HTML documents and rendering them into
+HTML, LaTeX or Markdown.
+"""
 
     # We have a custom begin and end text for latex
 
+    DEFAULT_LATEX_PACKAGES = ['graphicx','tabularx','longtable']
     def __init__(self, format=None):
         super().__init__(TAG_HTML)
         self.head = self.add(TAG_HEAD)
         self.body = self.add(TAG_BODY)
         self.options = set()
+        self.latex_packages=self.DEFAULT_LATEX_PACKAGES
 
     def latex_package_list(self):
-        packages=['graphicx','tabularx','longtable']
-        return "".join([('\\usepackage{%s}\n' % package) for package in packages])
-
+        return "".join([('\\usepackage{%s}\n' % package)
+                        for package in self.latex_packages])
 
     def tbegin(self, format=None):
         """Provide custom tags for Latex"""
@@ -350,6 +354,20 @@ class tydoc(TyTag):
             return '</html>\n'
         else:
             return None
+
+    def toc(self,level=3):
+        """Return a new tytag ('toc') with of the heading tags as necessary,
+        up to the specified level.  This could probably be done with
+        some clever XPath..."""
+        ret = TyTag(TAG_TOC)
+        for elem in self.find("./BODY"):
+            if elem.tag==TAG_H1 and level>=1:
+                ret.append(elem)
+            if elem.tag==TAG_H2 and level>=2:
+                ret.append(elem)
+            if elem.tag==TAG_H3 and level>=3:
+                ret.append(elem)
+        return ret
 
     def insert_image(self, buf, *, format):
         if isinstance(buf,io.BytesIO):
@@ -684,11 +702,7 @@ not set, it auto-generated"""
         if not (len(tags)==len(values)==len(cell_attribs)):
             raise ValueError("tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(
                     len(tags),len(values),len(cell_attribs)))
-        print("tags:",tags)
-        print("values:",values)
-        print("cell_attribs:",cell_attribs)
         cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
-        print("cells:",cells)
         self.add_row(where, cells, row_attrib=row_attrib)
         
     def add_head(self, values, row_attrib={}, cell_attribs={}):
@@ -822,7 +836,6 @@ def tabdemo1():
 
     lcr = [{},{ATTRIB_ALIGN:ALIGN_CENTER},{ATTRIB_ALIGN:ALIGN_RIGHT}]
     lcrr = lcr + [{ATTRIB_ALIGN:ALIGN_RIGHT},{ATTRIB_ALIGN:ALIGN_RIGHT}]
-    print(lcrr)
 
     d2 = doc.table()
     d2.set_option(OPTION_TABLE)
