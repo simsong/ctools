@@ -27,6 +27,41 @@ tydoc   - the root element. Typsets as <html>.
 
 tytable - a class for tables. Lots of methods for adding content and formatting.
 
+Output formats:
+
+HTML - It's not just the DOM; we edit it on output to add functionality. But we can round-trip.
+
+LaTeX
+
+Markdown - Generally we follow:
+  * https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links
+
+
+Rendering System:
+
+top-level rendering is done with a function called render(doc,f, format)
+The TyTag has a convenience method .render(self, f, format) that simply calls render().
+render() recursively renders the tree in the requested format to file f.
+
+To render, we walk the tree. 
+  - For each tag:
+    - If the tag has a CUSTOM RENDERER attribute, call that attribute as a function
+      and return. This allows custom tags to control their rendering and avoid the entire machinery. 
+    - If the tag declares a function called write_tag_begin() to create the start-string for the tag:
+      -  it is called. 
+         - If it returns a result, the result emitted.
+      - Otherwise, the renderer's class write_tag_begin() is called to come up with the text 
+        that is produced as the beginning of the tag. 
+      
+    - The renderer's text function is called for the tag's text.
+    - Each of the tag's children are rendered recursively
+    - Renderer's text funciton is called for the tag's tail text.
+
+    - If the tag declares a function called write_tag_end() to create the end-string for the tag:
+      -  it is called. 
+         - If it returns a result, the result emitted.
+      - Otherwise, the renderer's class write_tag_end() is called to come up with the text 
+        that is produced as the beginning of the tag. 
 """
 
 __version__ = "0.1.0"
@@ -58,6 +93,8 @@ TAG_PRE  = 'PRE'
 TAG_TR   = 'TR'
 TAG_TH   = 'TH'
 TAG_TD   = 'TD'
+TAG_UL   = 'UL'
+TAG_LI   = 'LI'
 TAG_TABLE = 'TABLE'
 TAG_TITLE = 'TITLE'
 TAG_CAPTION = 'CAPTION'
@@ -81,7 +118,8 @@ CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
-HTML_NL_TAGS = set([TAG_P,TAG_H1,TAG_H2,TAG_H3,TAG_HTML,TAG_TABLE,TAG_PRE,TAG_TR,TAG_HEAD,TAG_BODY,TAG_HTML])
+
+HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH])
 
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
@@ -138,45 +176,139 @@ DEFAULT_TEXT_FORMAT = '{}'
 DEFAULT_NUMBER_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
+class Renderer:
+    @staticmethod
+    def format():
+        return None
+
+    # By default, we write the tag as is repr()
+    @staticmethod
+    def write_tag_begin(doc, f):
+        f.write(f'{repr(doc)}\n')
+        return True
+
+    # Default write_text just writes the text
+    @staticmethod
+    def write_text(doc, f, text=None):
+        if text is None:
+            text = doc.text
+        if text is not None:
+            f.write(text)
+        return True
+
+    # By default, we write that we are at the end of the tag
+    @staticmethod
+    def write_tag_end(doc, f):
+        f.write(f'--- end repr(doc) ---\n')
+        return True
+
+    @staticmethod
+    def write_tail(doc, f, tail=None):
+        Renderer.write_tail(doc,f,tail)
+
+
+class HTMLRenderer(Renderer):
+    @staticmethod
+    def format(self):
+        return FORMAT_HTML
+    @staticmethod
+    def write_tag_begin(doc, f):
+        if doc.attrib:
+            attribs = (" " + " ".join([f'{key}="{value}"' for (key,value) in doc.attrib.items()]))
+        else:
+            attribs = ''
+        f.write(f'<{doc.tag}{attribs}>')
+        return True
+    @staticmethod
+    def write_tag_end(doc, f):
+        f.write(f'</{doc.tag}>')
+        if doc.tag.upper() not in HTML_NO_NEWLINE_TAGS:
+            f.write("\n")
+        return True
+    @staticmethod
+    def write_tail(doc, f, tail=None):
+        HTMLRenderer.write_tail(doc,f,tail)
+
+
+class LatexRenderer(Renderer):
+    @staticmethod
+    def format(self):
+        return FORMAT_LATEX
+    @staticmethod
+    def write_tag_begin(doc, f):
+        (begin,end) = LATEX_TAGS[doc.tag.upper()]
+        f.write(begin)
+        return True
+    @staticmethod
+    def write_text(doc, f, text=None):
+        if text is None:
+            text = doc.text
+        if text is not None:
+            if hasattr(doc,'option') and doc.option( OPTION_NO_ESCAPE):
+                f.write( latex_escape( text ) )
+            else:
+                f.write( text )
+
+    @staticmethod
+    def write_tag_end(doc, f):
+        (begin,end) = LATEX_TAGS[doc.tag.upper()]
+        f.write(end)
+        return True
+
+    @staticmethod
+    def write_tail(doc, f, tail=None):
+        LatexRenderer.write_tail(doc,f,tail)
+
+class MarkdownRenderer(Renderer):
+    @staticmethod
+    def format(self):
+        return FORMAT_MARKDOWN
+    @staticmethod
+    def write_tag_begin(doc, f):
+        (begin,end) = MARKDOWN_TAGS[doc.tag.upper()]
+        f.write(begin)
+        return True
+    @staticmethod
+    def write_tag_end(doc, f):
+        (begin,end) = MARKDOWN_TAGS[doc.tag.upper()]
+        f.write(end)
+        return True
+
+    
+RENDERERS = {FORMAT_HTML:     HTMLRenderer(),
+             FORMAT_LATEX:    LatexRenderer(),
+             FORMAT_TEX:      LatexRenderer(),
+             FORMAT_MARKDOWN: MarkdownRenderer()}
+
 def render(doc, f, format=FORMAT_HTML):
     """Custom rendering tool. Use the built-in rendering unless the
     Element has its own render method. Write results to f, which can
     be a file or an iobuffer"""
 
-    if format not in (FORMAT_HTML, FORMAT_LATEX, FORMAT_TEX, FORMAT_MARKDOWN):
+    if hasattr(doc,CUSTOM_RENDERER) and doc.custom_renderer(f, format=format):
+        return True
+
+    try:
+        r = RENDERERS[format]
+    except KeyError as e:
         raise RuntimeError("Unsupported format: "+format)
 
-    if hasattr(doc,CUSTOM_RENDERER):
-        return doc.custom_renderer(f, format=format)
+    if not (hasattr(doc,"write_tag_begin") and doc.write_tag_begin(f, format)):
+        r.write_tag_begin(doc, f)
+        
+    if not (hasattr(doc,"write_text") and doc.write_text(f, format)):
+        r.write_text(doc, f)
+        
+    for child in list(doc):
+        render(child, f, format)
 
-    tbegin = doc.tbegin(format=format) if hasattr(doc,"tbegin") else None
-    tend   = doc.tend(format=format)   if hasattr(doc,"tend") else None
-
-    if tbegin is None:
-        if format==FORMAT_HTML:
-            tbegin = f'<{doc.tag}>'
-            tend   = f'</{doc.tag}>'
-        elif format==FORMAT_LATEX or format==FORMAT_TEX:
-            (tbegin,tend) = LATEX_TAGS[doc.tag.upper()]
-        elif format==FORMAT_MARKDOWN:
-            (tbegin,tend) = MARKDOWN_TAGS[doc.tag.upper()]
-        else:
-            raise RuntimeError("unknown format: {}".format(format))
-
-    f.write(tbegin)
-    if doc.text!=None:
-        if hasattr(doc,CUSTOM_WRITE_TEXT):
-            doc.custom_text(f, format=format)
-        else:
-            f.write( doc.text )
-    for child in doc:
-        render(child, f, format=format)
-        if child.tail!=None:
-            f.write(child.tail)
-    f.write(tend)
-    if doc.tag.upper() in HTML_NL_TAGS:
-        f.write("\n")
-
+    if not (hasattr(doc,"write_tag_end") and doc.write_tag_end(f, format)):
+        r.write_tag_end(doc, f)
+        
+    if doc.tail is not None:
+        if not (hasattr(doc,"write_tail") and doc.write_tail(f, format)):
+            r.write_tail(doc, f)
+        
 
 ################################################################
 # some formatting codes
@@ -212,8 +344,10 @@ def scalenum(v, minscale=0):
 class TyTag(xml.etree.ElementTree.Element):
     def __init__(self, tag, attrib={}, **extra):
         super().__init__(tag, attrib, **extra)
-        self.myid = uuid.uuid4().hex
 
+    def render(self,f, format='html'):
+        return render(self, f, format=format)
+    
     def save(self,f_or_fname,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
@@ -233,18 +367,6 @@ class TyTag(xml.etree.ElementTree.Element):
         s = ET.tostring(self,encoding='unicode')
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
     
-    def render(self,f, format='html'):
-        return render(self, f, format=format)
-    
-    def write_text(self,f, format='html'):
-        if format==FORMAT_LATEX:
-            if option( OPTION_NO_ESCAPE) :
-                f.write( self.text )
-            else:
-                f.write( latex_escape( self.text ))
-        else:
-            f.write( self.text )
-
     def options_as_set(self):
         """Return all of the options as a set"""
         try:
@@ -322,6 +444,7 @@ HTML, LaTeX or Markdown.
     # We have a custom begin and end text for latex
 
     DEFAULT_LATEX_PACKAGES = ['graphicx','tabularx','longtable']
+    DEFAULT_META_TAGS=['<meta http-equiv="Content-type" content="text/html; charset=utf-8">']
     def __init__(self, format=None):
         super().__init__(TAG_HTML)
         self.head = self.add(TAG_HEAD)
@@ -329,33 +452,31 @@ HTML, LaTeX or Markdown.
         self.options = set()
         self.latex_packages=self.DEFAULT_LATEX_PACKAGES
 
-    def latex_package_list(self):
-        return "".join([('\\usepackage{%s}\n' % package)
-                        for package in self.latex_packages])
-
-    def tbegin(self, format=None):
-        """Provide custom tags for Latex"""
+    def write_tag_begin(self, f, format=None):
+        """Provide custom tags for writing document tag"""
         if format==FORMAT_LATEX:
-            return ("\\documentclass{article}\n" +
-                    self.latex_package_list() +
-                    "\\begin{document}\n")
+            f.write("\n".join(["\\documentclass{article}"] + 
+                              ['\\usepackage{%s}\n' % pkg for pkg in self.latex_packages] +
+                              ["\\begin{document}"]))
+            return True
         elif format==FORMAT_HTML:
-            return '\n'.join(['<!DOCTYPE html>',
-                              '<html>',
-                              '<meta http-equiv="Content-type" content="text/html; charset=utf-8">',
-                              ''])
+            f.write('\n'.join(['<!DOCTYPE html>','<html>'] + self.DEFAULT_META_TAGS))
+            f.write('\n')
+            return True
         else:
-            return None
+            return False
 
-    def tend(self, format=None):
+    def write_tag_end(self, f, format=None):
         if format==FORMAT_LATEX:
-            return "\\end{document}\n"
+            f.write("\\end{document}\n")
+            return True
         elif format==FORMAT_HTML:
-            return '</html>\n'
+            f.write('</html>\n')
+            return True
         else:
-            return None
+            return False
 
-    def toc(self,level=3):
+    def toc_tags(self,level=3):
         """Return a new tytag ('toc') with of the heading tags as necessary,
         up to the specified level.  This could probably be done with
         some clever XPath..."""
@@ -423,7 +544,13 @@ HTML, LaTeX or Markdown.
         self.head.append(TyTag('script',{'type':"text/javascript",
                                          'src':url}))
 
+    def ul(self, *text):
+        """Add a UL"""
+        self.body.add(TAG_UL, *text)
 
+    def li(self, *text):
+        """Add a LI"""
+        self.body.add(TAG_UL, *text)
 
 
 
@@ -478,14 +605,12 @@ class tytable(TyTag):
         self.add(TAG_TFOOT)
     
     def custom_renderer(self, f, alt="", format=FORMAT_HTML):
-        if format in (FORMAT_HTML):
-            f.write(ET.tostring(self,encoding='unicode'))
-        elif format in (FORMAT_LATEX,FORMAT_TEX):
-            self.custom_renderer_latex(f)
+        if format in (FORMAT_LATEX,FORMAT_TEX):
+            return self.custom_renderer_latex(f)
         elif format in (FORMAT_MARKDOWN):
-            self.custom_renderer_md(f)
+            return self.custom_renderer_md(f)
         else:
-            RuntimeError("unknown format: {}".format(format))
+            return False
         
     def custom_renderer_latex(self,f):
         self.render_latex_table_head(f)
@@ -493,94 +618,13 @@ class tytable(TyTag):
         self.render_latex_table_body(f)
         f.write("\\hline\n")
         self.render_latex_table_foot(f)
-
-    def latex_cell_text(self,cell):
-        if self.option(OPTION_NO_ESCAPE):
-            return cell.text
-        else:
-            return latex_escape(cell.text)
-
-    def render_latex_table_row(self,f,tr):
-        """Render the first set of rows that were added with the add_head() command"""
-        f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
-        f.write('\\\\\n')
-        
-    def render_latex_table_head(self,f):
-        if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
-            raise RuntimeError("options TABLE and LONGTABLE conflict")
-        if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
-            raise RuntimeError("options TABULARX and LONGTABLE conflict")
-        if self.option(OPTION_TABLE):
-            # LaTeX table - a kind of float
-            f.write('\\begin{table}\n')
-            caption = self.caption()
-            if caption is not None:
-                f.write("\\caption{%s}" % caption)
-            try:
-                f.write(r"\label{%s}" % self.myid) # always put in myid
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL]) # put in label if provided
-            except KeyError:
-                pass            # no caption
-            f.write("\n")
-            if self.option(OPTION_CENTER):
-                f.write('\\begin{center}\n')
-        if self.option(OPTION_LONGTABLE):
-            f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
-            caption = self.caption()
-            if caption is not None:
-                f.write("\\caption{%s}\n" % caption)
-            try:
-                f.write("\\label{%s}" % self.myid) # always output myid
-                f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
-            except KeyError:
-                pass            # no caption
-            f.write("\n")
-            for tr in self.findall("./THEAD/TR"):
-                self.render_latex_table_row(f,tr)
-            f.write('\\hline\\endfirsthead\n')
-            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' 
-                    % (self.max_cols(), self.myid))
-            f.write('\\hline\\endhead\n')
-            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n'
-                    % (self.max_cols()))
-            f.write('\\hline\\endfoot\n')
-            f.write('\\hline\\hline\n\\endlastfoot\n')
-        else:
-            # Not longtable, so regular table
-            if self.option(OPTION_TABULARX):
-                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
-            else:
-                f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
-            for tr in self.findall("./THEAD/TR"):
-                self.render_latex_table_row(f,tr)
-            
-    def render_latex_table_body(self,f):
-        """Render the rows that were not added with add_head() command"""
-        for tr in self.findall("./TBODY/TR"):
-            self.render_latex_table_row(f,tr)
-
-    def render_latex_table_foot(self,f):
-        for tr in self.findall("./TFOOT/TR"):
-            self.render_latex_table_row(f,tr)
-        if self.option(OPTION_LONGTABLE):
-            f.write('\\end{longtable}\n')
-        else:
-            if self.option(OPTION_TABULARX):
-                f.write('\\end{tabularx}\n')
-            else:
-                f.write('\\end{tabular}\n')
-        if self.option(OPTION_CENTER):
-            f.write('\\end{center}\n')
-        if self.option(OPTION_TABLE):
-            f.write('\\end{table}\n')
+        return True
 
     def custom_renderer_md(self,f):
         """Output the table as markdown. Assumes the first row is the header."""
         # Calculate the maxim width of each column
         all_cols = [self.col(n) for n in range(self.max_cols())]
         col_maxwidths = [max( [len(str(cell.text)) for cell in col] ) for col in all_cols]
-
-
         for (rownumber,tr) in enumerate(self.findall(".//TR"),0):
             # Get the cells for this row
             row_cells = self.cells_in_row(tr)
@@ -616,6 +660,90 @@ class tytable(TyTag):
                 lines = ['-' * width for width in col_maxwidths]
                 f.write(fmt.format(*lines))
 
+        return True             #  we rendered!
+
+    #################################################################
+    ### LaTeX support routines
+    def latex_cell_text(self,cell):
+        if self.option(OPTION_NO_ESCAPE):
+            return cell.text
+        else:
+            return latex_escape(cell.text)
+
+    def render_latex_table_row(self,f,tr):
+        """Render the first set of rows that were added with the add_head() command"""
+        f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
+        f.write('\\\\\n')
+        
+    def render_latex_table_head(self,f):
+        if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABLE and LONGTABLE conflict")
+        if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABULARX and LONGTABLE conflict")
+        if self.option(OPTION_TABLE):
+            # LaTeX table - a kind of float
+            f.write('\\begin{table}\n')
+            caption = self.get_caption()
+            if caption is not None:
+                f.write("\\caption{%s}" % caption)
+            try:
+                f.write(r"\label{%s}" % id(self)) # always put in ID
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL]) # put in label if provided
+            except KeyError:
+                pass            # no caption
+            f.write("\n")
+            if self.option(OPTION_CENTER):
+                f.write('\\begin{center}\n')
+        if self.option(OPTION_LONGTABLE):
+            f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
+            caption = self.get_caption()
+            if caption is not None:
+                f.write("\\caption{%s}\n" % caption)
+            try:
+                f.write("\\label{%s}" % id(self)) # always output myid
+                f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
+            except KeyError:
+                pass            # no caption
+            f.write("\n")
+            for tr in self.findall("./THEAD/TR"):
+                self.render_latex_table_row(f,tr)
+            f.write('\\hline\\endfirsthead\n')
+            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' 
+                    % (self.max_cols(), id(self)))
+            f.write('\\hline\\endhead\n')
+            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n'
+                    % (self.max_cols()))
+            f.write('\\hline\\endfoot\n')
+            f.write('\\hline\\hline\n\\endlastfoot\n')
+        else:
+            # Not longtable, so regular table
+            if self.option(OPTION_TABULARX):
+                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
+            else:
+                f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
+            for tr in self.findall("./THEAD/TR"):
+                self.render_latex_table_row(f,tr)
+            
+    def render_latex_table_body(self,f):
+        """Render the rows that were not added with add_head() command"""
+        for tr in self.findall("./TBODY/TR"):
+            self.render_latex_table_row(f,tr)
+
+    def render_latex_table_foot(self,f):
+        for tr in self.findall("./TFOOT/TR"):
+            self.render_latex_table_row(f,tr)
+        if self.option(OPTION_LONGTABLE):
+            f.write('\\end{longtable}\n')
+        else:
+            if self.option(OPTION_TABULARX):
+                f.write('\\end{tabularx}\n')
+            else:
+                f.write('\\end{tabular}\n')
+        if self.option(OPTION_CENTER):
+            f.write('\\end{center}\n')
+        if self.option(OPTION_TABLE):
+            f.write('\\end{table}\n')
+
     def set_caption(self, caption):
         #  TODO: Validate that this is first
         """The <caption> tag must be inserted immediately after the <table> tag.
@@ -639,14 +767,8 @@ not set, it auto-generated"""
         except KeyError as c:
             return "l"*self.max_cols()
 
-    def add_row(self, where, cells, row_attrib={}):
-        """Add a row of cells to the table.
-        @param cells - a list of cells.
-        """
-        where_node = self.findall(f".//{where}")[0]
-        row = ET.SubElement(where_node,TAG_TR, attrib=row_attrib)
-        for cell in cells:
-            row.append(cell)
+    #################################################################
+    ### Cell Formatting Routines
 
     def format_cell(self, cell):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
@@ -672,15 +794,17 @@ not set, it auto-generated"""
             cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
         return cell
 
-    def make_cell(self, tag, value, attrib):
-        """Given a tag, value and attributes, return a cell formatted with the default format"""
-        cell = ET.Element(tag,{**attrib,
-                                 ATTR_VAL:str(value),
-                                 ATTR_TYPE:str(type(value).__name__)
-                                 })
-        self.format_cell(cell)
-        return cell
+    #################################################################
+    ### Table Manipulation Routines
 
+    def add_row(self, where, cells, row_attrib={}):
+        """Add a row of cells to the table.
+        @param cells - a list of cells.
+        """
+        where_node = self.findall(f".//{where}")[0]
+        row = ET.SubElement(where_node,TAG_TR, attrib=row_attrib)
+        for cell in cells:
+            row.append(cell)
 
     def add_row_values(self, where, tags, values, *, cell_attribs={}, row_attrib={}):
         """Create a row of cells and add it to the table.
@@ -718,7 +842,20 @@ not set, it auto-generated"""
         for row in rows:
             self.add_data(row)
 
-    def caption(self):
+    def make_cell(self, tag, value, attrib):
+        """Given a tag, value and attributes, return a cell formatted with the default format"""
+        cell = ET.Element(tag,{**attrib,
+                                 ATTR_VAL:str(value),
+                                 ATTR_TYPE:str(type(value).__name__)
+                                 })
+        self.format_cell(cell)
+        return cell
+
+
+    ################################################################
+    ### Table get information routines
+
+    def get_caption(self):
         """Return the <caption> tag text"""
         try:
             c = self.findall(".//CAPTION")
