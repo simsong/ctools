@@ -1,11 +1,16 @@
-import urllib.parse 
 import subprocess
 import copy
 import json
 import os
 import tempfile
 import sys
-from subprocess import run,PIPE,Popen,check_call
+import subprocess
+
+if sys.version[0]=='2':
+    from urlparse import urlparse
+else:
+    import urllib.parse.urlparse as urlparse
+
 
 # 
 # This creates an S3 file that supports seeking and caching.
@@ -42,8 +47,12 @@ def get_bucket_key(loc):
 def aws_s3api(cmd):
     fcmd = ['aws','s3api','--output=json'] + cmd
     if debug:
-        print(" ".join(fcmd),file=sys.stderr)
-    data = subprocess.check_output(fcmd, encoding='utf-8')
+        sys.stderr.write(" ".join(fcmd))
+        sys.stderr.write("\n")
+    if sys.version[0]=='2':
+        data = subprocess.check_output(fcmd)
+    else:
+        data = subprocess.check_output(fcmd, encoding='utf-8')
     if not data:
         return None
     try:
@@ -160,7 +169,7 @@ class S3File:
         self.fpos   = 0
         self.tf     = tempfile.NamedTemporaryFile()
         cmd = ['aws','s3api','list-objects','--bucket',self.bucket,'--prefix',self.key,'--output','json']
-        data = json.loads(Popen(cmd,encoding='utf8',stdout=PIPE).communicate()[0])
+        data = json.loads(Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
         file_info = data['Contents'][0]
         self.length = file_info['Size']
         self.ETag   = file_info['ETag']
@@ -182,7 +191,7 @@ class S3File:
         cmd = ['aws','s3api','get-object','--bucket',self.bucket,'--key',self.key,'--output','json',
                '--range','bytes={}-{}'.format(start,start+length-1),self.tf.name]
         if debug:print(cmd)
-        data = json.loads(Popen(cmd,encoding='utf8',stdout=PIPE).communicate()[0])
+        data = json.loads(Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
         if debug:print(data)
         self.tf.seek(0)         # go to the beginning of the data just read
         return self.tf.read(length) # and read that much
@@ -282,11 +291,11 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
         if cache:
             check_call(['aws','s3','cp','--quiet',path,cache_name])
             open(cache_name, mode=mode, encoding=encoding)
-        p = Popen(['aws','s3','cp','--quiet',path,'-'],stdout=PIPE,encoding=encoding)
+        p =subprocess.Popen(['aws','s3','cp','--quiet',path,'-'],stdout=subprocess.PIPE,encoding=encoding)
         return p.stdout
 
     elif "w" in mode:
-        p = Popen(['aws','s3','cp','--quiet','-',path],stdin=PIPE,encoding=encoding)
+        p =subprocess.Popen(['aws','s3','cp','--quiet','-',path],stdin=subprocess.PIPE,encoding=encoding)
         return p.stdin
     else:
         raise RuntimeError("invalid mode:{}".format(mode))
@@ -295,7 +304,8 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
 def s3exists(path):
     """Return True if the S3 file exists"""
     from subprocess import run,PIPE,Popen
-    out = Popen(['aws','s3','ls','--page-size','10',path],stdout=PIPE,encoding='utf-8').communicate()[0]
+    out =subprocess.Popen(['aws','s3','ls','--page-size','10',path],
+                          stdout=subprocess.PIPE,encoding='utf-8').communicate()[0]
     return len(out) > 0
 
 
