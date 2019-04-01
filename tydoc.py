@@ -95,15 +95,16 @@ TAG_TH   = 'TH'
 TAG_TD   = 'TD'
 TAG_UL   = 'UL'
 TAG_LI   = 'LI'
+TAG_A    = 'A'
 TAG_TABLE = 'TABLE'
 TAG_TITLE = 'TITLE'
 TAG_CAPTION = 'CAPTION'
 TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
 TAG_TFOOT = 'TFOOT'
-TAG_TOC   = 'X-TOC'             # a custom tag; should not appear in output
+TAG_X_TOC = 'X-TOC'          # a custom tag; should not appear in output
 
-ATTR_VAL = 'v'                # where we keep the original values
+ATTR_VAL  = 'v'               # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
 
 ATTRIB_OPTIONS = 'OPTIONS'
@@ -119,7 +120,7 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 
-HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH])
+HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
 
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
@@ -153,7 +154,6 @@ OPTION_CENTER    = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
 OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
 OPTION_DATATABLES = 'datatables' # 
-OPTION_TOC       = 'toc'         #  automatically create a TOC
 
 LATEX_COLSPEC    = 'latex_colspec'
 
@@ -364,6 +364,7 @@ class TyTag(xml.etree.ElementTree.Element):
             return
 
     def prettyprint(self):
+        import xml.dom.minidom
         s = ET.tostring(self,encoding='unicode')
         return xml.dom.minidom.parseString( s ).toprettyxml(indent='  ')
     
@@ -480,14 +481,6 @@ HTML, LaTeX or Markdown.
         """Return a new tytag ('toc') with of the heading tags as necessary,
         up to the specified level.  This could probably be done with
         some clever XPath..."""
-        ret = TyTag(TAG_TOC)
-        for elem in self.find("./BODY"):
-            if elem.tag==TAG_H1 and level>=1:
-                ret.append(elem)
-            if elem.tag==TAG_H2 and level>=2:
-                ret.append(elem)
-            if elem.tag==TAG_H3 and level>=3:
-                ret.append(elem)
         return ret
 
     def insert_image(self, buf, *, format):
@@ -506,6 +499,48 @@ HTML, LaTeX or Markdown.
     def set_title(self, *text):
         self.head.add(TAG_TITLE, *text)
 
+    def insert_toc(self,level=3):
+        # If there is already a TOC tag, remove it, then add a new one.
+        for body in self.findall(f"./{TAG_BODY}"):
+            for xtoc in body.findall(f"./{TAG_X_TOC}"):
+                body.remove(xtoc)
+        # Now get a list of all appropriate tags and make some matching XML
+        xml_data = io.StringIO()
+        current_level = 0
+        xml_data.write(f"<{TAG_X_TOC}>")
+        body = self.find("./BODY")
+        for elem in list(body):
+            if elem.tag==TAG_H1 and level>=1:
+                new_level = 1
+            elif elem.tag==TAG_H2 and level>=2:
+                new_level = 2
+            elif elem.tag==TAG_H3 and level>=3:
+                new_level = 3
+            else:
+                continue
+            while new_level > current_level:
+                xml_data.write("<UL>")
+                current_level += 1
+            while new_level < current_level:
+                xml_data.write("</UL>")
+                current_level -= 1
+            xml_data.write(f"<LI><A HREF='{id(elem)}'>{elem.text}</A></LI>")
+
+            # add the <a name=> anchor tag if none is present
+            a_tag = elem.find("{}[@name='{}']".format(TAG_A,id(elem)))
+            if a_tag is None:
+                ET.SubElement(elem,TAG_A,{'NAME':str(id(elem))})
+                
+
+        while current_level>0:
+            xml_data.write("</UL>")
+            current_level -= 1
+        xml_data.write(f"</{TAG_X_TOC}>")
+        # Parse it and add the tag!
+        xml_data.seek(0)
+        toc = ET.XML(xml_data.read())
+        body.insert(0,toc)
+        
     def p(self, *text):
         """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
         self.body.add(TAG_P, *text)
@@ -553,7 +588,32 @@ HTML, LaTeX or Markdown.
         self.body.add(TAG_UL, *text)
 
 
+################################################################
+### Tag to typeset Table of Contents.
+### HTML and Markdown get passed through. 
+### LaTeX gets changed to \maketableofcontents and ignores the content
+################################################################
+class X_TOC(TyTag):
+    def __init__(self):
+        super().__init__(TAG_X_TOC,attrib=attrib,**extra)
 
+    def custom_renderer(self, f, format=FORMAT_HTML):
+        if format in (FORMAT_LATEX,FORMAT_TEX):
+            f.write("\\tableofcontents\n")
+            return True
+        return False
+
+    def write_tag_begin(self, f, format=FORMAT_HTML):
+        if format==FORMAT_HTML:
+            # Output nothing
+            return True
+        return False
+
+    def write_tag_end(self, f, format=FORMAT_HTML):
+        if format==FORMAT_HTML:
+            # Output nothing
+            return True
+        return False
 
 ################################################################
 ### Improved tytable with the new API.
@@ -591,7 +651,7 @@ class tytable(TyTag):
         return list( filter(lambda t:t.tag in (TAG_TH, TAG_TD), tr) )
 
     def __init__(self,attrib={},**extra):
-        super().__init__('table',attrib=attrib,**extra)
+        super().__init__(TAG_TABLE,attrib=attrib,**extra)
         
         self.options = set()
         self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
@@ -604,7 +664,7 @@ class tytable(TyTag):
         self.add(TAG_TBODY)
         self.add(TAG_TFOOT)
     
-    def custom_renderer(self, f, alt="", format=FORMAT_HTML):
+    def custom_renderer(self, f, format=FORMAT_HTML):
         if format in (FORMAT_LATEX,FORMAT_TEX):
             return self.custom_renderer_latex(f)
         elif format in (FORMAT_MARKDOWN):
@@ -705,7 +765,7 @@ class tytable(TyTag):
             except KeyError:
                 pass            # no caption
             f.write("\n")
-            for tr in self.findall("./THEAD/TR"):
+            for tr in self.findall(f"./{TAG_THEAD}/{TAG_TR}"):
                 self.render_latex_table_row(f,tr)
             f.write('\\hline\\endfirsthead\n')
             f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' 
@@ -995,6 +1055,24 @@ def datatables():
     t = doc.table(attrib={'id':'1234'})
 
 
+def demo_toc():
+    doc = tydoc()
+    doc.h1("First Head1")
+    doc.p("blah blah blah")
+    doc.h1("Second Head1 2")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.1")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.2")
+    doc.p("blah blah blah")
+    doc.h3("Head 2.2.1")
+    doc.p("blah blah blah")
+    doc.h1("Third Head1 3")
+    doc.p("blah blah blah")
+    doc.insert_toc()
+    return doc
+
+
 
 
 if __name__=="__main__":
@@ -1005,6 +1083,13 @@ if __name__=="__main__":
         showcase(demo2())
         showcase(demo3())
         showcase(demo4())
-    showcase(tabdemo1())
+        showcase(tabdemo1())
+    doc = demo_toc()
+    print(doc.prettyprint())
+    print("add another TOC")
+    doc.insert_toc()
+    doc.insert_toc()
+    doc.insert_toc()
+    print(doc.prettyprint())
     exit(0)
 

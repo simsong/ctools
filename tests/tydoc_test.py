@@ -93,18 +93,23 @@ def test_tydoc_toc():
     doc.p("blah blah blah")
     doc.h1("Third Head1 3")
     doc.p("blah blah blah")
-    doc.set_option(OPTION_TOC)
 
-    # TOC is a set of all the elements that make up a TOC
-    toc1 = doc.toc(level=1)
-    assert len(toc1)==3
+    # Add a toc
+    doc.insert_toc()
 
-    toc2 = doc.toc(level=2)
-    assert len(toc2)==5
+    # Make sure that the TOC has a pointer to the first H1
+    print(doc.prettyprint())
+    key = f".//{TAG_X_TOC}"
+    tocs = doc.findall(key)
+    assert len(tocs)==1
+    toc = tocs[0]
 
-    toc3 = doc.toc(level=3)
-    assert len(toc3)==6
+    h1s = doc.findall(".//{}/{}".format(TAG_BODY,TAG_H1))
+    assert len(h1s)==3
+    h1 = h1s[0]
 
-    toc4 = doc.toc(level=4)
-    assert len(toc3)==len(toc4)
-
+    # Make sure that they both have the same ID
+    id1 = toc.find('.//{}'.format(TAG_A)).attrib['HREF']
+    id2 = h1.find('.//{}'.format(TAG_A)).attrib['NAME']
+    
+    assert id1==id2
