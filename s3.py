@@ -9,7 +9,7 @@ import subprocess
 if sys.version[0]=='2':
     from urlparse import urlparse
 else:
-    import urllib.parse.urlparse as urlparse
+    from urllib.parse import urlparse
 
 
 # 
