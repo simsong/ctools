@@ -506,8 +506,8 @@ HTML, LaTeX or Markdown.
                 body.remove(xtoc)
         # Now get a list of all appropriate tags and make some matching XML
         xml_data = io.StringIO()
-        current_level = 0
-        xml_data.write(f"<{TAG_X_TOC}>")
+        xml_data.write(f"<UL>")
+        current_level = 1
         body = self.find("./BODY")
         for elem in list(body):
             if elem.tag==TAG_H1 and level>=1:
@@ -527,19 +527,21 @@ HTML, LaTeX or Markdown.
             xml_data.write(f"<LI><A HREF='{id(elem)}'>{elem.text}</A></LI>")
 
             # add the <a name=> anchor tag if none is present
-            a_tag = elem.find("{}[@name='{}']".format(TAG_A,id(elem)))
+            a_tag = elem.find("{}[@NAME='{}']".format(TAG_A,id(elem)))
             if a_tag is None:
                 ET.SubElement(elem,TAG_A,{'NAME':str(id(elem))})
                 
 
-        while current_level>0:
+        while current_level>1:
             xml_data.write("</UL>")
             current_level -= 1
-        xml_data.write(f"</{TAG_X_TOC}>")
-        # Parse it and add the tag!
+        xml_data.write(f"</UL>")
+        # Parse it and add to an X_TOC tag.
         xml_data.seek(0)
-        toc = ET.XML(xml_data.read())
-        body.insert(0,toc)
+        xtoc = X_TOC()
+        xtoc.insert(0,ET.XML(xml_data.read()))
+        # And add it to the body
+        body.insert(0,xtoc)
         
     def p(self, *text):
         """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
@@ -594,7 +596,7 @@ HTML, LaTeX or Markdown.
 ### LaTeX gets changed to \maketableofcontents and ignores the content
 ################################################################
 class X_TOC(TyTag):
-    def __init__(self):
+    def __init__(self,attrib={},**extra):
         super().__init__(TAG_X_TOC,attrib=attrib,**extra)
 
     def custom_renderer(self, f, format=FORMAT_HTML):
