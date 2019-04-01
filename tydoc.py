@@ -524,12 +524,16 @@ HTML, LaTeX or Markdown.
             while new_level < current_level:
                 xml_data.write("</UL>")
                 current_level -= 1
-            xml_data.write(f"<LI><A HREF='{id(elem)}'>{elem.text}</A></LI>")
+            xml_data.write(f"<LI><A HREF='#{id(elem)}'>{elem.text}</A></LI>")
 
             # add the <a name=> anchor tag if none is present
             a_tag = elem.find("{}[@NAME='{}']".format(TAG_A,id(elem)))
             if a_tag is None:
-                ET.SubElement(elem,TAG_A,{'NAME':str(id(elem))})
+                a_tag = ET.SubElement(elem,TAG_A,{'NAME':str(id(elem))})
+                # Move the text to after the a_tag
+                a_tag.tail = elem.text
+                elem.text  = ''
+                
                 
 
         while current_level>1:
