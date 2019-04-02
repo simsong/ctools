@@ -289,7 +289,7 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
     
     if "r" in mode:
         if cache:
-            check_call(['aws','s3','cp','--quiet',path,cache_name])
+            subprocess.check_call(['aws','s3','cp','--quiet',path,cache_name])
             open(cache_name, mode=mode, encoding=encoding)
         p =subprocess.Popen(['aws','s3','cp','--quiet',path,'-'],stdout=subprocess.PIPE,encoding=encoding)
         return p.stdout
