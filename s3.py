@@ -32,7 +32,7 @@ READTHROUGH_CACHE_DIR='/mnt/tmp/s3cache'
 
 def get_bucket_key(loc):
     """Given a location, return the (bucket,key)"""
-    p = urllib.parse.urlparse(loc)
+    p = urlparse(loc)
     if p.scheme=='s3':
         return (p.netloc, p.path[1:])
     if p.scheme=='':
