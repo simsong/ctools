@@ -17,6 +17,8 @@ import json
 import subprocess
 from subprocess import Popen,PIPE,call
 import multiprocessing
+import time
+
 
 DEFAULT_WORKERS=20
 
@@ -33,6 +35,18 @@ _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
 
 Status='Status'
+
+costs = {"m4.16xlarge":(4.032,0.270),
+         "r4.16xlarge":(5.107, 0.270),
+         "m4.2xlarge":(0.504,0.144),
+         "r4.4xlarge":(1.277,0.270),
+         "m4.large":(0.126,0.036),
+         "m4.xlarge":(0.252,0.072)
+}
+
+
+
+
 
 def proxy_on():
     os.environ[HTTP_PROXY]  = os.environ[BCC_PROXY]
@@ -144,7 +158,7 @@ def render(cluster):
     friendly_name = cluster['MasterInstanceTags'].get('FRIENDLY_NAME','')
 
     ret = []
-    ret.append("================ {friendly_name} ================")
+    ret.append(f"================ {friendly_name} ================")
     ret.append("Cluster Name: {0: <36} ID: {1: <15}".format( cluster['Name'], cluster['Id']))
     ret.append("Cluster Created: {0:20} Run time: {1:6} hours".format(
         time.ctime(cluster['Status']['Timeline']['CreationDateTime']), run_time(cluster)/3600))
