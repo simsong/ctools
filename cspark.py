@@ -149,6 +149,11 @@ def spark_make_logLevel_file(logLevel="error"):
         return f.name
 
 
+def spark_set_logLevel(logLevel='error'):
+    from pyspark.sql import SparkSession
+    spark = SparkSession.builder.getOrCreate()
+    spark.sparkContext.setLogLevel(logLevel)
+
 def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None, conf=[], configdict={},
                  properties_file=None, argv):
     """Provides support for the --spark command. To the caller, it looks
