@@ -22,7 +22,8 @@ import time
 
 DEFAULT_WORKERS=20
 
-import ctools.ec2 as ec2
+#import ctools.ec2 as ec2
+import ec2
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
