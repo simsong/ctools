@@ -354,7 +354,7 @@ class TyTag(xml.etree.ElementTree.Element):
     def save(self,f_or_fname,format=None,**kwargs):
         """Save to a filename or a file-like object"""
         if not format:
-            format = os.path.splitext(fout)[1].lower()
+            format = os.path.splitext(f_or_fname)[1].lower()
             if format[0:1]=='.':
                 format=format[1:]
 
@@ -539,8 +539,6 @@ HTML, LaTeX or Markdown.
                 # Move the text to after the a_tag
                 a_tag.tail = elem.text
                 elem.text  = ''
-                
-                
 
         while current_level>1:
             xml_data.write("</UL>")

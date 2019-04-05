@@ -16,6 +16,14 @@ import json
 
 import subprocess
 from subprocess import Popen,PIPE,call
+import multiprocessing
+import time
+
+
+DEFAULT_WORKERS=20
+
+#import ctools.ec2 as ec2
+import ec2
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
@@ -28,6 +36,18 @@ _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
 
 Status='Status'
+
+costs = {"m4.16xlarge":(4.032,0.270),
+         "r4.16xlarge":(5.107, 0.270),
+         "m4.2xlarge":(0.504,0.144),
+         "r4.4xlarge":(1.277,0.270),
+         "m4.large":(0.126,0.036),
+         "m4.xlarge":(0.252,0.072)
+}
+
+
+
+
 
 def proxy_on():
     os.environ[HTTP_PROXY]  = os.environ[BCC_PROXY]
@@ -115,18 +135,93 @@ def cluster_hostnames(getMaster=True):
             yield(host)
 
 def list_clusters():
+    """Returns the AWS Dictionary"""
     res = Popen(['aws','emr','list-clusters','--output','json'],encoding='utf-8',stdout=PIPE).communicate()[0]
     return json.loads(res)['Clusters']
 
-def describe_cluster(clusterID):
-    res = Popen(['aws','emr','describe-cluster','--output','json','--cluster',clusterID],
+def describe_cluster(clusterId):
+    res = Popen(['aws','emr','describe-cluster','--output','json','--cluster',clusterId],
                 encoding='utf-8',stdout=PIPE).communicate()[0]
     return json.loads(res)['Cluster']    
 
-def list_instances(clusterID):
-    res = Popen(['aws','emr','list-instances','--output','json','--cluster-id',clusterID],
+def list_instances(clusterId):
+    res = Popen(['aws','emr','list-instances','--output','json','--cluster-id',clusterId],
                 encoding='utf-8',stdout=PIPE).communicate()[0]
     return json.loads(res)['Instances']    
+
+def run_time(cluster):
+    if cluster['terminated']:
+        return cluster['Status']['Timeline']['EndDateTime'] - cluster['Status']['Timeline']['CreationDateTime']
+    else:
+        return time.time() - cluster['Status']['Timeline']['CreationDateTime']
+
+def render(cluster):
+    friendly_name = cluster['MasterInstanceTags'].get('FRIENDLY_NAME','')
+
+    ret = []
+    ret.append(f"================ {friendly_name} ================")
+    ret.append("Cluster Name: {0: <36} ID: {1: <15}".format( cluster['Name'], cluster['Id']))
+    ret.append("Cluster Created: {0:20} Run time: {1:6} hours".format(
+        time.ctime(cluster['Status']['Timeline']['CreationDateTime']), run_time(cluster)/3600))
+    for ba in cluster['describe-cluster']['BootstrapActions']:
+        ret.append("    bootstrap: {} {}".format(ba['Name'],ba['ScriptPath']))
+    for ig in sorted(cluster['describe-cluster']['InstanceGroups'], key=lambda d:d['InstanceGroupType']):
+        count = ig['RequestedInstanceCount']
+        if count:
+            itype = ig['InstanceType']
+            try:
+                hourly = costs[itype][0]*count + costs[itype][1]*count
+                ret.append("    {:6}: {:2} x {:11} = {:6.2f}/hour".format(ig['InstanceGroupType'],count,itype,hourly))
+            except KeyError as e:
+                ret.append("    {:6}: {:2} x {:11} (unknown hourly)".format(ig['InstanceGroupType'],count,itype))
+    try:
+        ret.append("    Master: {}".format(cluster['MasterPublicDnsName']))
+    except KeyError as e:
+        pass
+    try:
+        for (key,val) in sorted(cluster['MasterInstanceTags'].items()):
+            ret.append("        {:10} = {}".format(key,val))
+    except KeyError as e:
+            pass
+    ret.append("")
+    return("\n".join(ret))
+
+def add_cluster_info(cluster):
+    clusterId = cluster['Id']
+    cluster['describe-cluster'] = describe_cluster(clusterId)
+    cluster['instances']        = list_instances(clusterId)
+    cluster['terminated']       = 'EndDateTime' in cluster['Status']['Timeline']
+    # Get the id of the master
+    try:
+        masterPublicDnsName = cluster['describe-cluster']['MasterPublicDnsName']
+        masterInstance = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
+        masterInstanceId = masterInstance['Ec2InstanceId']
+        # Get the master tags
+        cluster['MasterInstanceTags'] = {}
+        for tag in ec2.describe_tags(resourceId=masterInstanceId):
+            cluster['MasterInstanceTags'][tag['Key']] = tag['Value']
+    except KeyError as e:
+        pass
+    return cluster
+
+
+def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
+
+    """Pull all of the information about a cluster efficiently using the EMR cluster API and multithreading.
+    if terminated=True, get information about the terminated clusters as well.
+    """
+    clusters = list_clusters()
+    for cluster in list(clusters):
+        if terminated==False and cluster['Status']['State']=='TERMINATED':
+            clusters.remove(cluster)
+    with multiprocessing.Pool(workers) as p:
+        clusters = p.map(add_cluster_info,clusters)
+
+    return clusters
+
+
+
+
 
 if __name__=="__main__":
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
