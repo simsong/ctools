@@ -93,8 +93,13 @@ def delete_object(bucket,key):
 
 PAGE_SIZE=1000
 MAX_ITEMS=1000
-def list_objects(bucket, prefix,limit=None,delimiter=None):
+def list_objects(bucket, prefix=None, limit=None, delimiter=None):
     """Returns a generator that lists objects in a bucket. Returns a list of dictionaries, including Size and ETag"""
+
+    # handle the case where an S3 URL is provided instead of a bucket and prefix
+    if bucket.startswith('s3://') and (prefix is None):
+        (bucket,prefix) = get_bucket_key(bucket)
+
     next_token = None
     total = 0
     while True:
@@ -125,8 +130,6 @@ def list_objects(bucket, prefix,limit=None,delimiter=None):
         else:
             return
             
-
-
 def etag(obj):
     """Return the ETag of an object. It is a known bug that the S3 API returns ETags wrapped in quotes
     see https://github.com/aws/aws-sdk-net/issue/815"""

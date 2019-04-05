@@ -148,7 +148,6 @@ def spark_make_logLevel_file(logLevel="error"):
         f.close()
         return f.name
 
-
 def spark_set_logLevel(logLevel='error'):
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
