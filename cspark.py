@@ -191,7 +191,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
 
     ### If we are running under py.test, use `call`, so we return.
     ### otherwise use execvp, so we do not return.
-    if os.environ['PYTEST_CURRENT_TEST']:
+    if 'PYTEST_CURRENT_TEST' in os.environ:
         subprocess.call(cmd)
     else:
         os.execvp(cmd[0],cmd)
