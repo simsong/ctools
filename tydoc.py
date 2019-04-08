@@ -696,10 +696,13 @@ class tytable(TyTag):
         return True
 
     def custom_renderer_md(self,f):
-        """Output the table as markdown. Assumes the first row is the header."""
+        """Output the table as markdown. Note:
+        1. Assumes the first row is the header.
+        2. Applies 'strip' to all text columns.
+        """
         # Calculate the maxim width of each column
-        all_cols = [self.col(n) for n in range(self.max_cols())]
-        col_maxwidths = [max( [len(str(cell.text)) for cell in col] ) for col in all_cols]
+        all_cols      = [self.col(n) for n in range(self.max_cols())]
+        col_maxwidths = [max( [len(str(cell.text).strip()) for cell in col] ) for col in all_cols]
         for (rownumber,tr) in enumerate(self.findall(".//TR"),0):
             # Get the cells for this row
             row_cells = self.cells_in_row(tr)
@@ -725,7 +728,7 @@ class tytable(TyTag):
             fmt = "|" + "|".join(fmts) + "|\n"
 
             # Get the text we will format
-            row_texts = [cell.text for cell in row_cells]
+            row_texts = [cell.text.strip() for cell in row_cells]
 
             # Write it out, formatted
             f.write(fmt.format(*row_texts))
@@ -860,13 +863,18 @@ not set, it auto-generated"""
             value = eval(typename)(typeval)
         except Exception as e:
             return cell
+
         try:
             if cell.attrib[ATTR_TYPE]=='int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
-            else:
+                return cell
+            elif cell.attrib[ATTR_TYPE]!='str':
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+                return cell
         except ValueError as e:
-            cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+            pass
+
+        cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
         return cell
 
     #################################################################
