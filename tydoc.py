@@ -901,7 +901,7 @@ not set, it auto-generated"""
         if not (len(tags)==len(values)==len(cell_attribs)):
             raise ValueError("tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(
                     len(tags),len(values),len(cell_attribs)))
-        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags,values,cell_attribs)]
+        cells = [self.make_cell(t,v,a) for (t,v,a) in zip(tags, values, cell_attribs)]
         self.add_row(where, cells, row_attrib=row_attrib)
         
     def add_head(self, values, row_attrib={}, cell_attribs={}):
@@ -918,7 +918,13 @@ not set, it auto-generated"""
             self.add_data(row)
 
     def make_cell(self, tag, value, attrib):
-        """Given a tag, value and attributes, return a cell formatted with the default format"""
+        """Given a tag, value and attributes, return a cell formatted with the default format. 
+        If value is a scalar, make and format it. If it is an element, then just make it the children."""
+        if isinstance(value, xml.etree.ElementTree.Element):
+            cell = ET.Element(tag, attrib)
+            cell.insert(0,value)
+            return cell
+
         cell = ET.Element(tag,{**attrib,
                                  ATTR_VAL:str(value),
                                  ATTR_TYPE:str(type(value).__name__)

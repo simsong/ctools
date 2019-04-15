@@ -119,7 +119,7 @@ def icomma(i):
 ################################################################
 
 
-# The row class holds the row and anny annotations
+# The row class holds the row and any annotations
 class Row:
     __slots__ = ['data', 'annotations']
 

@@ -22,8 +22,12 @@ import time
 
 DEFAULT_WORKERS=20
 
-#import ctools.ec2 as ec2
-import ec2
+# emr is in the ctools module. Be sure we can import ctools
+
+sys.path.append( os.path.join(os.path.basename(__file__), ".." ))
+
+import ctools
+import ctools.ec2 as ec2
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
@@ -36,17 +40,6 @@ _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
 
 Status='Status'
-
-costs = {"m4.16xlarge":(4.032,0.270),
-         "r4.16xlarge":(5.107, 0.270),
-         "m4.2xlarge":(0.504,0.144),
-         "r4.4xlarge":(1.277,0.270),
-         "m4.large":(0.126,0.036),
-         "m4.xlarge":(0.252,0.072)
-}
-
-
-
 
 
 def proxy_on():
@@ -149,43 +142,6 @@ def list_instances(clusterId):
                 encoding='utf-8',stdout=PIPE).communicate()[0]
     return json.loads(res)['Instances']    
 
-def run_time(cluster):
-    if cluster['terminated']:
-        return cluster['Status']['Timeline']['EndDateTime'] - cluster['Status']['Timeline']['CreationDateTime']
-    else:
-        return time.time() - cluster['Status']['Timeline']['CreationDateTime']
-
-def render(cluster):
-    friendly_name = cluster['MasterInstanceTags'].get('FRIENDLY_NAME','')
-
-    ret = []
-    ret.append(f"================ {friendly_name} ================")
-    ret.append("Cluster Name: {0: <36} ID: {1: <15}".format( cluster['Name'], cluster['Id']))
-    ret.append("Cluster Created: {0:20} Run time: {1:6} hours".format(
-        time.ctime(cluster['Status']['Timeline']['CreationDateTime']), run_time(cluster)/3600))
-    for ba in cluster['describe-cluster']['BootstrapActions']:
-        ret.append("    bootstrap: {} {}".format(ba['Name'],ba['ScriptPath']))
-    for ig in sorted(cluster['describe-cluster']['InstanceGroups'], key=lambda d:d['InstanceGroupType']):
-        count = ig['RequestedInstanceCount']
-        if count:
-            itype = ig['InstanceType']
-            try:
-                hourly = costs[itype][0]*count + costs[itype][1]*count
-                ret.append("    {:6}: {:2} x {:11} = {:6.2f}/hour".format(ig['InstanceGroupType'],count,itype,hourly))
-            except KeyError as e:
-                ret.append("    {:6}: {:2} x {:11} (unknown hourly)".format(ig['InstanceGroupType'],count,itype))
-    try:
-        ret.append("    Master: {}".format(cluster['MasterPublicDnsName']))
-    except KeyError as e:
-        pass
-    try:
-        for (key,val) in sorted(cluster['MasterInstanceTags'].items()):
-            ret.append("        {:10} = {}".format(key,val))
-    except KeyError as e:
-            pass
-    ret.append("")
-    return("\n".join(ret))
-
 def add_cluster_info(cluster):
     clusterId = cluster['Id']
     cluster['describe-cluster'] = describe_cluster(clusterId)
@@ -218,9 +174,6 @@ def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
         clusters = p.map(add_cluster_info,clusters)
 
     return clusters
-
-
-
 
 
 if __name__=="__main__":
