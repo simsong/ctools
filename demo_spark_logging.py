@@ -16,8 +16,8 @@ import json
 
 sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
 
-import .cspark as cspark
-import .clogging as clogging
+from ctools import cspark
+from ctools import clogging
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -61,7 +61,7 @@ if __name__=="__main__":
         exit(0)
 
     print("Running spark with 16 executors.... My PID is {}".format(os.getpid()))
-    sc = cspark.spark_context(num_executors=16, pyfiles=['clogging.py'])
+    sc = cspark.spark_session(num_executors=16, pyfiles=[os.path.join(os.path.dirname(os.path.abspath(__file__)),'clogging.py')]).sparkContext
     print("Spark Context Obtained. sc={}  My PID is now {}".format(sc, os.getpid()))
     print("application id:",sc.applicationId)
 
