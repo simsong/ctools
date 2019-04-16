@@ -20,7 +20,11 @@ import multiprocessing
 import time
 
 
-DEFAULT_WORKERS=20
+# Beware!
+# An error occurred (ThrottlingException) when calling the ListInstances operation (reached max retries: 4): Rate exceeded
+# We experienced throttling with DEFAULT_WORKERS=20
+# So we use 4
+DEFAULT_WORKERS=4
 
 # emr is in the ctools module. Be sure we can import ctools
 
@@ -47,8 +51,10 @@ def proxy_on():
     os.environ[HTTPS_PROXY] = os.environ[BCC_PROXY]
 
 def proxy_off():
-    del os.environ[HTTP_PROXY]
-    del os.environ[HTTPS_PROXY]
+    if HTTP_PROXY in os.environ:
+        del os.environ[HTTP_PROXY]
+    if HTTPS_PROXY in os.environ:
+        del os.environ[HTTPS_PROXY]
 
 def get_url(url):
     import urllib.request
