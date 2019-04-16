@@ -28,10 +28,11 @@ DEFAULT_WORKERS=4
 
 # emr is in the ctools module. Be sure we can import ctools
 
-sys.path.append( os.path.join(os.path.basename(__file__), ".." ))
-
-import ctools
-import ctools.ec2 as ec2
+# sys.path.append( os.path.join(os.path.basename(__file__), ".." ))
+#
+# import ctools
+# import ctools.ec2 as ec2
+import ec2
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
