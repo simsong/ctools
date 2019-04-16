@@ -394,13 +394,13 @@ class TyTag(xml.etree.ElementTree.Element):
         """Return true if option is set."""
         return option in self.options_as_set()
 
-    def add(self, tag, *args):
+    def add(self, tag, *args, attrib={}, **kwargs):
         """Add an element with type 'tag' for each item in args.  If args has
         elements inside it, add them as subelements, with text set to
         the tail. Returns the tag that is added."""
 
         # Make the tag and add it. The add in the text or sub-tags
-        e       = TyTag(tag)
+        e  = TyTag(tag, attrib=attrib)
         self.append(e)
 
         lastTag = None
