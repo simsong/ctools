@@ -26,13 +26,16 @@ import time
 # So we use 4
 DEFAULT_WORKERS=4
 
-# emr is in the ctools module. Be sure we can import ctools
+# Bring in ec2. It's either in the current directory, or its found through
+# the ctools.ec2 module
 
-# sys.path.append( os.path.join(os.path.basename(__file__), ".." ))
-#
-# import ctools
-# import ctools.ec2 as ec2
-import ec2
+try:
+    import ec2
+except ImportError as e:
+    try:
+        import ctools.ec2 as ec2
+    except ImportError as e:
+        raise RuntimeError("Cannot import ec2")
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
