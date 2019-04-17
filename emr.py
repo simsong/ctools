@@ -15,7 +15,7 @@ from pathlib import Path
 import json
 
 import subprocess
-from subprocess import Popen,PIPE,call
+from subprocess import Popen,PIPE,call,check_call,check_output
 import multiprocessing
 import time
 
@@ -37,12 +37,13 @@ except ImportError as e:
     except ImportError as e:
         raise RuntimeError("Cannot import ec2")
 
-HTTP_PROXY='HTTP_PROXY'
-HTTPS_PROXY='HTTPS_PROXY'
-BCC_PROXY='BCC_PROXY'
+HTTP_PROXY      = 'HTTP_PROXY'
+HTTPS_PROXY     = 'HTTPS_PROXY'
+BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
+BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
 
-_isMaster ='isMaster'
-_isSlave  = 'isSlave'
+_isMaster  = 'isMaster'
+_isSlave   = 'isSlave'
 _clusterId = 'clusterId'
 _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
@@ -50,9 +51,13 @@ _encryptionEnabled='encryptionEnabled'
 Status='Status'
 
 
+def show_credentials():
+    subprocess.call(['aws','configure','list'])
+
+
 def proxy_on():
-    os.environ[HTTP_PROXY]  = os.environ[BCC_PROXY]
-    os.environ[HTTPS_PROXY] = os.environ[BCC_PROXY]
+    os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
+    os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
 
 def proxy_off():
     if HTTP_PROXY in os.environ:
@@ -139,17 +144,15 @@ def cluster_hostnames(getMaster=True):
 
 def list_clusters():
     """Returns the AWS Dictionary"""
-    res = Popen(['aws','emr','list-clusters','--output','json'],encoding='utf-8',stdout=PIPE).communicate()[0]
+    res = check_output(['aws','emr','list-clusters','--output','json'],encoding='utf-8')
     return json.loads(res)['Clusters']
 
 def describe_cluster(clusterId):
-    res = Popen(['aws','emr','describe-cluster','--output','json','--cluster',clusterId],
-                encoding='utf-8',stdout=PIPE).communicate()[0]
+    res = check_output(['aws','emr','describe-cluster','--output','json','--cluster',clusterId], encoding='utf-8')
     return json.loads(res)['Cluster']    
 
 def list_instances(clusterId):
-    res = Popen(['aws','emr','list-instances','--output','json','--cluster-id',clusterId],
-                encoding='utf-8',stdout=PIPE).communicate()[0]
+    res = check_output(['aws','emr','list-instances','--output','json','--cluster-id',clusterId], encoding='utf-8')
     return json.loads(res)['Instances']    
 
 def add_cluster_info(cluster):

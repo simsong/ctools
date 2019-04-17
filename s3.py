@@ -77,6 +77,11 @@ def put_object(bucket,key,fname):
     assert os.path.exists(fname)
     return aws_s3api(['put-object','--bucket',bucket,'--key',key,'--body',fname])
 
+def put_s3url(url,fname):
+    """Upload a file to a given s3 URL"""
+    (bucket,key) = get_bucket_key(url)
+    return put_object(bucket, key, fname)
+
 def get_object(bucket,key,fname):
     """Given a bucket and a key, download a file"""
     if os.path.exists(fname):
