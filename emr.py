@@ -41,6 +41,8 @@ HTTP_PROXY      = 'HTTP_PROXY'
 HTTPS_PROXY     = 'HTTPS_PROXY'
 BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
 BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
+BCC_NO_PROXY    = 'BCC_NO_PROXY'
+NO_PROXY        = 'NO_PROXY'
 
 _isMaster  = 'isMaster'
 _isSlave   = 'isSlave'
@@ -57,6 +59,8 @@ def show_credentials():
 
 def set_proxy(http=False,https=False):
     """Individually control the HTTP and HTTPS proxy. It turns out that Amazon appears to use HTTP for instance IAM authentication  but HTTPS to reach the endpoints."""
+    if BCC_NO_PROXY in os.envion:
+        os.environ[NO_PROXY]    = os.environ[BCC_NO_PROXY]
     if http:
         os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
     else:
