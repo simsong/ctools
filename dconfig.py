@@ -91,12 +91,7 @@ def setup_logging(*,config,level):
 
     logging.getLogger().addHandler(handler)
     logging.info("START %s %s  log level: %s (%s)",sys.executable, " ".join(sys.argv), loglevel,loglevel)
-    atexit.register(logging_exit)
         
-def logging_exit():
-    if hasattr(sys,'last_value'):
-        logging.error(sys.last_value)
-
     
 def argparse_add_logging(parser):
     parser.add_argument('--loglevel', help='Set logging level',
