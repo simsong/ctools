@@ -15,27 +15,73 @@ from pathlib import Path
 import json
 
 import subprocess
-from subprocess import Popen,PIPE,call
+from subprocess import Popen,PIPE,call,check_call,check_output
+import multiprocessing
+import time
 
-HTTP_PROXY='HTTP_PROXY'
-HTTPS_PROXY='HTTPS_PROXY'
-BCC_PROXY='BCC_PROXY'
 
-_isMaster ='isMaster'
-_isSlave  = 'isSlave'
+# Beware!
+# An error occurred (ThrottlingException) when calling the ListInstances operation (reached max retries: 4): Rate exceeded
+# We experienced throttling with DEFAULT_WORKERS=20
+# So we use 4
+DEFAULT_WORKERS=4
+
+# Bring in ec2. It's either in the current directory, or its found through
+# the ctools.ec2 module
+
+try:
+    import ec2
+except ImportError as e:
+    try:
+        import ctools.ec2 as ec2
+    except ImportError as e:
+        raise RuntimeError("Cannot import ec2")
+
+HTTP_PROXY      = 'HTTP_PROXY'
+HTTPS_PROXY     = 'HTTPS_PROXY'
+BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
+BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
+BCC_NO_PROXY    = 'BCC_NO_PROXY'
+NO_PROXY        = 'NO_PROXY'
+
+_isMaster  = 'isMaster'
+_isSlave   = 'isSlave'
 _clusterId = 'clusterId'
 _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
 
 Status='Status'
 
+
+def show_credentials():
+    subprocess.call(['aws','configure','list'])
+
+
+def set_proxy(http=False,https=False):
+    """Individually control the HTTP and HTTPS proxy. It turns out that Amazon appears to use HTTP for instance IAM authentication  but HTTPS to reach the endpoints."""
+    if BCC_NO_PROXY in os.envion:
+        os.environ[NO_PROXY]    = os.environ[BCC_NO_PROXY]
+    if http:
+        os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
+    else:
+        if HTTP_PROXY in os.environ:
+            del os.environ[HTTP_PROXY]
+
+    if https:
+        os.environ[HTTPS_PROXY]  = os.environ[BCC_HTTPS_PROXY]
+    else:
+        if HTTPS_PROXY in os.environ:
+            del os.environ[HTTPS_PROXY]
+
 def proxy_on():
-    os.environ[HTTP_PROXY]  = os.environ[BCC_PROXY]
-    os.environ[HTTPS_PROXY] = os.environ[BCC_PROXY]
+    os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
+    os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
 
 def proxy_off():
-    del os.environ[HTTP_PROXY]
-    del os.environ[HTTPS_PROXY]
+    if HTTP_PROXY in os.environ:
+        del os.environ[HTTP_PROXY]
+    if HTTPS_PROXY in os.environ:
+        del os.environ[HTTPS_PROXY]
 
 def get_url(url):
     import urllib.request
@@ -115,18 +161,51 @@ def cluster_hostnames(getMaster=True):
             yield(host)
 
 def list_clusters():
-    res = Popen(['aws','emr','list-clusters','--output','json'],encoding='utf-8',stdout=PIPE).communicate()[0]
+    """Returns the AWS Dictionary"""
+    res = check_output(['aws','emr','list-clusters','--output','json'],encoding='utf-8')
     return json.loads(res)['Clusters']
 
-def describe_cluster(clusterID):
-    res = Popen(['aws','emr','describe-cluster','--output','json','--cluster',clusterID],
-                encoding='utf-8',stdout=PIPE).communicate()[0]
+def describe_cluster(clusterId):
+    res = check_output(['aws','emr','describe-cluster','--output','json','--cluster',clusterId], encoding='utf-8')
     return json.loads(res)['Cluster']    
 
-def list_instances(clusterID):
-    res = Popen(['aws','emr','list-instances','--output','json','--cluster-id',clusterID],
-                encoding='utf-8',stdout=PIPE).communicate()[0]
+def list_instances(clusterId):
+    res = check_output(['aws','emr','list-instances','--output','json','--cluster-id',clusterId], encoding='utf-8')
     return json.loads(res)['Instances']    
+
+def add_cluster_info(cluster):
+    clusterId = cluster['Id']
+    cluster['describe-cluster'] = describe_cluster(clusterId)
+    cluster['instances']        = list_instances(clusterId)
+    cluster['terminated']       = 'EndDateTime' in cluster['Status']['Timeline']
+    # Get the id of the master
+    try:
+        masterPublicDnsName = cluster['describe-cluster']['MasterPublicDnsName']
+        masterInstance = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
+        masterInstanceId = masterInstance['Ec2InstanceId']
+        # Get the master tags
+        cluster['MasterInstanceTags'] = {}
+        for tag in ec2.describe_tags(resourceId=masterInstanceId):
+            cluster['MasterInstanceTags'][tag['Key']] = tag['Value']
+    except KeyError as e:
+        pass
+    return cluster
+
+
+def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
+
+    """Pull all of the information about a cluster efficiently using the EMR cluster API and multithreading.
+    if terminated=True, get information about the terminated clusters as well.
+    """
+    clusters = list_clusters()
+    for cluster in list(clusters):
+        if terminated==False and cluster['Status']['State']=='TERMINATED':
+            clusters.remove(cluster)
+    with multiprocessing.Pool(workers) as p:
+        clusters = p.map(add_cluster_info,clusters)
+
+    return clusters
+
 
 if __name__=="__main__":
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter

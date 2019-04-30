@@ -11,10 +11,10 @@ if sys.version[0]=='2':
 else:
     from urllib.parse import urlparse
 
-
 # 
 # This creates an S3 file that supports seeking and caching.
-#
+# We keep this file at Python2.7 for legacy reasons
+
 
 global debug
 
@@ -30,6 +30,8 @@ debug=False
 
 READTHROUGH_CACHE_DIR='/mnt/tmp/s3cache'
 
+AWS_LIST=['/usr/bin/aws','/usr/local/bin/aws','/usr/local/aws/bin/aws']
+
 def get_bucket_key(loc):
     """Given a location, return the (bucket,key)"""
     p = urlparse(loc)
@@ -44,15 +46,25 @@ def get_bucket_key(loc):
     assert ValueError("{} is not an s3 location".format(loc))
 
 
+def get_aws():
+    for aws in AWS_LIST:
+        if os.path.exists(aws):
+            return aws
+    raise RuntimeError("Cannot find aws executable")            
+
 def aws_s3api(cmd):
-    fcmd = ['aws','s3api','--output=json'] + cmd
+    aws  = get_aws()
+    fcmd = [aws,'s3api','--output=json'] + cmd
     if debug:
         sys.stderr.write(" ".join(fcmd))
         sys.stderr.write("\n")
+
+
     if sys.version[0]=='2':
         data = subprocess.check_output(fcmd)
     else:
         data = subprocess.check_output(fcmd, encoding='utf-8')
+
     if not data:
         return None
     try:
@@ -65,9 +77,15 @@ def put_object(bucket,key,fname):
     assert os.path.exists(fname)
     return aws_s3api(['put-object','--bucket',bucket,'--key',key,'--body',fname])
 
+def put_s3url(url,fname):
+    """Upload a file to a given s3 URL"""
+    (bucket,key) = get_bucket_key(url)
+    return put_object(bucket, key, fname)
+
 def get_object(bucket,key,fname):
     """Given a bucket and a key, download a file"""
-    assert not os.path.exists(fname)
+    if os.path.exists(fname):
+        raise Exception("{} exists".format(fname))
     return aws_s3api(['get-object','--bucket',bucket,'--key',key,fname])
 
 def head_object(bucket,key):
@@ -80,8 +98,13 @@ def delete_object(bucket,key):
 
 PAGE_SIZE=1000
 MAX_ITEMS=1000
-def list_objects(bucket, prefix,limit=None,delimiter=None):
+def list_objects(bucket, prefix=None, limit=None, delimiter=None):
     """Returns a generator that lists objects in a bucket. Returns a list of dictionaries, including Size and ETag"""
+
+    # handle the case where an S3 URL is provided instead of a bucket and prefix
+    if bucket.startswith('s3://') and (prefix is None):
+        (bucket,prefix) = get_bucket_key(bucket)
+
     next_token = None
     total = 0
     while True:
@@ -112,8 +135,6 @@ def list_objects(bucket, prefix,limit=None,delimiter=None):
         else:
             return
             
-
-
 def etag(obj):
     """Return the ETag of an object. It is a known bug that the S3 API returns ETags wrapped in quotes
     see https://github.com/aws/aws-sdk-net/issue/815"""
@@ -169,7 +190,7 @@ class S3File:
         self.fpos   = 0
         self.tf     = tempfile.NamedTemporaryFile()
         cmd = ['aws','s3api','list-objects','--bucket',self.bucket,'--prefix',self.key,'--output','json']
-        data = json.loads(Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
+        data = json.loads(subprocess.Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
         file_info = data['Contents'][0]
         self.length = file_info['Size']
         self.ETag   = file_info['ETag']
@@ -191,7 +212,7 @@ class S3File:
         cmd = ['aws','s3api','get-object','--bucket',self.bucket,'--key',self.key,'--output','json',
                '--range','bytes={}-{}'.format(start,start+length-1),self.tf.name]
         if debug:print(cmd)
-        data = json.loads(Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
+        data = json.loads(subprocess.Popen(cmd,encoding='utf8',stdout=subprocess.PIPE).communicate()[0])
         if debug:print(data)
         self.tf.seek(0)         # go to the beginning of the data just read
         return self.tf.read(length) # and read that much
@@ -295,7 +316,7 @@ def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
         return p.stdout
 
     elif "w" in mode:
-        p =subprocess.Popen(['aws','s3','cp','--quiet','-',path],stdin=subprocess.PIPE,encoding=encoding)
+        p = subprocess.Popen(['aws','s3','cp','--quiet','-',path],stdin=subprocess.PIPE,encoding=encoding)
         return p.stdin
     else:
         raise RuntimeError("invalid mode:{}".format(mode))

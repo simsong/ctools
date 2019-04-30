@@ -148,7 +148,6 @@ def spark_make_logLevel_file(logLevel="error"):
         f.close()
         return f.name
 
-
 def spark_set_logLevel(logLevel='error'):
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
@@ -192,7 +191,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
 
     ### If we are running under py.test, use `call`, so we return.
     ### otherwise use execvp, so we do not return.
-    if os.environ['PYTEST_CURRENT_TEST']:
+    if 'PYTEST_CURRENT_TEST' in os.environ:
         subprocess.call(cmd)
     else:
         os.execvp(cmd[0],cmd)

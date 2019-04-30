@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 tytable.py:
+
+DO NOT START NEW PROJECTS WITH THIS! USE TYDOC INSTEAD
+
 Module for typesetting tables in ASCII, LaTeX, and HTML.  Perhaps even CSV!
 Also creates LaTeX variables.
 
@@ -116,7 +119,7 @@ def icomma(i):
 ################################################################
 
 
-# The row class holds the row and anny annotations
+# The row class holds the row and any annotations
 class Row:
     __slots__ = ['data', 'annotations']
 
