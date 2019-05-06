@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""procfname: Open a process and return a filename. Done with pipes and stuff."""
+"""procfname: Open a process and return a filename. Implemented with pipes."""
 
 from subprocess import Popen,PIPE
 
