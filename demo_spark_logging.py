@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-"""Demonstrate running spark, logging on the nodes, and collecting the log messages on the head-end"""
+"""Demonstrate running Spark, logging on the nodes, and collecting the log messages on the head-end"""
 
 import sys
 import os
@@ -66,7 +66,7 @@ if __name__=="__main__":
     print("application id:",sc.applicationId)
 
     # Initialize logging on the head-end.
-    # This is done after the spark context is acquired, but it could be done before. 
+    # This is done after the Spark context is acquired, but it could be done before. 
     clogging.setup(level='INFO', syslog=True, filename='demo_logfile.log')
 
     # Count the squares of the numbers 1..1000

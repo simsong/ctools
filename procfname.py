@@ -20,7 +20,7 @@ def procfname(cmd,mode='r'):
     
 
 if __name__=="__main__":
-    # test by opening the calender program
+    # test by opening the calendar program
     name = procfname("cal 2018","r")
     print("name=",name)
     with open(name,"r") as f:
