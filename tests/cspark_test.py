@@ -28,7 +28,7 @@ def test_spark_submit_cmd():
 
 TEST_RUN_SPARK_FILENAME='TEST_RUN_SPARK_FILENAME'
 def test_spark_submit():
-    # Run a spark job that we create and check to make sure we got the result.
+    # Run a Spark job and then check to make sure we got the result.
     # To get the result back, we have to save it in a file. But we only want to call
     # NamedTemporaryFile once, so we store the temporary file name in an environment variable.
     # For the same reason, we can't open the file in truncate mode.
@@ -38,7 +38,7 @@ def test_spark_submit():
     raise RuntimeWarning("""WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in the test""")
 
     if not cspark.spark_available():
-        return                  # don't test if no spark is available
+        return                  # don't test if no Spark is available
 
     # spark-submit will run in a subprocess
 

@@ -167,7 +167,7 @@ def concat_downloaded_objects(obj1, obj2):
     assert os.path.exists(obj1['fname'])
     assert os.path.exists(obj2['fname'])
 
-    # Concatenate with cat  (it's faster than doing it in python)
+    # Concatenate with cat  (it's faster than doing it in Python)
     subprocess.run(['cat',obj2['fname']],stdout=open(obj1['fname'],'ab'))
 
     # Update obj1
@@ -280,7 +280,7 @@ class S3File:
 
 # Tools for reading and write files from Amazon S3 without boto or boto3
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
-# but it is easier to use the aws cli, since it's configured to work.
+# but it is easier to use the AWS cli, since it's configured to work.
 # 
 # This could be redesigned to simply use the S3File() below
 
