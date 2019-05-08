@@ -33,6 +33,9 @@ class Table:
         self.csv_writer = csv_writer
         self.delimiter  = delimiter
         
+    def __repr__(self):
+        return f"<schema.table name:{self.name} {len(self.vardict)} vars>"
+
     def json_dict(self):
         """Provide a JSON dict of the table name and variables"""
         return {"name":self.name,
