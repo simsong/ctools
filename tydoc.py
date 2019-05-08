@@ -426,6 +426,7 @@ class TyTag(xml.etree.ElementTree.Element):
         @param *args - If args[0] is text, make it the child text.
                      - If args[:] haselements inside it, add them as subelements
                      - If args[-1] is text, make it the tail.
+                     - if len(args)==1 and args[0] is a list or a tuple, then a list was passed in, and just expand it.
         Returns the tag that is added."""
 
         # Make the tag and add it. The add in the text or sub-tags
@@ -436,6 +437,9 @@ class TyTag(xml.etree.ElementTree.Element):
             self.insert(position, e)
 
         lastTag = None
+        if len(args)==1 and ( isinstance(args[0],list) or isinstance(args[0],tuple)):
+            args = args[0]
+
         for arg in args:
             if not isinstance(arg, ET.Element):
                 if lastTag is not None:
