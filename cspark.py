@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 """
-cspark --- tools for running spark more easily from Python
+cspark --- tools for running Spark more easily from Python
 """
 #
 __author__ = "Simson L. Garfinkel"
@@ -58,7 +58,7 @@ LOG4J_ERRORS_TO_CONSOLE = """<?xml version="1.0" encoding="UTF-8" ?>
 def detach(logdir=os.getcwd()):
     """Redirect stdout and stderr to a file in the current directory, or logdir if specified"""
     #
-    # Don't detach if we are running under spark; we already detached, and spark may not handle detaching
+    # Don't detach if we are running under Spark; we already detached, and Spark may not handle detaching
     if spark_running():
         print("Spark is running; will not detach", file=sys.stderr)
         return
@@ -91,7 +91,7 @@ def detach(logdir=os.getcwd()):
     stdout.close()
     stderr.close()
 
-    # Most daemon implementaitons close all FDs. But that is not what we want, so just return
+    # Most daemon implementations close all FDs. But that is not what we want, so just return
 
 def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
                      conf=[], configdict=None, properties_file=None):
@@ -132,8 +132,8 @@ def spark_running():
 
 
 def spark_available():
-    """Returns True if spark is available"""
-    # Right now, only allow spark on amazon
+    """Returns True if Spark is available"""
+    # Right now, only allow Spark on Amazon
     if AWS_PATH not in os.environ:
         return False
     import distutils.spawn
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     parser.add_argument("--spark",  action="store_true", help="Run a sample program with spark")
 
     args = parser.parse_args()
-    if args.detach:             # must be checked before spark
+    if args.detach:             # must be checked before Spark
         print("Detaching...")
         detach()
         sys.stdout.write("This was written to stdout at {}...\n".format(time.asctime()))
@@ -286,7 +286,7 @@ if __name__ == "__main__":
         sys.stderr.write("This was written to stderr 600 seconds later...\n")
     
     if args.spark:
-        sc = spark_context()    # create a spark context with spark-submit
+        sc = spark_context()    # create a Spark context with spark-submit
         import operator
         result = sc.parallelize(range(0, 1000001)).reduce(operator.add)
         print("***********************************")

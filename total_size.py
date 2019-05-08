@@ -12,7 +12,7 @@ except ImportError:
 def total_size(o, handlers={}, verbose=False):
     """ Returns the approximate memory footprint an object and all of its contents.
 
-    Automatically finds the contents of the following builtin containers and
+    Automatically finds the contents of the following built in containers and
     their subclasses:  tuple, list, deque, dict, set and frozenset.
     To search other containers, add handlers to iterate over their contents:
 

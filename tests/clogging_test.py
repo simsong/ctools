@@ -27,7 +27,7 @@ def test_logging_to_syslog():
     clogging.setup(level='INFO',syslog=True)
     nonce = str(time.time())
     logging.error("Logging at t={}.".format(nonce))
-    # Wait a few miliseconds for the nonce to appear in the logfile
+    # Wait a few milliseconds for the nonce to appear in the logfile
     time.sleep(.01)
     # Look for the nonce
     count = 0

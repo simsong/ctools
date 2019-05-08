@@ -33,7 +33,8 @@ try:
     import ec2
 except ImportError as e:
     try:
-        import ctools.ec2 as ec2
+        sys.path.append( os.path.dirname(__file__) )
+        import ec2
     except ImportError as e:
         raise RuntimeError("Cannot import ec2")
 
@@ -52,36 +53,6 @@ _encryptionEnabled='encryptionEnabled'
 
 Status='Status'
 
-
-def show_credentials():
-    subprocess.call(['aws','configure','list'])
-
-
-def set_proxy(http=False,https=False):
-    """Individually control the HTTP and HTTPS proxy. It turns out that Amazon appears to use HTTP for instance IAM authentication  but HTTPS to reach the endpoints."""
-    if BCC_NO_PROXY in os.envion:
-        os.environ[NO_PROXY]    = os.environ[BCC_NO_PROXY]
-    if http:
-        os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
-    else:
-        if HTTP_PROXY in os.environ:
-            del os.environ[HTTP_PROXY]
-
-    if https:
-        os.environ[HTTPS_PROXY]  = os.environ[BCC_HTTPS_PROXY]
-    else:
-        if HTTPS_PROXY in os.environ:
-            del os.environ[HTTPS_PROXY]
-
-def proxy_on():
-    os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
-    os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
-
-def proxy_off():
-    if HTTP_PROXY in os.environ:
-        del os.environ[HTTP_PROXY]
-    if HTTPS_PROXY in os.environ:
-        del os.environ[HTTPS_PROXY]
 
 def get_url(url):
     import urllib.request

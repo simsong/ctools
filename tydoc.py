@@ -1043,6 +1043,17 @@ def b(text):
     e.text=text
     return e
 
+def a(text,href=None):
+    """Return an anchor"""
+    attrib = {}
+    if href:
+        attrib['href']=href
+    e = ET.Element('a',attrib)
+    e.text = text
+    return e
+
+
+
 def i(text):
     """Return an itallic run """
     e = ET.Element('i')
