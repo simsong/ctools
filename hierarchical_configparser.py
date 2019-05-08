@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 """
-hiearchical_configparser.py:
+hierarchical_configparser.py:
 
 Like a regular configparser, but supports the INCLUDE= statement.
 If INCLUDE=filename.ini is present in any section, the contents of that section are
@@ -10,7 +10,7 @@ read from filename.ini. If filename.ini includes its own INCLUDE=, that is inclu
 Name/value pairs in the included file are read FIRST, so that they can be shadowed by name/value
 pairs in the including file. 
 
-If the INCLUDE= is when the [DEFAULT] section, then the values of *every* section are incluced.
+If the INCLUDE= is when the [DEFAULT] section, then the values of *every* section are included.
 
 Don't have INCLUDE loops. I tried to protect against them, but it was too hard.
 """
@@ -76,7 +76,7 @@ class HierarchicalConfigParser(ConfigParser):
         for section in sections:
             # make a local copy of the files we read for this section
 
-            # If this section is not in self or cf, add it. (We must have gotten in from the default)
+            # If this section is not in self or cf, add it. (We must have gotten it from the default)
             if section not in self:
                 self.add_section(section)
             if section not in cf:
