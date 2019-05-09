@@ -121,7 +121,8 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 
-HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
+HTML_START_NEWLINE_TAGS = set([TAG_HEAD,TAG_HTML,TAG_BODY,TAG_TABLE,TAG_CAPTION,TAG_THEAD,TAG_TBODY,TAG_TFOOT])
+HTML_END_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
 
 LATEX_TAGS = {TAG_P:('\n','\n\n'),
               TAG_PRE:('\\begin{Verbatim}\n','\n\\end{Verbatim}\n'),
@@ -179,6 +180,10 @@ DEFAULT_TEXT_FORMAT = '{}'
 DEFAULT_NUMBER_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
+def is_empty(elem):
+    """Return true if tag has no text or children"""
+    return len(elem)==0 and ((elem.text is None) or (len(elem.text)==0))
+
 class Renderer:
     @staticmethod
     def format():
@@ -205,32 +210,39 @@ class Renderer:
         f.write(f'--- end repr(doc) ---\n')
         return True
 
+    # By default, we write the tail to output
     @staticmethod
     def write_tail(doc, f, tail=None):
-        Renderer.write_tail(doc,f,tail)
+        if tail is None:
+            tail = doc.tail
+        if tail is not None:
+            f.write(tail)
+        return True
 
 
 class HTMLRenderer(Renderer):
+    """Render the HTML tags, but just write the text and the tail."""
     @staticmethod
     def format(self):
         return FORMAT_HTML
     @staticmethod
     def write_tag_begin(doc, f):
+        eflag = '/' if is_empty(doc) else ''
         if doc.attrib:
             attribs = (" " + " ".join([f'{key}="{value}"' for (key,value) in doc.attrib.items()]))
         else:
             attribs = ''
-        f.write(f'<{doc.tag}{attribs}>')
-        return True
-    @staticmethod
-    def write_tag_end(doc, f):
-        f.write(f'</{doc.tag}>')
-        if doc.tag.upper() not in HTML_NO_NEWLINE_TAGS:
+        f.write(f'<{doc.tag}{attribs}{eflag}>')
+        if doc.tag.upper() in HTML_START_NEWLINE_TAGS:
             f.write("\n")
         return True
     @staticmethod
-    def write_tail(doc, f, tail=None):
-        HTMLRenderer.write_tail(doc,f,tail)
+    def write_tag_end(doc, f):
+        if not is_empty(doc):
+            f.write(f'</{doc.tag}>')
+            if doc.tag.upper() not in HTML_END_NO_NEWLINE_TAGS:
+                f.write("\n")
+        return True
 
 
 class LatexRenderer(Renderer):
@@ -260,7 +272,14 @@ class LatexRenderer(Renderer):
 
     @staticmethod
     def write_tail(doc, f, tail=None):
-        LatexRenderer.write_tail(doc,f,tail)
+        if tail is None:
+            tail = doc.tail
+        if tail is not None:
+            if hasattr(doc,'option') and doc.option( OPTION_NO_ESCAPE):
+                f.write( latex_escape( tail ) )
+            else:
+                f.write( tail )
+
 
 class MarkdownRenderer(Renderer):
     @staticmethod
@@ -345,6 +364,7 @@ def scalenum(v, minscale=0):
 ################################################################
 
 class TyTag(xml.etree.ElementTree.Element):
+    """ctools HTML tag class, with support for rendering and creation."""
     def __init__(self, tag, attrib={}, **extra):
         super().__init__(tag, attrib, **extra)
 
@@ -383,27 +403,43 @@ class TyTag(xml.etree.ElementTree.Element):
         options = self.options_as_set()
         options.add(option)
         self.attrib[ATTRIB_OPTIONS] = ','.join(options)
+        return self
 
     def clear_option(self, option):
         """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
         options = self.options_as_set()
         options.remove(option)
         self.attrib[ATTRIB_OPTIONS] = ','.join(options)
+        return self
 
     def option(self, option):
         """Return true if option is set."""
         return option in self.options_as_set()
 
-    def add(self, tag, *args, attrib={}, **kwargs):
-        """Add an element with type 'tag' for each item in args.  If args has
-        elements inside it, add them as subelements, with text set to
-        the tail. Returns the tag that is added."""
+    def set_attrib(self, newAttribs):
+        assert isinstance(newAttribs, dict)
+        self.attrib = {**self.attrib, **newAttribs}
+        return self
+
+    def add_tag(self, tag, *args, attrib={}, position=-1, **kwargs):
+        """Add an element with type 'tag' for each item in args.  
+        @param *args - If args[0] is text, make it the child text.
+                     - If args[:] haselements inside it, add them as subelements
+                     - If args[-1] is text, make it the tail.
+                     - if len(args)==1 and args[0] is a list or a tuple, then a list was passed in, and just expand it.
+        Returns the tag that is added."""
 
         # Make the tag and add it. The add in the text or sub-tags
         e  = TyTag(tag, attrib=attrib)
-        self.append(e)
+        if position==-1:
+            self.append(e)
+        else:
+            self.insert(position, e)
 
         lastTag = None
+        if len(args)==1 and ( isinstance(args[0],list) or isinstance(args[0],tuple)):
+            args = args[0]
+
         for arg in args:
             if not isinstance(arg, ET.Element):
                 if lastTag is not None:
@@ -454,8 +490,8 @@ HTML, LaTeX or Markdown.
     DEFAULT_META_TAGS=['<meta http-equiv="Content-type" content="text/html; charset=utf-8">']
     def __init__(self, format=None):
         super().__init__(TAG_HTML)
-        self.head = self.add(TAG_HEAD)
-        self.body = self.add(TAG_BODY)
+        self.head = self.add_tag(TAG_HEAD)
+        self.body = self.add_tag(TAG_BODY)
         self.options = set()
         self.latex_packages=self.DEFAULT_LATEX_PACKAGES
 
@@ -503,7 +539,7 @@ HTML, LaTeX or Markdown.
         self.insert_image(buf,format='png')
 
     def set_title(self, *text):
-        self.head.add(TAG_TITLE, *text)
+        self.head.add_tag(TAG_TITLE, *text)
 
     def insert_toc(self,level=3):
         # If there is already a TOC tag, remove it, then add a new one.
@@ -553,32 +589,32 @@ HTML, LaTeX or Markdown.
         
     def p(self, *text):
         """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
-        self.body.add(TAG_P, *text)
+        self.body.add_tag(TAG_P, *text)
         return self
         
     def h1(self, *text):
         """Add a H1"""
-        self.body.add(TAG_H1, *text)
+        self.body.add_tag(TAG_H1, *text)
         return self
 
     def h2(self, *text):
         """Add a H2"""
-        self.body.add(TAG_H2, *text)
+        self.body.add_tag(TAG_H2, *text)
         return self
 
     def h3(self, *text):
         """Add a H3"""
-        self.body.add(TAG_H3, *text)
+        self.body.add_tag(TAG_H3, *text)
         return self
 
     def pre(self, *text):
         """Add a preformatted"""
-        self.body.add(TAG_PRE, *text)
+        self.body.add_tag(TAG_PRE, *text)
         return self
 
     def hr(self):
         """Add a horizontal rule"""
-        self.add(TAG_HR)
+        self.add_tag(TAG_HR)
         return self
 
     def table(self, **kwargs):
@@ -596,11 +632,11 @@ HTML, LaTeX or Markdown.
 
     def ul(self, *text):
         """Add a UL"""
-        self.body.add(TAG_UL, *text)
+        self.body.add_tag(TAG_UL, *text)
 
     def li(self, *text):
         """Add a LI"""
-        self.body.add(TAG_UL, *text)
+        self.body.add_tag(TAG_UL, *text)
 
 
 ################################################################
@@ -629,6 +665,7 @@ class X_TOC(TyTag):
             # Output nothing
             return True
         return False
+
 
 ################################################################
 ### Improved tytable with the new API.
@@ -673,11 +710,11 @@ class tytable(TyTag):
         self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
-        # Create the layout of the generic table
-        self.add(TAG_CAPTION)
-        self.add(TAG_THEAD)
-        self.add(TAG_TBODY)
-        self.add(TAG_TFOOT)
+        # Create the layout of the generic table and create easy methods for accessing
+        self.caption = self.add_tag(TAG_CAPTION)
+        self.thead   = self.add_tag(TAG_THEAD)
+        self.tbody   = self.add_tag(TAG_TBODY)
+        self.tfoot   = self.add_tag(TAG_TFOOT)
     
     def custom_renderer(self, f, format=FORMAT_HTML):
         if format in (FORMAT_LATEX,FORMAT_TEX):
@@ -827,7 +864,7 @@ class tytable(TyTag):
         """The <caption> tag must be inserted immediately after the <table> tag.
         https://www.w3schools.com/tags/tag_caption.asp
         """
-        self.add(TAG_CAPTION, caption)
+        self.add_tag(TAG_CAPTION, caption, position=0)
 
     def set_fontsize(self, size):
         self.attrib[ATTRIB_FONT_SIZE] = str(size)
@@ -980,25 +1017,25 @@ not set, it auto-generated"""
 ################################################################
 
 # Add some covers for popular paragraph types
-def p(*text):
+def p(*text,**kwargs):
     """Return a paragraph. Text runs are combined"""
-    return tydoc().p(*text)
+    return tydoc().p(*text,**kwargs)
 
-def h1(*text):
+def h1(*text,**kwargs):
     """Return a header 1"""
-    return tydoc().h1(*text)
+    return tydoc().h1(*text,**kwargs)
 
-def h2(*text):
+def h2(*text,**kwargs):
     """Return a header 2"""
-    return tydoc().h2(*text)
+    return tydoc().h2(*text,**kwargs)
 
-def h3(*text):
+def h3(*text,**kwargs):
     """Return a header 3"""
-    return tydoc().h3(*text)
+    return tydoc().h3(*text,**kwargs)
 
-def pre(*text):
+def pre(*text,**kwargs):
     """Return preformatted text"""
-    return tydoc().pre(*text)
+    return tydoc().pre(*text,**kwargs)
 
 def b(text):
     """Return a bold run"""
