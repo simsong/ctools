@@ -197,7 +197,8 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
         os.execvp(cmd[0],cmd)
     
 
-def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None, conf=[], configdict={},
+def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None, 
+                  conf=[], configdict={},
                   properties_file=None, appName='spark'):
     """If spark is running, return the Spark Context.
     If spark is not running, rerun the program under spark and to get to this same point.
