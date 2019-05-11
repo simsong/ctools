@@ -44,9 +44,14 @@ class Schema:
         return name in self.tabledict
 
     def add_table(self,t):
+        assert isinstance(t, Table)
         self.tabledict[t.name] = t
         logging.info("Added table {}".format(t.name))
         return t
+
+    def del_table_named(self, name):
+        del self.tabledict[name]
+        logging.info("Deleted table {}".format(name))
 
     def add_table_named(self, *, name, **kwargs):
         return self.add_table( Table(name=name, **kwargs) )
