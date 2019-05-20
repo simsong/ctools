@@ -14,42 +14,50 @@ import subprocess
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
-BCC_PROXY='BCC_PROXY'
+BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
+BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
+
+def proxy_on():
+    os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
+    os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
+
+def proxy_off():
+    if HTTP_PROXY in os.environ:
+        del os.environ[HTTP_PROXY]
+    if HTTPS_PROXY in os.environ:
+        del os.environ[HTTPS_PROXY]
 
 class Proxy:    
     def __init__(self):
         pass
 
     def __enter__(self):
-        if BCC_PROXY in os.environ:
-            os.environ[HTTP_PROXY] = os.environ[BCC_PROXY]
-            os.environ[HTTPS_PROXY] = os.environ[BCC_PROXY]
+        proxy_on()
         return self
 
     def __exit__(self, *args):
-        del os.environ[HTTP_PROXY]
-        del os.environ[HTTPS_PROXY]
+        proxy_off()
 
 
-
-def emr_describe_cluster(clusterId):
-    """Get the cluster info"""
-    with Proxy() as p:
-        return json.loads(subprocess.check_output(['aws','emr','describe-cluster','--output','json','--cluster-id',clusterId]))['Cluster']
-
-def emr_list_instances(clusterId):
-    """Get the list of instances for this cluster in json output"""
-    with Proxy() as p:
-        return json.loads(subprocess.check_output(['aws','emr','list-instances','--output','json','--cluster-id',clusterId]))['Instances']
+def user_data():
+    return json.loads(requests.get("http://169.254.169.254/2016-09-02/user-data/").text)
 
 def instance_identity():
-    return json.loads(requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document'))
-
+    return json.loads(requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document').text)
 
 def ami_id():
-    r = requests.get('http://169.254.169.254/latest/meta-data/ami-id')
-    return r.text
+    return requests.get('http://169.254.169.254/latest/meta-data/ami-id').text
 
+def get_ipaddr():
+    return requests.get("http://169.254.169.254/latest/meta-data/local-ipv4").text
+
+def instanceId():
+    return instance_identity()['instanceId']
+
+def encryptionEnabled():
+    return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
+
+   
 
 if __name__=="__main__":
     print("AWS Info:")
