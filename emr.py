@@ -42,27 +42,17 @@ except ImportError as e:
     except ImportError as e:
         raise RuntimeError("Cannot import ec2")
 
-<<<<<<< HEAD
 # Proxy is controlled in aws
-=======
-HTTP_PROXY      = 'HTTP_PROXY'
-HTTPS_PROXY     = 'HTTPS_PROXY'
-BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
-BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
-BCC_NO_PROXY    = 'BCC_NO_PROXY'
-NO_PROXY        = 'NO_PROXY'
 
 _isMaster  = 'isMaster'
 _isSlave   = 'isSlave'
 _clusterId = 'clusterId'
 _diskEncryptionConfiguration='diskEncryptionConfiguration'
 _encryptionEnabled='encryptionEnabled'
->>>>>>> 2d0939797c5f3b6cb9b87daed52e1701881bc91e
 
 Status='Status'
 
 
-<<<<<<< HEAD
 def show_credentials():
     subprocess.call(['aws','configure','list'])
 
@@ -74,8 +64,6 @@ def list_instances(clusterId):
     return json.loads(subprocess.check_output(['aws','emr','list-instances',
                                                '--output','json','--cluster-id',clusterId]))['Instances']
 
-=======
->>>>>>> 2d0939797c5f3b6cb9b87daed52e1701881bc91e
 def get_url(url):
     import urllib.request
     with urllib.request.urlopen(url) as response:
