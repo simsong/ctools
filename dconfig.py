@@ -19,12 +19,16 @@ test1.company.com.
 This module also supports opening files on Amazon S3, with the s3:// notation.
 
 """
+
 from configparser import ConfigParser
+from subprocess import run,PIPE,Popen
 import os
 import os.path
 import logging
 import logging.handlers
 import datetime
+import argparse
+import csv
 import zipfile
 import io
 import glob
@@ -32,9 +36,6 @@ import sys
 import atexit
 import re
 import socket
-
-if __name__ == "__main__" or __package__=="":
-    __package__ = "ctools"
 
 from .s3 import s3open,s3exists
 
@@ -51,8 +52,8 @@ SRC_DIRECTORY = os.path.dirname(__file__)
 
 # For handling the config file
 CONFIG_FILENAME = "config.ini"
-CONFIG_PATHAME  = os.path.join(SRC_DIRECTORY, CONFIG_FILENAME)    # can be changed
-config_file     = None              # will become a ConfiParser object
+CONFIG_PATHNAME  = os.path.join(SRC_DIRECTORY, CONFIG_FILENAME)    # can be changed
+config_file     = None              # will become a ConfigParser object
 
 # Get the config file. We would like to automate getting the config file and setting up logging.
 def get_config(pathname=None,filename=None):

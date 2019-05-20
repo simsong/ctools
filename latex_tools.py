@@ -280,7 +280,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     if chdir:
         os.chdir(cwd)           
 
-    # Restore enviornment
+    # Restore environment
     if texinputs is not None:
         if oldenv:
             os.environ[TEXINPUTS] = oldenv
@@ -328,12 +328,12 @@ def inspect_json_all_pages_have_same_orientation(info):
     return None
 
 def inspect_pdf(pdf_fname,texinputs=None):
-    """Using PAGECOUNTER_TEX, run LaTeX on each page and detemrine each page's orientation and size.
+    """Using PAGECOUNTER_TEX, run LaTeX on each page and determine each page's orientation and size.
     Returns a dictionary containing the following properties:
     [FILENAME] - filename
     [SHA256]   - sha256
     [PAGES][{pageinfo},pageinfo,...}    - #pages
-        {pageinfo}  - Information about each page is stored in its own dictonary.
+        {pageinfo}  - Information about each page is stored in its own dictionary.
           ORIENTATION: = PORTRAIT or LANDSCAPE
           WIDTH: = width (in pt)
           HEIGHT:  = height (in pt)
@@ -379,7 +379,7 @@ def inspect_pdf(pdf_fname,texinputs=None):
                                      dir=os.path.dirname( os.path.abspath(pdf_fname))) as tmp:
         tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
         tmp.flush()             # Make sure contents are written out
-        tmp.close()             # Windows compatiability 
+        tmp.close()             # Windows compatability 
         run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True, texinputs=texinputs)
         os.unlink( tmp.name)
     return ret
