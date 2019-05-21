@@ -14,7 +14,7 @@ class GZFile:
         if ('r' in mode) and ('w' in mode):
             raise ValueError('cannot open gz files for both reading and writing')
         if 'r' in mode:
-            self.p = subprocess.Popen(['gzcat',name],stdout=subprocess.PIPE)
+            self.p = subprocess.Popen(['zcat',name],stdout=subprocess.PIPE)
             self._fileno = self.p.stdout.fileno()
             self.name   = f'/dev/fd/{self._fileno}'
             self.f      = open(self.name,mode)
@@ -38,6 +38,9 @@ class GZFile:
     def __exit__(self,err,msg,stack):
         if err:
             raise err
+        self.close()
+    
+    def close(self):
         if 'r' in self.mode:
             self.p.stdout.close()
             del self.p
@@ -45,6 +48,8 @@ class GZFile:
             self.p.stdin.close()
             self.p.wait()
             del self.p
+
+    
 
 if __name__=="__main__":
     with GZFile("test.gz","w") as f:

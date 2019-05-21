@@ -5,7 +5,6 @@
 import datetime
 import time
 import os
-import sqlite3
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -15,13 +14,6 @@ def timet_iso(t=time.time()):
     return datetime.datetime.now().isoformat()[0:19]
 
 class DBSQL:
-    def __init__(self,*,fname):
-        try:
-            self.conn = sqlite3.connect(fname)
-        except sqlite3.OperationalError as e:
-            print(f"Cannot open database file: {fname}")
-            exit(1)
-        
     def __enter__(self):
         return self
 
@@ -32,7 +24,10 @@ class DBSQL:
         """Create the schema if it doesn't exist."""
         c = self.conn.cursor()
         for line in schema.split(";"):
-            c.execute(line)
+            line = line.strip()
+            if len(line)>0:
+                print(line)
+                c.execute(line)
 
     def execselect(self, sql, vals=()):
         """Execute a SQL query and return the first line"""
@@ -45,3 +40,22 @@ class DBSQL:
 
     def commit(self):
         self.conn.commit()
+
+class DBSqlite3(DBSQL):
+    def __init__(self,*,fname=None):
+        try:
+            import sqlite3
+            self.conn = sqlite3.connect(fname)
+        except sqlite3.OperationalError as e:
+            print(f"Cannot open database file: {fname}")
+            exit(1)
+        
+class DBMySQL(DBSQL):
+    def __init__(self,*,host,database,user,password):
+        try:
+            import mysql.connector as mysql
+            self.conn = mysql.connect(host=host,database=database,user=user,password=password)
+        except ImportError as e:
+            print(f"Please install MySQL connector with 'conda install mysql-connector-python'")
+            exit(1)
+        
