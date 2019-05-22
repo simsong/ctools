@@ -928,7 +928,7 @@ not set, it auto-generated"""
     ### Table Manipulation Routines
 
     def add_row(self, where, cells, row_attrib={}):
-        """Add a row of cells to the table.
+        """Add a row of cells to the table. You probably want to call add_head() or add_data()
         @param cells - a list of cells.
         """
         where_node = self.findall(f".//{where}")[0]
