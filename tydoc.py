@@ -104,6 +104,8 @@ TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
 TAG_TFOOT = 'TFOOT'
 TAG_X_TOC = 'X-TOC'          # a custom tag; should not appear in output
+TAG_LINK  = 'LINK'
+TAG_SCRIPT = 'SCRIPT'
 
 ATTR_VAL  = 'v'               # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
@@ -181,7 +183,10 @@ DEFAULT_NUMBER_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 def is_empty(elem):
-    """Return true if tag has no text or children"""
+    """Return true if tag has no text or children. Used to turn <tag></tag> into <tag/>.
+    Note that the script and link tags can never be made empty"""
+    if elem.tag.upper() in [TAG_SCRIPT,TAG_LINK]:
+        return False
     return len(elem)==0 and ((elem.text is None) or (len(elem.text)==0))
 
 class Renderer:
@@ -365,8 +370,11 @@ def scalenum(v, minscale=0):
 
 class TyTag(xml.etree.ElementTree.Element):
     """ctools HTML tag class, with support for rendering and creation."""
-    def __init__(self, tag, attrib={}, **extra):
+    def __init__(self, tag, attrib={}, text=None, **extra):
+        """Create a tag. If text is provided, make that the tag's text"""
         super().__init__(tag, attrib, **extra)
+        if text is not None:
+            self.text = text
 
     def render(self,f, format='html'):
         return render(self, f, format=format)
@@ -422,11 +430,14 @@ class TyTag(xml.etree.ElementTree.Element):
         return self
 
     def add_tag(self, tag, *args, attrib={}, position=-1, **kwargs):
-        """Add an element with type 'tag' for each item in args.  
+        """Convenience method.
+        Create a new element of type 'tag' and att it.
+        @param position - specifies where it goes.
         @param *args - If args[0] is text, make it the child text.
                      - If args[:] haselements inside it, add them as subelements
                      - If args[-1] is text, make it the tail.
-                     - if len(args)==1 and args[0] is a list or a tuple, then a list was passed in, and just expand it.
+                     - if len(args)==1 and args[0] is a list or a tuple, then a list was passed in, 
+                          and just expand it.
         Returns the tag that is added."""
 
         # Make the tag and add it. The add in the text or sub-tags
