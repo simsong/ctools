@@ -183,9 +183,14 @@ DEFAULT_NUMBER_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 def is_empty(elem):
+<<<<<<< HEAD
     """Return true if tag has no text or children. Used to turn <tag></tag> into <tag/>.
     Note that the script and link tags can never be made empty"""
     if elem.tag.upper() in [TAG_SCRIPT,TAG_LINK]:
+=======
+    """Return true if tag has no text or children"""
+    if elem.tag.upper() in ['SCRIPT','LINK']:
+>>>>>>> ece9eda2e208adf4a55965a33205630b961e28ca
         return False
     return len(elem)==0 and ((elem.text is None) or (len(elem.text)==0))
 
@@ -370,10 +375,16 @@ def scalenum(v, minscale=0):
 
 class TyTag(xml.etree.ElementTree.Element):
     """ctools HTML tag class, with support for rendering and creation."""
+<<<<<<< HEAD
     def __init__(self, tag, attrib={}, text=None, **extra):
         """Create a tag. If text is provided, make that the tag's text"""
         super().__init__(tag, attrib, **extra)
         if text is not None:
+=======
+    def __init__(self, tag, text=None, attrib={}, **extra):
+        super().__init__(tag, attrib, **extra)
+        if text:
+>>>>>>> ece9eda2e208adf4a55965a33205630b961e28ca
             self.text = text
 
     def render(self,f, format='html'):
@@ -429,18 +440,16 @@ class TyTag(xml.etree.ElementTree.Element):
         self.attrib = {**self.attrib, **newAttribs}
         return self
 
-    def add_tag(self, tag, *args, attrib={}, position=-1, **kwargs):
-        """Convenience method.
-        Create a new element of type 'tag' and att it.
-        @param position - specifies where it goes.
-        @param *args - If args[0] is text, make it the child text.
-                     - If args[:] haselements inside it, add them as subelements
-                     - If args[-1] is text, make it the tail.
-                     - if len(args)==1 and args[0] is a list or a tuple, then a list was passed in, 
-                          and just expand it.
+    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, **kwargs):
+        """Add an element with type 'tag' for each item in args.  
+        @param elems - If elems[0] is text, make it the child text.
+                     - If elems[:] haselements inside it, add them as subelements
+                     - If elems[-1] is text, make it the tail.
         Returns the tag that is added."""
 
         # Make the tag and add it. The add in the text or sub-tags
+        assert isinstance(elems, list)
+
         e  = TyTag(tag, attrib=attrib)
         if position==-1:
             self.append(e)
@@ -448,24 +457,29 @@ class TyTag(xml.etree.ElementTree.Element):
             self.insert(position, e)
 
         lastTag = None
-        if len(args)==1 and ( isinstance(args[0],list) or isinstance(args[0],tuple)):
-            args = args[0]
-
-        for arg in args:
-            if not isinstance(arg, ET.Element):
-                if lastTag is not None:
-                    if lastTag.tail == None:
-                        lastTag.tail = ""
-                    lastTag.tail  += str(arg)
-                else:
+        for elem in elems:
+            if not isinstance(elem, ET.Element):
+                if lastTag is None:
                     if e.text == None:
                         e.text = ""
-                    e.text += str(arg)
+                    e.text += str(elem)
+                else:
+                    if lastTag.tail  == None:
+                        lastTag.tail = ""
+                    lastTag.tail  += str(elem)
             else:
                 # Copy the tag into place
-                lastTag = copy.deepcopy(arg)
+                lastTag = copy.deepcopy(elem)
                 e.append(lastTag)
         return e
+
+    def add_tag(self, tag, attrib={}, position=-1, **kwargs):
+        return self.add_tag_elems(tag, elems=[], attrib=attrib, position=position, **kwargs)
+
+    def add_tag_text(self, tag, text, attrib={}, position=-1, **kwargs):
+        """Like add_tag_elems above, but just with the text for tag. Calls add_tag_elems"""
+        return self.add_tag_elems(tag, [text], attrib=attrib, position=position, **kwargs)
+        
 
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
@@ -501,8 +515,8 @@ HTML, LaTeX or Markdown.
     DEFAULT_META_TAGS=['<meta http-equiv="Content-type" content="text/html; charset=utf-8">']
     def __init__(self, format=None):
         super().__init__(TAG_HTML)
-        self.head = self.add_tag(TAG_HEAD)
-        self.body = self.add_tag(TAG_BODY)
+        self.head = self.add_tag_elems(TAG_HEAD)
+        self.body = self.add_tag_elems(TAG_BODY)
         self.options = set()
         self.latex_packages=self.DEFAULT_LATEX_PACKAGES
 
@@ -549,8 +563,8 @@ HTML, LaTeX or Markdown.
         buf.seek(0)
         self.insert_image(buf,format='png')
 
-    def set_title(self, *text):
-        self.head.add_tag(TAG_TITLE, *text)
+    def set_title(self, text):
+        self.head.add_tag_elems(TAG_TITLE, [text])
 
     def insert_toc(self,level=3):
         # If there is already a TOC tag, remove it, then add a new one.
@@ -598,34 +612,34 @@ HTML, LaTeX or Markdown.
         # And add it to the body
         body.insert(0,xtoc)
         
-    def p(self, *text):
+    def p(self, text):
         """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
-        self.body.add_tag(TAG_P, *text)
+        self.body.add_tag_text(TAG_P, text)
         return self
         
-    def h1(self, *text):
+    def h1(self, text):
         """Add a H1"""
-        self.body.add_tag(TAG_H1, *text)
+        self.body.add_tag_text(TAG_H1, text)
         return self
 
-    def h2(self, *text):
+    def h2(self, text):
         """Add a H2"""
-        self.body.add_tag(TAG_H2, *text)
+        self.body.add_tag_text(TAG_H2, text)
         return self
 
-    def h3(self, *text):
+    def h3(self, text):
         """Add a H3"""
-        self.body.add_tag(TAG_H3, *text)
+        self.body.add_tag_text(TAG_H3, text)
         return self
 
-    def pre(self, *text):
+    def pre(self, text):
         """Add a preformatted"""
-        self.body.add_tag(TAG_PRE, *text)
+        self.body.add_tag_text(TAG_PRE, text)
         return self
 
     def hr(self):
         """Add a horizontal rule"""
-        self.add_tag(TAG_HR)
+        self.add_tag_text(TAG_HR)
         return self
 
     def table(self, **kwargs):
@@ -641,13 +655,13 @@ HTML, LaTeX or Markdown.
         self.head.append(TyTag('script',{'type':"text/javascript",
                                          'src':url}))
 
-    def ul(self, *text):
+    def ul(self, text):
         """Add a UL"""
-        self.body.add_tag(TAG_UL, *text)
+        self.body.add_tag_text(TAG_UL, text)
 
-    def li(self, *text):
+    def li(self, text):
         """Add a LI"""
-        self.body.add_tag(TAG_UL, *text)
+        self.body.add_tag_text(TAG_UL, text)
 
 
 ################################################################
@@ -875,7 +889,7 @@ class tytable(TyTag):
         """The <caption> tag must be inserted immediately after the <table> tag.
         https://www.w3schools.com/tags/tag_caption.asp
         """
-        self.add_tag(TAG_CAPTION, caption, position=0)
+        self.add_tag_text(TAG_CAPTION, caption, position=0)
 
     def set_fontsize(self, size):
         self.attrib[ATTRIB_FONT_SIZE] = str(size)
@@ -929,7 +943,7 @@ not set, it auto-generated"""
     ### Table Manipulation Routines
 
     def add_row(self, where, cells, row_attrib={}):
-        """Add a row of cells to the table.
+        """Add a row of cells to the table. You probably want to call add_head() or add_data()
         @param cells - a list of cells.
         """
         where_node = self.findall(f".//{where}")[0]
