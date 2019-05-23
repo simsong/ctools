@@ -89,3 +89,4 @@ output.*
 *.aux
 *.pdf
 *.tex
+test.gz
