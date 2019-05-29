@@ -41,6 +41,9 @@ class DBSQL:
     def commit(self):
         self.conn.commit()
 
+    def close(self):
+        self.conn.close()
+
 class DBSqlite3(DBSQL):
     def __init__(self,*,fname=None):
         try:
