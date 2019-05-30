@@ -104,6 +104,8 @@ TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
 TAG_TFOOT = 'TFOOT'
 TAG_X_TOC = 'X-TOC'  # a custom tag; should not appear in output
+TAG_LINK  = 'LINK'
+TAG_SCRIPT = 'SCRIPT'
 
 ATTR_VAL = 'v'  # where we keep the original values
 ATTR_TYPE = 't'  # the Python type of the value
@@ -183,8 +185,9 @@ DEFAULT_INTEGER_FORMAT = '{:,}'
 
 
 def is_empty(elem):
-    """Return true if tag has no text or children"""
-    if elem.tag.upper() in ['SCRIPT','LINK']:
+    """Return true if tag has no text or children. Used to turn <tag></tag> into <tag/>.
+    Note that the script and link tags can never be made empty"""
+    if elem.tag.upper() in [TAG_SCRIPT,TAG_LINK]:
         return False
     return len(elem) == 0 and ((elem.text is None) or (len(elem.text) == 0))
 
@@ -388,9 +391,10 @@ def scalenum(v, minscale=0):
 
 class TyTag(xml.etree.ElementTree.Element):
     """ctools HTML tag class, with support for rendering and creation."""
-    def __init__(self, tag, text=None, attrib={}, **extra):
+    def __init__(self, tag, attrib={}, text=None, **extra):
+        """Create a tag. If text is provided, make that the tag's text"""
         super().__init__(tag, attrib, **extra)
-        if text:
+        if text is not None:
             self.text = text
 
     def render(self, f, format='html'):
