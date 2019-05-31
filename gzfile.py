@@ -21,7 +21,8 @@ class GZFile:
         if ('r' in mode) and ('w' in mode):
             raise ValueError('cannot open gz files for both reading and writing')
         if 'r' in mode:
-            self.p = subprocess.Popen(['zcat',name],stdout=subprocess.PIPE)
+            encoding = None if 'b' in mode else 'utf-8' 
+            self.p = subprocess.Popen(['zcat',name],stdout=subprocess.PIPE,encoding=encoding)
             self._fileno = self.p.stdout.fileno()
             self.name   = f'/dev/fd/{self._fileno}'
             self.f      = open(self.name,mode)
