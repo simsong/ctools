@@ -198,7 +198,8 @@ def delete_temp_files(latex_source,verbose=False):
 TEXINPUTS='TEXINPUTS'
 def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
               texinputs=None,
-              callback_aux=None,callback_log=None,ignore_ret=False,chdir=True,verbose=False):
+              callback_aux=None,callback_log=None,ignore_ret=False,
+              chdir=True,verbose=False):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
 
     # Are we setting TEXINPUTS? If so, remember old value.

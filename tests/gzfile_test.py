@@ -30,5 +30,5 @@ def test_gzfile():
     with GZFile("test.gz","r") as f:
         data = f.read()
     assert data==TEST_STRING
-
+    os.unlink("test.gz")
         

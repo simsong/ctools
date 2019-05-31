@@ -7,6 +7,7 @@ Class to let files be opened for reading and writing with automatic compression
 
 import tempfile
 import subprocess
+import os
 
 class GZFile:
     def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None, 
@@ -21,13 +22,16 @@ class GZFile:
         if ('r' in mode) and ('w' in mode):
             raise ValueError('cannot open gz files for both reading and writing')
         if 'r' in mode:
-            encoding = None if 'b' in mode else 'utf-8' 
-            self.p = subprocess.Popen(['zcat',name],stdout=subprocess.PIPE,encoding=encoding)
+            if not os.path.exists(name):
+                raise FileNotFoundError(name)
+            encoding     = None if 'b' in mode else 'utf-8' 
+            self.p       = subprocess.Popen( ['gunzip'], stdin=open(name,'rb'), stdout=subprocess.PIPE, encoding=encoding )
             self._fileno = self.p.stdout.fileno()
-            self.name   = f'/dev/fd/{self._fileno}'
-            self.f      = open(self.name,mode)
+            self.name    = f'/dev/fd/{self._fileno}'
+            self.f       = open(self.name,mode)
         if 'w' in mode:
             self.p = subprocess.Popen(['gzip',f'-{level}'],stdin=subprocess.PIPE,stdout=open(name,'wb'))
+            self.name = name
     def fileno(self):
         return self._fileno
     
