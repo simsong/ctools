@@ -24,7 +24,8 @@ class GZFile:
         if 'r' in mode:
             if not os.path.exists(name):
                 raise FileNotFoundError(name)
-            self.p       = subprocess.Popen( ['gunzip'], stdin=open(name,'rb'), stdout=subprocess.PIPE)
+            encoding     = None if 'b' in mode else 'utf-8' 
+            self.p       = subprocess.Popen( ['gunzip'], stdin=open(name,'rb'), stdout=subprocess.PIPE, encoding=encoding )
             self._fileno = self.p.stdout.fileno()
             self.name    = f'/dev/fd/{self._fileno}'
             self.f       = open(self.name,mode)
