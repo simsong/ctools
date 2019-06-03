@@ -317,15 +317,17 @@ class Variable:
         return str(val)
 
     def dump(self,func=print):
-        if self.column:
-            func("  #{} [{}:{}] {} {} {}".format(self.field,
-                                                 self.column,self.width,self.name,self.desc,self.vtype))
-        else:
-            func("  #{} {} {} {}".format(self.field,self.name,self.desc,self.vtype))
+        out = "".join([ "  ",
+                        f" #{self.field}" if self.field is not None else "",
+                        f"[{self.column}:{self.width}] ",
+                        f"{self.name} ",
+                        f"({self.desc}) " if self.desc else "",
+                        f"{self.vtype}"])
+        func( out )
 
         for r in sorted(self.ranges):
-            func("      {}".format(r))
-        if self.default:
-            func("      DEFAULT: {}".format(self.default))
+            func(f"      {f}")
+        if self.default is not None:
+            func(f"      DEFAULT: {self.default}")
 
 
