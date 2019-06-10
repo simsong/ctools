@@ -5,6 +5,7 @@
 import datetime
 import time
 import os
+import logging
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -91,13 +92,15 @@ class DBMySQL(DBSQL):
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=False):
+    def csfr(auth,cmd,vals=None,quiet=True):
         """Connect, select, fetchall, and retry as necessary"""
-        import mysql.connector.errors
-        for i in range(1,self.RETRIES):
+        try:
+            import mysql.connector.errors as errors
+        except ImportError as e:
+            import pymysql.err as errors
+        for i in range(1,DBMySQL.RETRIES):
             try:
                 db = DBMySQL(auth)
-                db.connect()
                 result = None
                 c = db.cursor()
                 try:
@@ -105,23 +108,23 @@ class DBMySQL(DBSQL):
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
                     c.execute(cmd,vals)
-                except mysql.connector.errors.ProgrammingError as e:
+                except errors.ProgrammingError as e:
                     logging.error("cmd: "+str(cmd))
                     logging.error("vals: "+str(vals))
                     logging.error(str(e))
                     raise e
                 if cmd.upper().startswith("SELECT"):
                     result = c.fetchall()
-                c.close()       # close the cursor
+                c.close()  # close the cursor
                 db.close() # close the connection
                 return result
-            except mysql.connector.errors.InterfaceError as e:
+            except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{self.RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
                 pass
-            except mysql.connector.errors.OperationalError as e:
+            except errors.OperationalError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{self.RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
                 pass
             time.sleep(self.RETRY_DELAY_TIME)
         raise e

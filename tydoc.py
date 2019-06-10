@@ -697,6 +697,10 @@ class tydoc(TyTag):
         return self.body.append_matplotlib(*args, **kwargs)
 
 
+class html(tydoc):
+    """We can also call the tydoc an html file"""
+    pass
+
 ################################################################
 ### Tag to typeset Table of Contents.
 ### HTML and Markdown get passed through. 
