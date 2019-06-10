@@ -6,7 +6,21 @@ import re
 import pwd
 
 CENSUS_DAS_SH='/etc/profile.d/census_das.sh'
-EXPORT_RE = re.compile("^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
+VARS_RE   = re.compile(r"^(export)?\s*([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
+EXPORT_RE = re.compile(r"^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
+
+def get_vars(fname):
+    """Read the variables in fname and return them in a dictionary"""
+    ret = {}
+    with open(fname,'r') as f:
+        for line in f:
+            m = VARS_RE.search(line)
+            if m:
+                ret[m.group(1)] = m.group(2)
+    return ret
+                
+
+
 
 def get_env(pathname):
     """Read the BASH file and extract the variables. Currently this is done with pattern matching. ANother way would be to run the BASH script as a subshell and then do a printenv and actually capture the variables"""

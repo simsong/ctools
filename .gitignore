@@ -89,4 +89,9 @@ output.*
 *.aux
 *.pdf
 *.tex
+demo?.html
+demo?.md
+demo*.png
+*.png
 test.gz
+

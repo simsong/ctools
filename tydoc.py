@@ -126,13 +126,32 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 HTML_START_NEWLINE_TAGS = {TAG_HEAD, TAG_HTML, TAG_BODY, TAG_TABLE, TAG_CAPTION, TAG_THEAD, TAG_TBODY, TAG_TFOOT}
 HTML_END_NO_NEWLINE_TAGS = {TAG_B, TAG_I, TAG_TD, TAG_TH, TAG_A}
 
-LATEX_TAGS = {TAG_P: ('\n', '\n\n'), TAG_PRE: ('\\begin{Verbatim}\n', '\n\\end{Verbatim}\n'), TAG_B: ('\\textbf{', '}'), TAG_I: ('\\textit{', '}'),
-              TAG_H1: ('\\section{', '}\n'), TAG_H2: ('\\subsection{', '}\n'), TAG_H3: ('\\subsubsection{', '}\n'), TAG_HR: ('', ''),
-              # do something better
-              TAG_HEAD: ('', ''), TAG_BODY: ('', ''), TAG_TITLE: ('\\title{', '}\n\\maketitle\n')}
 
-MARKDOWN_TAGS = {TAG_HTML: ('', ''), TAG_PRE: ("```", "```"), TAG_TITLE: ('# ', '\n'), TAG_P: ('', '\n\n'), TAG_B: ('**', '**'), TAG_H1: ('# ', '\n'),
-                 TAG_H2: ('## ', '\n'), TAG_H3: ('### ', '\n'), TAG_HR: ('=' * 64, '\n'), TAG_HEAD: ('', ''), TAG_BODY: ('', '')}
+LATEX_TAGS = {TAG_P: ('\n', '\n\n'),
+              TAG_PRE: ('\\begin{Verbatim}\n', '\n\\end{Verbatim}\n'),
+              TAG_B: ('\\textbf{', '}'),
+              TAG_I: ('\\textit{', '}'),
+              TAG_H1: ('\\section{', '}\n'),
+              TAG_H2: ('\\subsection{', '}\n'),
+              TAG_H3: ('\\subsubsection{', '}\n'),
+              TAG_HR: ('', ''),
+              # do something better
+              TAG_HEAD: ('', ''),
+              TAG_BODY: ('', ''),
+              TAG_TITLE: ('\\title{', '}\n\\maketitle\n')}
+
+
+MARKDOWN_TAGS = {TAG_HTML: ('', ''), 
+                 TAG_PRE: ("```", "```"),
+                 TAG_TITLE: ('# ', '\n'),
+                 TAG_P: ('', '\n\n'),
+                 TAG_B: ('**', '**'),
+                 TAG_H1: ('# ', '\n'),
+                 TAG_H2: ('## ', '\n'),
+                 TAG_H3: ('### ', '\n'),
+                 TAG_HR: ('=' * 64, '\n'),
+                 TAG_HEAD: ('', ''),
+                 TAG_BODY: ('', '')}
 
 # For the Python
 OPTION_LONGTABLE = 'longtable'  # use LaTeX {longtable} environment
@@ -243,8 +262,12 @@ class LatexRenderer(Renderer):
 
     @staticmethod
     def write_tag_begin(doc, f):
-        (begin, end) = LATEX_TAGS[doc.tag.upper()]
-        f.write(begin)
+        tag = doc.tag.upper()
+        try:
+            (begin, end) = LATEX_TAGS[tag]
+            f.write(begin)
+        except KeyError as e:
+            f.write(f"\n% <{tag}>\n")
         return True
 
     @staticmethod
@@ -259,8 +282,12 @@ class LatexRenderer(Renderer):
 
     @staticmethod
     def write_tag_end(doc, f):
-        (begin, end) = LATEX_TAGS[doc.tag.upper()]
-        f.write(end)
+        tag = doc.tag.upper()
+        try:
+            (begin, end) = LATEX_TAGS[doc.tag.upper()]
+            f.write(end)
+        except KeyError as e:
+            f.write(f"\n% </{tag}>\n")
         return True
 
     @staticmethod
@@ -281,18 +308,27 @@ class MarkdownRenderer(Renderer):
 
     @staticmethod
     def write_tag_begin(doc, f):
-        (begin, end) = MARKDOWN_TAGS[doc.tag.upper()]
-        f.write(begin)
+        try:
+            (begin, end) = MARKDOWN_TAGS[doc.tag.upper()]
+            f.write(begin)
+        except KeyError as e:
+            pass
         return True
 
     @staticmethod
     def write_tag_end(doc, f):
-        (begin, end) = MARKDOWN_TAGS[doc.tag.upper()]
-        f.write(end)
+        try:
+            (begin, end) = MARKDOWN_TAGS[doc.tag.upper()]
+            f.write(end)
+        except KeyError as e:
+            pass
         return True
 
 
-RENDERERS = {FORMAT_HTML: HTMLRenderer(), FORMAT_LATEX: LatexRenderer(), FORMAT_TEX: LatexRenderer(), FORMAT_MARKDOWN: MarkdownRenderer()}
+RENDERERS = {FORMAT_HTML: HTMLRenderer(),
+             FORMAT_LATEX: LatexRenderer(),
+             FORMAT_TEX: LatexRenderer(),
+             FORMAT_MARKDOWN: MarkdownRenderer()}
 
 
 def render(doc, f, format=FORMAT_HTML):
@@ -392,14 +428,16 @@ class TyTag(xml.etree.ElementTree.Element):
             return set()
 
     def set_option(self, option):
-        """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
+        """@param option is a string that is added to the 'option' attrib. 
+        They are separated by commas"""
         options = self.options_as_set()
         options.add(option)
         self.attrib[ATTRIB_OPTIONS] = ','.join(options)
         return self
 
     def clear_option(self, option):
-        """@param option is a string that is added to the 'option' attrib. They are separated by commas"""
+        """@param option is a string that is added to the 'option' attrib. 
+        They are separated by commas"""
         options = self.options_as_set()
         options.remove(option)
         self.attrib[ATTRIB_OPTIONS] = ','.join(options)
@@ -415,18 +453,25 @@ class TyTag(xml.etree.ElementTree.Element):
         return self
 
     def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, **kwargs):
-        """Add an element with type 'tag' for each item in args.  
+        """
+        Add an element with option children.
+        @param tag   - if text, create a new tag with tag tag.
+                     - if a TyTag instance, just use it.
         @param elems - If elems[0] is text, make it the child text.
                      - If elems[:] haselements inside it, add them as subelements
                      - If elems[-1] is text, make it the tail.
         Returns the tag that is added."""
 
-        # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
+        # Mutable default value for attrib is ok, since we're not
+        # changing attrib here or in any subclasses
 
         # Make the tag and add it. The add in the text or sub-tags
         assert isinstance(elems, list)
 
-        e = TyTag(tag, attrib=attrib)
+        if isinstance(tag, TyTag):
+            e = tag
+        else:
+            e = TyTag(tag, attrib=attrib)
         if position == -1:
             self.append(e)
         else:
@@ -456,6 +501,18 @@ class TyTag(xml.etree.ElementTree.Element):
         """Like add_tag_elems above, but just with the text for tag. Calls add_tag_elems"""
         return self.add_tag_elems(tag, [text], attrib=attrib, position=position, **kwargs)
         
+    def append_image(self, buf, *, format):
+        if isinstance(buf, io.BytesIO):
+            buf.seek(0)
+            buf = buf.read()  # turn it into a buffer
+        img = EmbeddedImageTag(buf, format=format)
+        self.add_tag(img)
+
+    def append_matplotlib(self, fig, *, format="png", **kwargs):
+        buf = io.BytesIO()
+        fig.savefig(buf, format=format, **kwargs)
+        buf.seek(0)
+        self.append_image(buf, format='png')
 
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
@@ -468,23 +525,27 @@ class EmbeddedImageTag(TyTag):
 
     def custom_renderer(self, f, alt="", format=FORMAT_HTML):
         if format == FORMAT_HTML:
-            f.write('<img alt="{}" src="data:image/{};base64,{}" />'.format(self.alt, self.format, codecs.decode(base64.b64encode(self.buf))))
+            f.write('<img alt="{}" src="data:image/{};base64,{}" />'.
+                    format(self.alt, self.format, codecs.decode(base64.b64encode(self.buf))))
         elif format in (FORMAT_LATEX, FORMAT_TEX):
             fname = os.path.splitext(f.name)[0] + "_image.png"
             with open(fname, "wb") as f2:
                 f2.write(self.buf)
             f.write(f'\\includegraphics{fname}\n')
         elif format == FORMAT_MARKDOWN:
-            raise RuntimeError("markdown embedded images not supported yet")
+            fname = os.path.splitext(f.name)[0] + "_image.png"
+            with open(fname, "wb") as f2:
+                f2.write(self.buf)
+            f.write(f'![{fname}]({fname})\n')
         else:
             raise RuntimeError("unknown format: {}".format(format))
 
 
 class tydoc(TyTag):
     """Python class for building HTML documents and rendering them into
-HTML, LaTeX or Markdown.
+    HTML, LaTeX or Markdown. Contains two sub-elements: head and body.
+    Note that you don't want to append to tydoc you want to append to the head or body.
 """
-
     # We have a custom begin and end text for latex
 
     DEFAULT_LATEX_PACKAGES = ['graphicx', 'tabularx', 'longtable']
@@ -492,15 +553,16 @@ HTML, LaTeX or Markdown.
 
     def __init__(self):
         super().__init__(TAG_HTML)
-        self.head = self.add_tag_elems(TAG_HEAD)
-        self.body = self.add_tag_elems(TAG_BODY)
-        self.options = set()
+        self.head    = self.add_tag_elems(TAG_HEAD)
+        self.body    = self.add_tag_elems(TAG_BODY)
         self.latex_packages = self.DEFAULT_LATEX_PACKAGES
 
     def write_tag_begin(self, f, format=None):
         """Provide custom tags for writing document tag"""
         if format == FORMAT_LATEX:
-            f.write("\n".join(["\\documentclass{article}"] + ['\\usepackage{%s}\n' % pkg for pkg in self.latex_packages] + ["\\begin{document}"]))
+            f.write("\n".join(["\\documentclass{article}"]
+                              + ['\\usepackage{%s}\n' % pkg for pkg in self.latex_packages]
+                              + ["\\begin{document}"]))
             return True
         elif format == FORMAT_HTML:
             f.write('\n'.join(['<!DOCTYPE html>', '<html>'] + self.DEFAULT_META_TAGS))
@@ -526,19 +588,6 @@ HTML, LaTeX or Markdown.
         up to the specified level.  This could probably be done with
         some clever XPath..."""
         return ret  # TODO: ret is undefined
-
-    def insert_image(self, buf, *, format):
-        if isinstance(buf, io.BytesIO):
-            buf.seek(0)
-            buf = buf.read()  # turn it into a buffer
-        img = EmbeddedImageTag(buf, format=format)
-        self.append(img)
-
-    def insert_matplotlib(self, plt, *, format="png", **kwargs):
-        buf = io.BytesIO()
-        plt.savefig(buf, format=format, **kwargs)
-        buf.seek(0)
-        self.insert_image(buf, format='png')
 
     def set_title(self, text):
         self.head.add_tag_elems(TAG_TITLE, [text])
@@ -587,16 +636,17 @@ HTML, LaTeX or Markdown.
         xtoc = X_TOC()
         xtoc.insert(0, ET.XML(xml_data.read()))
         # And add it to the body
-
         body.insert(0,xtoc)
         
+    # passthroughs
     def p(self, text):
-        """Add a paragraph. Multiple arguments are combined and can be text or other HTML elements"""
+        """Add a paragraph. Multiple arguments are combined 
+        and can be text or other HTML elements""" 
         self.body.add_tag_text(TAG_P, text)
         return self
         
     def h1(self, text):
-        """Add a H1"""
+        """Append H1 to the current tag"""
         self.body.add_tag_text(TAG_H1, text)
         return self
 
@@ -638,6 +688,13 @@ HTML, LaTeX or Markdown.
     def li(self, text):
         """Add a LI"""
         self.body.add_tag_text(TAG_UL, text)
+
+    # Pass throughs
+    def append_image(self, *args, **kwargs):
+        return self.body.append_image(*args, **kwargs)
+
+    def append_matplotlib(self, *args, **kwargs):
+        return self.body.append_matplotlib(*args, **kwargs)
 
 
 ################################################################
@@ -710,7 +767,6 @@ class tytable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.options = set()
         self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
         self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT

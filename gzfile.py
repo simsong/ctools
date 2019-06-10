@@ -10,14 +10,22 @@ import subprocess
 import os
 
 class GZFile:
-    def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None):
-        self.mode   = mode
+    def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None, 
+                 newline=None, closefd=True, opener=None, auto=False):
+        if auto==True and name.endswith(".gz")==False:
+            self.passthrough = True
+            self.f = open(self.name, mode=mode, buffering=buffering, encoding=encoding, errors=errors,
+                          newline=newline, closefd=closefd, opener=opener)
+            return 
+        self.passthrough = False
+        self.mode        = mode
         if ('r' in mode) and ('w' in mode):
             raise ValueError('cannot open gz files for both reading and writing')
         if 'r' in mode:
             if not os.path.exists(name):
                 raise FileNotFoundError(name)
-            self.p       = subprocess.Popen( ['gunzip'], stdin=open(name,'rb'), stdout=subprocess.PIPE)
+            encoding     = None if 'b' in mode else 'utf-8' 
+            self.p       = subprocess.Popen( ['gunzip'], stdin=open(name,'rb'), stdout=subprocess.PIPE, encoding=encoding )
             self._fileno = self.p.stdout.fileno()
             self.name    = f'/dev/fd/{self._fileno}'
             self.f       = open(self.name,mode)
@@ -31,6 +39,8 @@ class GZFile:
         return self.f.read(size)
 
     def write(self,text):
+        if self.passthrough:
+            return self.f.write(text)
         if isinstance(text,bytes):
             return self.p.stdin.write(text)
         else:
@@ -44,7 +54,19 @@ class GZFile:
             raise err
         self.close()
     
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.passthrough:
+            return self.f.__next__()
+        if 'r' in self.mode:
+            return self.p.stdout.__next__()
+        raise RuntimeError("not sure how to __next__ on 'w'")
+
     def close(self):
+        if self.passthrough:
+            return self.f.close()
         if 'r' in self.mode:
             self.p.stdout.close()
             del self.p
@@ -52,7 +74,6 @@ class GZFile:
             self.p.stdin.close()
             self.p.wait()
             del self.p
-
     
 
 if __name__=="__main__":
