@@ -54,8 +54,13 @@ class DBMySQL(DBSQL):
     def __init__(self,*,host,database,user,password):
         try:
             import mysql.connector as mysql
-            self.conn = mysql.connect(host=host,database=database,user=user,password=password)
         except ImportError as e:
-            print(f"Please install MySQL connector with 'conda install mysql-connector-python'")
-            exit(1)
-        
+            try:
+                import pymysql as mysql
+            except ImportError as e:
+                print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector")
+                raise ImportError()
+                
+        self.conn = mysql.connect(host=host,database=database,user=user,password=password)
+        self.conn.autocommit = True
+
