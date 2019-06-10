@@ -14,6 +14,10 @@ def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
     return datetime.datetime.now().isoformat()[0:19]
 
+def hostname():
+    """Hostname without domain"""
+    return socket.gethostname().partition('.')[0]
+
 class DBSQL:
     def __enter__(self):
         return self
@@ -129,4 +133,65 @@ class DBMySQL(DBSQL):
             time.sleep(self.RETRY_DELAY_TIME)
         raise e
 
+################################################################
+##
+## memory profiling tools
+##
+
+def maxrss():
+    """Return maxrss in bytes, not KB"""
+    return resource.getrusage(resource.RUSAGE_SELF)[2]*1024 
+
+def print_maxrss():
+    for who in ['RUSAGE_SELF','RUSAGE_CHILDREN']:
+        rusage = resource.getrusage(getattr(resource,who))
+        print(who,'utime:',rusage[0],'stime:',rusage[1],'maxrss:',rusage[2])
+
+def mem_info(what,df,dump=True):
+    import pandas as pd
+    print(f'mem_info {what} ({type(df)}):')
+    if type(df)!=pd.core.frame.DataFrame:
+        print("Total {} memory usage: {:}".format(what,total_size(df)))
+    else:
+        if dump:
+            pd.options.display.max_columns  = 240
+            pd.options.display.max_rows     = 5
+            pd.options.display.max_colwidth = 240
+            print(df)
+        for dtype in ['float','int','object']: 
+            selected_dtype = df.select_dtypes(include=[dtype])
+            mean_usage_b = selected_dtype.memory_usage(deep=True).mean()
+            mean_usage_mb = mean_usage_b / 1024 ** 2
+            print("Average {} memory usage for {} columns: {:03.2f} MB".format(what,dtype,mean_usage_mb))
+        for dt in ['object','int64']:
+            for c in df.columns:
+                try:
+                    if df[c].dtype==dt:
+                        print(f"{dt} column: {c}")
+                except AttributeError:
+                    pass
+        df.info(verbose=False,max_cols=160,memory_usage='deep',null_counts=True)
+    print("elapsed time at {}: {:.2f}".format(what,time.time() - start_time))
+    print("==============================")
+
+
+REPORT_FREQUENCY = 60           # report this often
+last_report = 0                 # last time we reported
+def report_load_memory(auth):
+    """Report and print the load and free memory; return free memory"""
+    global last_report
+    free_mem = get_free_mem()
+
+    # print current tasks
+    # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
+    # why we should not use "INSERT IGNORE"
+    if last_report < time.time() + REPORT_FREQUENCY:
+        DBMySQL.csfr(auth,"insert into sysload (t, host, min1, min5, min15, freegb) "
+                     "values (now(), %s, %s, %s, %s, %s) "
+                     "ON DUPLICATE KEY update min1=min1", 
+                     [HOSTNAME] + list(os.getloadavg()) + [get_free_mem()//GiB],
+                     quiet=quiet)
+        last_report = time.time()
+
+    
 
