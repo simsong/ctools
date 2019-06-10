@@ -66,7 +66,11 @@ def demo2():
     ax.plot(x, np.sin(2*x))
     doc.append_matplotlib(fig, dpi=72, pad_inches=0.1)
     doc.save("demo2.html")
+    doc.save("demo2.tex")
+    doc.save("demo2.md")
+    # Just for grins, let's also run LaTeX
+    latex_tools.run_latex("demo2.tex", delete_tempfiles=True)
 
 if __name__=="__main__":
-    #demo1()
+    demo1()
     demo2()
