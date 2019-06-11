@@ -5,6 +5,7 @@
 import datetime
 import time
 import os
+import logging
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -12,6 +13,10 @@ SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
 def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
     return datetime.datetime.now().isoformat()[0:19]
+
+def hostname():
+    """Hostname without domain"""
+    return socket.gethostname().partition('.')[0]
 
 class DBSQL:
     def __enter__(self):
@@ -53,12 +58,140 @@ class DBSqlite3(DBSQL):
             print(f"Cannot open database file: {fname}")
             exit(1)
         
-class DBMySQL(DBSQL):
+
+class DBMySQLAuth:
     def __init__(self,*,host,database,user,password):
+        self.host = host
+        self.database = database
+        self.user=user
+        self.password = password
+
+
+class DBMySQL(DBSQL):
+    def __init__(self,auth):
         try:
             import mysql.connector as mysql
-            self.conn = mysql.connect(host=host,database=database,user=user,password=password)
+            internalError = RuntimeError
         except ImportError as e:
-            print(f"Please install MySQL connector with 'conda install mysql-connector-python'")
-            exit(1)
+            try:
+                import pymysql
+                import pymysql as mysql
+                internalError = pymysql.err.InternalError
+            except ImportError as e:
+                print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector")
+                raise ImportError()
+                
+        self.conn = mysql.connect(host=auth.host,
+                                  database=auth.database,
+                                  user=auth.user,
+                                  password=auth.password)
+        # Census standard TZ is America/New_York
+        try:
+            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
+        except internalError as e:
+            pass
+        self.cursor().execute('SET autocommit = 1') # autocommit
+
         
+    RETRIES = 10
+    RETRY_DELAY_TIME = 1
+    @staticmethod
+    def csfr(auth,cmd,vals=None,quiet=True):
+        """Connect, select, fetchall, and retry as necessary"""
+        try:
+            import mysql.connector.errors as errors
+        except ImportError as e:
+            import pymysql.err as errors
+        for i in range(1,DBMySQL.RETRIES):
+            try:
+                db = DBMySQL(auth)
+                result = None
+                c = db.cursor()
+                try:
+                    logging.info(f"PID{os.getpid()}: {cmd} {vals}")
+                    if quiet==False:
+                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+                    c.execute(cmd,vals)
+                except errors.ProgrammingError as e:
+                    logging.error("cmd: "+str(cmd))
+                    logging.error("vals: "+str(vals))
+                    logging.error(str(e))
+                    raise e
+                if cmd.upper().startswith("SELECT"):
+                    result = c.fetchall()
+                c.close()  # close the cursor
+                db.close() # close the connection
+                return result
+            except errors.InterfaceError as e:
+                logging.error(e)
+                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
+                pass
+            except errors.OperationalError as e:
+                logging.error(e)
+                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
+                pass
+            time.sleep(self.RETRY_DELAY_TIME)
+        raise e
+
+################################################################
+##
+## memory profiling tools
+##
+
+def maxrss():
+    """Return maxrss in bytes, not KB"""
+    return resource.getrusage(resource.RUSAGE_SELF)[2]*1024 
+
+def print_maxrss():
+    for who in ['RUSAGE_SELF','RUSAGE_CHILDREN']:
+        rusage = resource.getrusage(getattr(resource,who))
+        print(who,'utime:',rusage[0],'stime:',rusage[1],'maxrss:',rusage[2])
+
+def mem_info(what,df,dump=True):
+    import pandas as pd
+    print(f'mem_info {what} ({type(df)}):')
+    if type(df)!=pd.core.frame.DataFrame:
+        print("Total {} memory usage: {:}".format(what,total_size(df)))
+    else:
+        if dump:
+            pd.options.display.max_columns  = 240
+            pd.options.display.max_rows     = 5
+            pd.options.display.max_colwidth = 240
+            print(df)
+        for dtype in ['float','int','object']: 
+            selected_dtype = df.select_dtypes(include=[dtype])
+            mean_usage_b = selected_dtype.memory_usage(deep=True).mean()
+            mean_usage_mb = mean_usage_b / 1024 ** 2
+            print("Average {} memory usage for {} columns: {:03.2f} MB".format(what,dtype,mean_usage_mb))
+        for dt in ['object','int64']:
+            for c in df.columns:
+                try:
+                    if df[c].dtype==dt:
+                        print(f"{dt} column: {c}")
+                except AttributeError:
+                    pass
+        df.info(verbose=False,max_cols=160,memory_usage='deep',null_counts=True)
+    print("elapsed time at {}: {:.2f}".format(what,time.time() - start_time))
+    print("==============================")
+
+
+REPORT_FREQUENCY = 60           # report this often
+last_report = 0                 # last time we reported
+def report_load_memory(auth):
+    """Report and print the load and free memory; return free memory"""
+    global last_report
+    free_mem = get_free_mem()
+
+    # print current tasks
+    # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
+    # why we should not use "INSERT IGNORE"
+    if last_report < time.time() + REPORT_FREQUENCY:
+        DBMySQL.csfr(auth,"insert into sysload (t, host, min1, min5, min15, freegb) "
+                     "values (now(), %s, %s, %s, %s, %s) "
+                     "ON DUPLICATE KEY update min1=min1", 
+                     [HOSTNAME] + list(os.getloadavg()) + [get_free_mem()//GiB],
+                     quiet=quiet)
+        last_report = time.time()
+
+    
+

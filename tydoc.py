@@ -497,7 +497,7 @@ class TyTag(xml.etree.ElementTree.Element):
     def add_tag(self, tag, attrib={}, position=-1, **kwargs):
         return self.add_tag_elems(tag, elems=[], attrib=attrib, position=position, **kwargs)
 
-    def add_tag_text(self, tag, text, attrib={}, position=-1, **kwargs):
+    def add_tag_text(self, tag, text='', attrib={}, position=-1, **kwargs):
         """Like add_tag_elems above, but just with the text for tag. Calls add_tag_elems"""
         return self.add_tag_elems(tag, [text], attrib=attrib, position=position, **kwargs)
         
@@ -696,6 +696,10 @@ class tydoc(TyTag):
     def append_matplotlib(self, *args, **kwargs):
         return self.body.append_matplotlib(*args, **kwargs)
 
+
+class html(tydoc):
+    """We can also call the tydoc an html file"""
+    pass
 
 ################################################################
 ### Tag to typeset Table of Contents.
