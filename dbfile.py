@@ -92,11 +92,10 @@ class DBMySQL(DBSQL):
             pass
         self.cursor().execute('SET autocommit = 1') # autocommit
 
-        
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True):
+    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None):
         """Connect, select, fetchall, and retry as necessary"""
         try:
             import mysql.connector.errors as errors
@@ -107,11 +106,16 @@ class DBMySQL(DBSQL):
                 db = DBMySQL(auth)
                 result = None
                 c = db.cursor()
+                c.execute('SET autocommit=1')
+                if time_zone is not None:
+                    c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
                     logging.info(f"PID{os.getpid()}: {cmd} {vals}")
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
                     c.execute(cmd,vals)
+                    if (rowcount is not None) and (c.rowcount!=rowcount):
+                        raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
                 except errors.ProgrammingError as e:
                     logging.error("cmd: "+str(cmd))
                     logging.error("vals: "+str(vals))
