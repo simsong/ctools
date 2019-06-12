@@ -108,13 +108,9 @@ class DBMySQL(DBSQL):
                 db = DBMySQL(auth)
                 result = None
                 c = db.cursor()
-<<<<<<< HEAD
-                c.execute('set autocommit=1')
-=======
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
->>>>>>> a60ffc4bcc1fb34c516e09beee4bd097cb8abe13
                 try:
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
