@@ -19,7 +19,7 @@ def get_vars(fname):
             if m:
                 name  = m.group('name')
                 value = m.group('value')
-                if ((value[0] in ['"',"'"]) and (value[0]==value[-1])):
+                if (len(value)>0) and (value[0] in ['"',"'"]) and (value[0]==value[-1]):
                     value = value[1:-1]
                 ret[name] = value
     return ret
