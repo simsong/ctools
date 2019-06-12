@@ -117,6 +117,7 @@ FORMAT_HTML = 'html'
 FORMAT_LATEX = 'latex'
 FORMAT_TEX = 'tex'
 FORMAT_MARKDOWN = 'md'
+FORMAT_CSV      = 'csv'
 
 CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
@@ -784,8 +785,10 @@ class tytable(TyTag):
     def custom_renderer(self, f, format=FORMAT_HTML):
         if format in (FORMAT_LATEX, FORMAT_TEX):
             return self.custom_renderer_latex(f)
-        elif format in FORMAT_MARKDOWN:
+        elif format in (FORMAT_MARKDOWN):
             return self.custom_renderer_md(f)
+        elif format in (FORMAT_CSV):
+            return self.custom_renderer_csv(f)
         else:
             return False
 
@@ -795,6 +798,13 @@ class tytable(TyTag):
         self.render_latex_table_body(f)
         f.write("\\hline\n")
         self.render_latex_table_foot(f)
+        return True
+
+    def custom_renderer_csv(self, f):
+        for section in ["./THEAD/TR", "./TBODY/TR", "./TFOOT/TR"]:
+            for tr in self.findall(section):
+                f.write(",".join([cell.text for cell in tr]))
+                f.write("\n")
         return True
 
     def custom_renderer_md(self, f):
