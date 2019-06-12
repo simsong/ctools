@@ -108,9 +108,12 @@ def aws_emr_cmd(cmd):
     raise e
     
 
-def list_clusters():
-    """Returns the AWS Dictionary"""
-    data = aws_emr_cmd(['list-clusters'])
+def list_clusters(*,state=None):
+    """Returns the AWS Dictionary of cluster information"""
+    cmd = ['list-clusters']
+    if state is not None:
+        cmd += ['--cluster-states',state]
+    data = aws_emr_cmd(cmd)
     return data['Clusters']
 
 def describe_cluster(clusterId):

@@ -708,7 +708,7 @@ class html(tydoc):
 ################################################################
 class X_TOC(TyTag):
     def __init__(self, attrib={}, **extra):
-        # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
+        """Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses"""
         super().__init__(TAG_X_TOC, attrib=attrib, **extra)
 
     @staticmethod
