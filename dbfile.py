@@ -67,6 +67,8 @@ class DBMySQLAuth:
         self.password = password
 
 
+RETRIES = 10
+RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     def __init__(self,auth):
         try:
@@ -93,8 +95,6 @@ class DBMySQL(DBSQL):
         self.cursor().execute('SET autocommit = 1') # autocommit
 
         
-    RETRIES = 10
-    RETRY_DELAY_TIME = 1
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True):
         """Connect, select, fetchall, and retry as necessary"""
@@ -102,13 +102,13 @@ class DBMySQL(DBSQL):
             import mysql.connector.errors as errors
         except ImportError as e:
             import pymysql.err as errors
-        for i in range(1,DBMySQL.RETRIES):
+        for i in range(1,RETRIES):
             try:
                 db = DBMySQL(auth)
                 result = None
                 c = db.cursor()
+                c.execute('set autocommit=1')
                 try:
-                    logging.info(f"PID{os.getpid()}: {cmd} {vals}")
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
                     c.execute(cmd,vals)
@@ -124,14 +124,14 @@ class DBMySQL(DBSQL):
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 pass
-            time.sleep(self.RETRY_DELAY_TIME)
-        raise e
+            time.sleep(RETRY_DELAY_TIME)
+        raise RuntimeError("Retries Exceeded")
 
 ################################################################
 ##

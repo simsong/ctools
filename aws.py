@@ -18,6 +18,8 @@ BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
 BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
 NO_PROXY='NO_PROXY'
 
+debug=False
+
 def proxy_on():
     if BCC_HTTP_PROXY in os.environ:
         os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]

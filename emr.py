@@ -37,6 +37,8 @@ MAX_RETRIES = 7
 RETRY_MS_DELAY = 50
 
 
+debug = False
+
 # Bring in ec2. It's either in the current directory, or its found through
 # the ctools.ec2 module
 
@@ -93,26 +95,32 @@ def aws_emr_cmd(cmd):
     """run the command and return the JSON output. implements retries"""
     for retries in range(MAX_RETRIES):
         try:
-            res = check_output(['aws','emr','--output','json'] + cmd,
-                               encoding='utf-8')
+            rcmd = ['aws','emr','--output','json'] + cmd
+            if debug:
+                print(f"aws_emr_cmd pid{os.getpid()}: {rcmd}")
+            res = check_output(rcmd, encoding='utf-8')
             return json.loads(res)
         except subprocess.CalledProcessError as e:
             delay = (2**retries * RETRY_MS_DELAY/1000)
-            logging.warning(f"aws emr subprocess.CalledProcessError. Retrying count={retries} delay={delay}")
+            logging.warning(f"aws emr subprocess.CalledProcessError. "
+                            f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
     raise e
     
 
-def list_clusters():
-    """Returns the AWS Dictionary"""
-    data = aws_emr_cmd(['list-clusters'])
+def list_clusters(*,state=None):
+    """Returns the AWS Dictionary of cluster information"""
+    cmd = ['list-clusters']
+    if state is not None:
+        cmd += ['--cluster-states',state]
+    data = aws_emr_cmd(cmd)
     return data['Clusters']
 
 def describe_cluster(clusterId):
     data = aws_emr_cmd(['describe-cluster','--cluster',clusterId])
     return data['Cluster']    
 
-def list_instances(clusterId):
+def list_instances(clusterId = clusterId()):
     data = aws_emr_cmd(['list-instances','--cluster-id',clusterId])
     return data['Instances']    
 
@@ -136,7 +144,7 @@ def add_cluster_info(cluster):
 
 
 def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
-    """Pull all of the information about a cluster efficiently using the
+    """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
     information about the terminated clusters as well.
     """
