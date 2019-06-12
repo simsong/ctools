@@ -175,6 +175,9 @@ def mem_info(what,df,dump=True):
     print("==============================")
 
 
+def get_free_mem():
+    return psutil.virtual_memory().available
+
 REPORT_FREQUENCY = 60           # report this often
 last_report = 0                 # last time we reported
 def report_load_memory(auth):
