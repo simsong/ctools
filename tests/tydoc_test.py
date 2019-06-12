@@ -56,7 +56,7 @@ def test_tytable_attribs():
 
     
 
-def test_tydoc_latex():
+def test_tydoc_latex(tmpdir):
     """Create a document that tries lots of features and then make a LaTeX document and run LaTeX"""
 
     doc = tydoc()
@@ -75,8 +75,8 @@ def test_tydoc_latex():
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
 
-    doc.save("tydoc.tex", format="latex")
-    run_latex("tydoc.tex")
+    doc.save(os.path.join(tmpdir, "tydoc.tex"), format="latex")
+    run_latex(os.path.join(tmpdir, "tydoc.tex"))
 
 def test_tydoc_toc():
     """Test the Tydoc table of contents feature."""
