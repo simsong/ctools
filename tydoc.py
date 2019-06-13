@@ -981,6 +981,9 @@ not set, it auto-generated"""
             elif cell.attrib[ATTR_TYPE] != 'str':
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
                 return cell
+        except TypeError as e:
+            print(f"TypeError in value: {value} cell: {cell}")
+            raise e
         except ValueError as e:
             pass
 
