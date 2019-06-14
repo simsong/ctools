@@ -120,7 +120,9 @@ def describe_cluster(clusterId):
     data = aws_emr_cmd(['describe-cluster','--cluster',clusterId])
     return data['Cluster']    
 
-def list_instances(clusterId = clusterId()):
+def list_instances(clusterId = None):
+    if clusterId is None:
+        clusterId = clusterId()
     data = aws_emr_cmd(['list-instances','--cluster-id',clusterId])
     return data['Instances']    
 
