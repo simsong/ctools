@@ -45,9 +45,9 @@ class Proxy:
 
 
 def get_url(url):
-    import urllib.request
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
+
 
 def instance_identity():
     return json.loads(get_url('http://169.254.169.254/latest/dynamic/instance-identity/document'))
