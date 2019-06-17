@@ -13,6 +13,7 @@ import os
 import sys
 from pathlib import Path
 import json
+import urllib.request
 
 import subprocess
 from subprocess import Popen,PIPE,call,check_call,check_output
@@ -64,12 +65,19 @@ def show_credentials():
     subprocess.call(['aws','configure','list'])
 
 def get_url(url):
-    import urllib.request
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
 
 def user_data():
-    return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
+    """user_data is only available on EMR nodes. Otherwise we get an error, which we turn into a FileNotFound error"""
+    try:
+        return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
+    except json.decoder.JSONDecodeError as e:
+        pass
+    raise FileNotFoundError("user-data is only available on EMR")
+
+def encryptionEnabled():
+    return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
 
 def isMaster():
     """Returns true if running on master"""
