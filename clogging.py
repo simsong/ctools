@@ -71,6 +71,8 @@ def applicationId():
     try:
         from pyspark     import SparkConf, SparkContext
         sc = SparkContext.getOrCreate()
+        if "local" in sc.getConf().get("spark.master"):
+            return "local"
         appid = sc.parallelize([1]).map(lambda x:applicationId()).collect()
         return appid[0]
     except ImportError:
