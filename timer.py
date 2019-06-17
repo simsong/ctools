@@ -3,7 +3,10 @@ import time
 
 class Timer:    
     def __init__(self,message=None):
-        self.message = message
+        if '%' in message:
+            self.message = message
+        else:
+            self.message = message + " %f"
 
     def __enter__(self):
         self.start = time.clock()
