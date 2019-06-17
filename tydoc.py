@@ -117,6 +117,7 @@ FORMAT_HTML = 'html'
 FORMAT_LATEX = 'latex'
 FORMAT_TEX = 'tex'
 FORMAT_MARKDOWN = 'md'
+FORMAT_CSV      = 'csv'
 
 CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
@@ -708,7 +709,7 @@ class html(tydoc):
 ################################################################
 class X_TOC(TyTag):
     def __init__(self, attrib={}, **extra):
-        # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
+        """Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses"""
         super().__init__(TAG_X_TOC, attrib=attrib, **extra)
 
     @staticmethod
@@ -784,8 +785,10 @@ class tytable(TyTag):
     def custom_renderer(self, f, format=FORMAT_HTML):
         if format in (FORMAT_LATEX, FORMAT_TEX):
             return self.custom_renderer_latex(f)
-        elif format in FORMAT_MARKDOWN:
+        elif format in (FORMAT_MARKDOWN):
             return self.custom_renderer_md(f)
+        elif format in (FORMAT_CSV):
+            return self.custom_renderer_csv(f)
         else:
             return False
 
@@ -795,6 +798,13 @@ class tytable(TyTag):
         self.render_latex_table_body(f)
         f.write("\\hline\n")
         self.render_latex_table_foot(f)
+        return True
+
+    def custom_renderer_csv(self, f):
+        for section in ["./THEAD/TR", "./TBODY/TR", "./TFOOT/TR"]:
+            for tr in self.findall(section):
+                f.write(",".join([cell.text for cell in tr]))
+                f.write("\n")
         return True
 
     def custom_renderer_md(self, f):
@@ -971,6 +981,9 @@ not set, it auto-generated"""
             elif cell.attrib[ATTR_TYPE] != 'str':
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
                 return cell
+        except TypeError as e:
+            print(f"TypeError in value: {value} cell: {cell}")
+            raise e
         except ValueError as e:
             pass
 
