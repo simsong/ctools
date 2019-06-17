@@ -1,7 +1,7 @@
 import json
-import requests
 import os
 import subprocess
+import urllib.request
 
 
 ################################################################
@@ -17,6 +17,8 @@ HTTPS_PROXY='HTTPS_PROXY'
 BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
 BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
 NO_PROXY='NO_PROXY'
+
+debug=False
 
 def proxy_on():
     if BCC_HTTP_PROXY in os.environ:
@@ -42,14 +44,16 @@ class Proxy:
         proxy_off()
 
 
-def user_data():
-    return json.loads(requests.get("http://169.254.169.254/2016-09-02/user-data/").text)
+def get_url(url):
+    with urllib.request.urlopen(url) as response:
+        return response.read().decode('utf-8')
+
 
 def instance_identity():
-    return json.loads(requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document').text)
+    return json.loads(get_url('http://169.254.169.254/latest/dynamic/instance-identity/document'))
 
 def ami_id():
-    return requests.get('http://169.254.169.254/latest/meta-data/ami-id').text
+    return get_url('http://169.254.169.254/latest/meta-data/ami-id')
 
 
 def show_credentials():
@@ -58,15 +62,10 @@ def show_credentials():
     subprocess.call(['aws','configure','list'])
 
 def get_ipaddr():
-    return requests.get("http://169.254.169.254/latest/meta-data/local-ipv4").text
+    return get_url("http://169.254.169.254/latest/meta-data/local-ipv4")
 
 def instanceId():
     return instance_identity()['instanceId']
-
-def encryptionEnabled():
-    return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
-
-   
 
 if __name__=="__main__":
     print("AWS Info:")
