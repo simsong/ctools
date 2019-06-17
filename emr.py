@@ -13,6 +13,7 @@ import os
 import sys
 from pathlib import Path
 import json
+import urllib.request
 
 import subprocess
 from subprocess import Popen,PIPE,call,check_call,check_output
@@ -66,12 +67,15 @@ def show_credentials():
     subprocess.call(['aws','configure','list'])
 
 def get_url(url):
-    import urllib.request
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
 
 def user_data():
-    return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
+    try:
+        return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
+    except json.decoder.JSONDecodeError as e:
+        pass
+    raise FileNotFoundError("user-data is only available on EMR")
 
 def isMaster():
     """Returns true if running on master"""
@@ -120,7 +124,9 @@ def describe_cluster(clusterId):
     data = aws_emr_cmd(['describe-cluster','--cluster',clusterId])
     return data['Cluster']    
 
-def list_instances(clusterId = clusterId()):
+def list_instances(clusterId = None):
+    if clusterId is None:
+        clusterId = clusterId()
     data = aws_emr_cmd(['list-instances','--cluster-id',clusterId])
     return data['Instances']    
 
