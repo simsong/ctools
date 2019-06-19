@@ -23,7 +23,11 @@ class DASConfigError(Error):
     """ Errors resulting from parsing the config file"""
 
     def __init__(self, msg, option, section):
-        Error.__init__(self, f"{msg}: No option '{option}' in config section: [{section}]")
+        if option is not None:
+            message = f"{msg}: No option '{option}' in config section: [{section}]"
+        else:
+            message = f"{msg}: No section '{section}' in config file"
+        Error.__init__(self, message)
         self.option = option
         self.section = section
         self.args = (option, section)
