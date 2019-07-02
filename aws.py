@@ -1,7 +1,7 @@
 import json
-import requests
 import os
 import subprocess
+import urllib.request
 
 
 ################################################################
@@ -44,14 +44,22 @@ class Proxy:
         proxy_off()
 
 
+def get_url(url):
+    import urllib.request
+    with urllib.request.urlopen(url) as response:
+        return response.read().decode('utf-8')
+
+def get_url_json(url):
+    return json.loads(get_url(url))
+
 def user_data():
-    return json.loads(requests.get("http://169.254.169.254/2016-09-02/user-data/").text)
+    return get_url_json("http://169.254.169.254/2016-09-02/user-data/")
 
 def instance_identity():
-    return json.loads(requests.get('http://169.254.169.254/latest/dynamic/instance-identity/document').text)
+    return get_url_json('http://169.254.169.254/latest/dynamic/instance-identity/document')
 
 def ami_id():
-    return requests.get('http://169.254.169.254/latest/meta-data/ami-id').text
+    return get_url('http://169.254.169.254/latest/meta-data/ami-id')
 
 
 def show_credentials():
@@ -60,15 +68,10 @@ def show_credentials():
     subprocess.call(['aws','configure','list'])
 
 def get_ipaddr():
-    return requests.get("http://169.254.169.254/latest/meta-data/local-ipv4").text
+    return get_url("http://169.254.169.254/latest/meta-data/local-ipv4")
 
 def instanceId():
     return instance_identity()['instanceId']
-
-def encryptionEnabled():
-    return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
-
-   
 
 if __name__=="__main__":
     print("AWS Info:")
