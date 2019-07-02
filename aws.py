@@ -45,12 +45,18 @@ class Proxy:
 
 
 def get_url(url):
+    import urllib.request
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
 
+def get_url_json(url):
+    return json.loads(get_url(url))
+
+def user_data():
+    return get_url_json("http://169.254.169.254/2016-09-02/user-data/")
 
 def instance_identity():
-    return json.loads(get_url('http://169.254.169.254/latest/dynamic/instance-identity/document'))
+    return get_url_json('http://169.254.169.254/latest/dynamic/instance-identity/document')
 
 def ami_id():
     return get_url('http://169.254.169.254/latest/meta-data/ami-id')
