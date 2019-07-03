@@ -125,7 +125,8 @@ class DBMySQL(DBSQL):
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     raise e
-                if cmd.upper().startswith("SELECT"):
+                verb = cmd.split()[0].upper()
+                if verb in ['SELECT','DESCRIBE','SHOW']:
                     result = c.fetchall()
                     if get_column_names is not None:
                         get_column_names.clear()
