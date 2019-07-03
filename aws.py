@@ -44,8 +44,8 @@ class Proxy:
         proxy_off()
 
 
-def get_url(url):
-    with urllib.request.urlopen(url) as response:
+def get_url(url, context=None):
+    with urllib.request.urlopen(url, context=context) as response:
         return response.read().decode('utf-8')
 
 
