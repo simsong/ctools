@@ -58,12 +58,15 @@ added_syslog = False
 called_basicConfig = False
 
 
+def applicationIdFromEnvironment():
+    return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])    
+
 def applicationId():
     """Return the Yarn applicationID.
     The environment variables are only set if we are running in a Yarn container.
     """
     try:
-        return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
+        return applicationIdFromEnvironment()
     except KeyError:
         pass
 
@@ -73,7 +76,8 @@ def applicationId():
         sc = SparkContext.getOrCreate()
         if "local" in sc.getConf().get("spark.master"):
             return "local"
-        appid = sc.parallelize([1]).map(lambda x:applicationId()).collect()
+        # Note: make sure that the following map does not require access to any existing module.
+        appid = sc.parallelize([1]).map(lambda x: "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])).collect()
         return appid[0]
     except ImportError:
         pass
