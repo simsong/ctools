@@ -283,6 +283,7 @@ class S3File:
 # but it is easier to use the AWS cli, since it's configured to work.
 # 
 # This could be redesigned to simply use the S3File() below
+# Todo: redesign so that it can be used in a "with" statement
 
 def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
     """
