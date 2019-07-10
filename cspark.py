@@ -127,8 +127,12 @@ def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
 
 
 def spark_running():
-    """Return True if we are running inside Spark"""
-    return SPARK_ENV_LOADED in os.environ
+    """Return True if we are running inside Spark on either the head or the client"""
+    if SPARK_ENV_LOADED in os.environ:
+        return True
+    if 'CONTAINER_ID' in os.environ:
+        return True
+    return False
 
 
 def spark_available():

@@ -35,10 +35,16 @@ import logging.handlers
 import os
 import os.path
 import datetime
+import sys
+
+try:
+    import cspark
+except ImportError as e:
+    sys.path.append( os.path.dirname( __file__ ))
+    import cspark
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
-
 
 DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
@@ -65,6 +71,9 @@ def applicationId():
     """Return the Yarn applicationID.
     The environment variables are only set if we are running in a Yarn container.
     """
+    if not cspark.spark_running():
+        return None
+
     try:
         return applicationIdFromEnvironment()
     except KeyError:
