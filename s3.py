@@ -6,10 +6,7 @@ import tempfile
 import sys
 import subprocess
 
-if sys.version[0]=='2':
-    from urlparse import urlparse
-else:
-    from urllib.parse import urlparse
+from urllib.parse import urlparse
 
 # 
 # This creates an S3 file that supports seeking and caching.
@@ -52,18 +49,20 @@ def get_aws():
             return aws
     raise RuntimeError("Cannot find aws executable")            
 
-def aws_s3api(cmd):
+def aws_s3api(cmd, debug=False):
     aws  = get_aws()
     fcmd = [aws,'s3api','--output=json'] + cmd
     if debug:
         sys.stderr.write(" ".join(fcmd))
         sys.stderr.write("\n")
 
-
-    if sys.version[0]=='2':
-        data = subprocess.check_output(fcmd)
-    else:
-        data = subprocess.check_output(fcmd, encoding='utf-8')
+    try:
+        if sys.version[0]=='2':
+            data = subprocess.check_output(fcmd)
+        else:
+            data = subprocess.check_output(fcmd, encoding='utf-8')
+    except TypeError as e:
+        raise RuntimeError("s3 api {} failed data: {}".format(cmd,e))
 
     if not data:
         return None
@@ -276,8 +275,6 @@ class S3File:
 # S3 Cache
 #
 
-
-
 # Tools for reading and write files from Amazon S3 without boto or boto3
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
@@ -285,51 +282,94 @@ class S3File:
 # This could be redesigned to simply use the S3File() below
 # Todo: redesign so that it can be used in a "with" statement
 
-def s3open(path, mode="r", encoding=sys.getdefaultencoding(), cache=False):
-    """
-    Open an s3 file for reading or writing. Can handle any size, but cannot seek.
-    We could use boto.
-    http://boto.cloudhackers.com/en/latest/s3_tut.html
-    but it is easier to use the aws cli, since it is present and more likely to work.
-    """
-    if "b" in mode:
-        encoding = None
+class s3open:
+    def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), cache=False, fsync=False):
+        """
+        Open an s3 file for reading or writing. Can handle any size, but cannot seek.
+        We could use boto.
+        http://boto.cloudhackers.com/en/latest/s3_tut.html
+        but it is easier to use the aws cli, since it is present and more likely to work.
+        @param fsync - if True and mode is writing, use object-exists to wait for the object to be created.
+        """
+        if not path.startswith("s3://"):
+            raise ValueError("Invalid path: "+path)
 
-    cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/","_"))
+        if "b" in mode:
+            encoding = None
 
-    # If not caching and a cache file is present, delete it. 
-    if not cache and os.path.exists(cache_name):
-        os.unlink(cache_name)
+        self.path = path
+        self.mode = mode
+        self.encoding = encoding
+        self.cache = cache
+        self.fsync = fsync
 
-    if cache and ('w' not in mode):
-        os.makedirs(READTHROUGH_CACHE_DIR,exist_ok=True)
-        if os.path.exists(cache_name):
-            return open(cache_name, mode=mode, encoding=encoding)
-        
-    assert 'a' not in mode
-    assert '+' not in mode
-    
-    if "r" in mode:
-        if cache:
-            subprocess.check_call(['aws','s3','cp','--quiet',path,cache_name])
-            open(cache_name, mode=mode, encoding=encoding)
-        p =subprocess.Popen(['aws','s3','cp','--quiet',path,'-'],stdout=subprocess.PIPE,encoding=encoding)
-        return p.stdout
+        cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/","_"))
 
-    elif "w" in mode:
-        p = subprocess.Popen(['aws','s3','cp','--quiet','-',path],stdin=subprocess.PIPE,encoding=encoding)
-        return p.stdin
-    else:
-        raise RuntimeError("invalid mode:{}".format(mode))
+        # If not caching and a cache file is present, delete it. 
+        if not cache and os.path.exists(cache_name):
+            os.unlink(cache_name)
 
+        if cache and ('w' not in mode):
+            os.makedirs(READTHROUGH_CACHE_DIR,exist_ok=True)
+            if os.path.exists(cache_name):
+                return open(cache_name, mode=mode, encoding=encoding)
+
+        assert 'a' not in mode
+        assert '+' not in mode
+
+        if "r" in mode:
+            if cache:
+                subprocess.check_call(['aws','s3','cp','--quiet',path,cache_name])
+                open(cache_name, mode=mode, encoding=encoding)
+            self.p =subprocess.Popen(['aws','s3','cp','--quiet',path,'-'],
+                                     stdout=subprocess.PIPE, 
+                                     stderr=subprocess.PIPE,
+                                     encoding=encoding )
+            self.file_obj = self.p.stdout
+
+        elif "w" in mode:
+            self.p = subprocess.Popen(['aws','s3','cp','--quiet','-',path],
+                                      stdin=subprocess.PIPE, encoding=encoding)
+            self.file_obj = self.p.stdin
+        else:
+            raise RuntimeError("invalid mode:{}".format(mode))
+
+    def __enter__(self):
+        return self.file_obj
+
+    def __exit__(self, type, value, traceback):
+        self.file_obj.close()
+        if self.p.wait()!=0:
+            raise RuntimeError(self.p.stderr.read())
+        if self.fsync and "w" in self.mode:
+            (bucket,key) = get_bucket_key(self.path)
+            aws_s3api(['wait','object-exists','--bucket',bucket,'--key',key])
+            
+
+    def __iter__(self):
+        return self.file_obj
+
+    def read(self, *args, **kwargs):
+        return self.file_obj.read(*args, **kwargs)
+
+    def write(self, *args, **kwargs):
+        return self.file_obj.write(*args, **kwargs)
 
 def s3exists(path):
-    """Return True if the S3 file exists"""
+    """Return True if the S3 file exists. Should be replaced with an s3api function"""
     from subprocess import run,PIPE,Popen
     out =subprocess.Popen(['aws','s3','ls','--page-size','10',path],
                           stdout=subprocess.PIPE,encoding='utf-8').communicate()[0]
     return len(out) > 0
 
+
+def s3rm(path):
+    """Remove an S3 object"""
+    (bucket,key) = get_bucket_key(path)
+    res = aws_s3api(['delete-object','--bucket',bucket,'--key',key])
+    if res['DeleteMarker']!=True:
+        raise RuntimeError("Unknown response from delete-object: {}".format(res))
+    
 
 if __name__=="__main__":
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
