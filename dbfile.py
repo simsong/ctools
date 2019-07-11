@@ -132,6 +132,8 @@ class DBMySQL(DBSQL):
                         get_column_names.clear()
                         for (name,type_code,display_size,internal_size,precision,scale,null_ok) in c.description:
                             get_column_names.append(name)
+                if verb in ['INSERT']:
+                    result = c.lastrowid
                 c.close()  # close the cursor
                 db.close() # close the connection
                 return result
