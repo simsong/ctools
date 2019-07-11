@@ -355,6 +355,9 @@ class s3open:
     def write(self, *args, **kwargs):
         return self.file_obj.write(*args, **kwargs)
 
+    def close(self, *args, **kwargs):
+        return self.file_obj.close(*args, **kwargs)
+
 def s3exists(path):
     """Return True if the S3 file exists. Should be replaced with an s3api function"""
     from subprocess import run,PIPE,Popen
