@@ -72,7 +72,7 @@ def applicationId():
     The environment variables are only set if we are running in a Yarn container.
     """
     if not cspark.spark_running():
-        return None
+        return "NoSpark or local"
 
     try:
         return applicationIdFromEnvironment()
