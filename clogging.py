@@ -68,11 +68,11 @@ def applicationIdFromEnvironment():
     return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])    
 
 def applicationId():
-    """Return the Yarn applicationID.
+    """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
     """
     if not cspark.spark_running():
-        return "NoSpark or local"
+        return f"NoSpark-or-local{os.getpid()}"
 
     try:
         return applicationIdFromEnvironment()
@@ -84,7 +84,7 @@ def applicationId():
         from pyspark     import SparkConf, SparkContext
         sc = SparkContext.getOrCreate()
         if "local" in sc.getConf().get("spark.master"):
-            return "local"
+            return f"local{os.getpid()}"
         # Note: make sure that the following map does not require access to any existing module.
         appid = sc.parallelize([1]).map(lambda x: "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])).collect()
         return appid[0]
@@ -92,7 +92,7 @@ def applicationId():
         pass
 
     # Application ID cannot be determined.
-    return "unknown"
+    return f"unknown{os.getpid()}"
 
 def shutdown():
     """Turn off the logging system."""

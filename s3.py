@@ -312,7 +312,7 @@ class s3open:
         if cache and ('w' not in mode):
             os.makedirs(READTHROUGH_CACHE_DIR,exist_ok=True)
             if os.path.exists(cache_name):
-                return open(cache_name, mode=mode, encoding=encoding)
+                self.file_obj = open(cache_name, mode=mode, encoding=encoding)
 
         assert 'a' not in mode
         assert '+' not in mode
