@@ -66,4 +66,4 @@ def test_s3open_write_fsync():
     
 if __name__=="__main__":
     test_s3open()
-    test_s3open_write_sync()
+    test_s3open_write_fsync()
