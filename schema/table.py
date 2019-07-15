@@ -36,6 +36,14 @@ class Table:
     def __repr__(self):
         return f"<schema.table name:{self.name} {len(self.vardict)} vars>"
 
+    @classmethod
+    def FromDict(self,name,dict={}):
+        """Create a table from a dictionary. Only handles non-container types as dictionary values."""
+        t = self(name=name)
+        for (k,v) in dict.items():
+            t.add_variable( Variable(name=k, python_type=type(v)))
+        return t
+
     def json_dict(self):
         """Provide a JSON dict of the table name and variables"""
         return {"name":self.name,
@@ -226,7 +234,9 @@ class Table:
             ret.append("-- {}".format(line))
         ret.append("CREATE TABLE {} (".format(self.name))
         for v in self.vars():
-            ret.append("   {} {}, -- {}".format(v.name, v.sql_type(), v.desc))
+            sep_comma = ',' if v!= list(self.vars())[-1] else ''
+            sep_comment = '--' if v.desc else ''
+            ret.append("   {} {}{} {} {}".format(v.name, v.sql_type(), sep_comma, sep_comment, v.desc))
         ret.append(");")
         return "\n".join(ret)+"\n"
 

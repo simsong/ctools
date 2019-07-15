@@ -36,6 +36,7 @@ TYPE_VARCHAR   = "VARCHAR"
 TYPE_CHAR      = "CHAR"
 TYPE_DECIMAL   = "DECIMAL"
 TYPE_FLOAT     = "FLOAT"
+# map SQL names to Python types
 PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_INTEGER:int,
                   TYPE_INT:int,
@@ -43,6 +44,13 @@ PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_CHAR:str,
                   TYPE_FLOAT:float,
                   TYPE_DECIMAL:decimal.Decimal }
+# Python types to SQL names
+SQL_TYPE_MAP = { int: {'type': TYPE_INTEGER,'width':8},
+                 str: {'type': TYPE_VARCHAR,'width':254},
+                 float: {'type': TYPE_FLOAT,'width': 15},
+                 decimal.Decimal: {'type': TYPE_DECIMAL, 'width':15}}
+    
+
 DEFAULT_VARIABLE_WIDTH = 8
 WIDTH_MAX       = 255
 

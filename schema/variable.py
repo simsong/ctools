@@ -2,14 +2,14 @@ import logging
 
 import ctools.schema as schema
 from ctools.schema.range import Range
-from ctools.schema import valid_sql_name,decode_vtype
+from ctools.schema import valid_sql_name,decode_vtype,SQL_TYPE_MAP
 
 
 class Variable:
     """The MDF Variable.
     name     = the name of the variable. Must be unique when added to a table.
     vtype    = a string with the SQL type; look at TYPE_* variables at top of file.
-    python_type = a python type
+    python_type = the python type corresponding to vtype
     desc     = description of variable.
     field    = the field number (first field is field #0) (also the position)
     column   = the starting column (first column is 0)
@@ -23,12 +23,12 @@ class Variable:
 
     __slots__ = ('name','python_type','vtype','desc','field','column','width','ranges','default','format','prefix','attrib')
 
-    def __init__(self,*,name=None,vtype=None,desc="",field=None,column=None,width=None,default=None,
+    def __init__(self,*,name=None,vtype=None,python_type=None,desc="",field=None,column=None,width=None,default=None,
                  format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix=""):
         self.width       = None       # initial value
         self.set_name(name)
-        self.set_vtype(vtype)
-        self.field       = field      # field number
+        self.set_vtype(vtype=vtype, python_type=python_type)            
+        self.field       = field         # field number
         self.desc        = desc          # description
         self.column      = column        # Starting column in the line if this is a column-specified file 0
 
@@ -63,15 +63,19 @@ class Variable:
         if self.name and not valid_sql_name(name):
             raise RuntimeError("invalid SQL Variable name: {}".format(name)) 
 
-    def set_vtype(self,v):
-        """sets both vtype and python_type.
+    def set_vtype(self,vtype=None,python_type=None):
+        """sets both vtype and python_type. Only one should be provided
         v may be in any type in PYTHON_TYPE_MAP and it may have an optional width specification.
         VARCHAR2 (used by Oracle) is automatically converted to VARCHAR.
         """
-        if v:
-            (self.vtype,self.width) = decode_vtype(v)
+        if vtype is not None and python_type is None:
+            (self.vtype,self.width) = decode_vtype(vtype)
             assert 1 <= self.width <= schema.WIDTH_MAX
             self.python_type = schema.PYTHON_TYPE_MAP[self.vtype]
+        if vtype is None and python_type is not None:
+            self.vtype = SQL_TYPE_MAP[python_type]['type']
+            self.width = SQL_TYPE_MAP[python_type]['width']
+            self.python_type = python_type
         else:
             self.vtype = None
             self.width = None
