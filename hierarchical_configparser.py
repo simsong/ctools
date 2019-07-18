@@ -19,6 +19,7 @@ import os
 import os.path
 from configparser import ConfigParser
 from copy import copy
+from collections import defaultdict 
 
 DEFAULT='default'
 INCLUDE='include'
@@ -32,7 +33,17 @@ def fixpath(base,name):
 class HierarchicalConfigParser(ConfigParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.files = set()
+        self.files  = set()
+        self.source = defaultdict(dict) # maps source[section][option] to filename
+
+    def explain(self,out):
+        print("# Explaining open file",file=out)
+        print("# format:  filename:option = value",file=out)
+        for section in self.source:
+            print(f"[{section}]",file=out)
+            for option in self.source[section]:
+                print(f"{self.source[section][option]}:{option} = {self.get(section=section,option=option)}",file=out)
+            print("",file=out)
 
     def read(self,filename):
         """First read the requested filename into a temporary config parser.
@@ -103,12 +114,14 @@ class HierarchicalConfigParser(ConfigParser):
                         #print(filename,"ADDING SECTION",section)
                         for option in cp[section]:
                             self.set(section,option, cp[section][option])
+                            self.source[section][option] = pfn
                     self.files.update(cp.files)
 
             # Now, copy over all of the options for this section in the file that we were 
             # actually asked to read, rather than the include file
             for option in cf[section]:
                 self.set(section,option, cf[section][option])
+                self.source[section][option] = filename
 
         # All done
         #print(filename,"RETURNING:")
