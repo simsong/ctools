@@ -72,7 +72,8 @@ class Variable:
             (self.vtype,self.width) = decode_vtype(vtype)
             assert 1 <= self.width <= schema.WIDTH_MAX
             self.python_type = schema.PYTHON_TYPE_MAP[self.vtype]
-        if vtype is None and python_type is not None:
+            assert self.python_type is not None
+        elif vtype is None and python_type is not None:
             self.vtype = SQL_TYPE_MAP[python_type]['type']
             self.width = SQL_TYPE_MAP[python_type]['width']
             self.python_type = python_type
