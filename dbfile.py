@@ -151,6 +151,7 @@ class DBMySQL(DBSQL):
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")
 
+
 ################################################################
 ##
 ## memory profiling tools
