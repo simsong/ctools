@@ -136,32 +136,50 @@ def list_instances(clusterId = None):
 
 def add_cluster_info(cluster):
     clusterId = cluster['Id']
+    debug = cluster['debug']
+    if debug:
+        print("Getting info for cluster",clusterId)
     cluster['describe-cluster'] = describe_cluster(clusterId)
     cluster['instances']        = list_instances(clusterId)
     cluster['terminated']       = 'EndDateTime' in cluster['Status']['Timeline']
     # Get the id of the master
+    if debug:
+        print("Cluster",clusterId,"has ",len(cluster['instances']),"instances")
     try:
         masterPublicDnsName = cluster['describe-cluster']['MasterPublicDnsName']
-        masterInstance = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
-        masterInstanceId = masterInstance['Ec2InstanceId']
+        masterInstance      = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
+        masterInstanceId    = masterInstance['Ec2InstanceId']
         # Get the master tags
         cluster['MasterInstanceTags'] = {}
         for tag in ec2.describe_tags(resourceId=masterInstanceId):
             cluster['MasterInstanceTags'][tag['Key']] = tag['Value']
+        if debug:
+            print("Cluster",clusterId,"got tags")
     except KeyError as e:
         pass
     return cluster
 
 
-def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
+def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False,debug=False):
     """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
     information about the terminated clusters as well.
     """
+    if debug:
+        print("Getting cluster list...")
     clusters = list_clusters()
-    for cluster in list(clusters):
-        if terminated==False and cluster['Status']['State']=='TERMINATED':
-            clusters.remove(cluster)
+    for cluster in clusters:
+        cluster['debug'] = debug
+    if debug:
+        print("Cluster list: {} clusters".format(len(clusters)))
+    if terminated==False:
+        for cluster in list(clusters):
+            if cluster['Status']['State'] in ('TERMINATED','TERMINATED_WITH_ERRORS'):
+                clusters.remove(cluster)
+        if debug:
+            print("Cluster list reduced to {} clusters".format(len(clusters)))
+    if debug:
+        print(clusters)
     with multiprocessing.Pool(workers) as p:
         clusters = p.map(add_cluster_info,clusters)
 
