@@ -30,14 +30,20 @@ def fixpath(base,name):
     return os.path.join(os.path.dirname(base), name)
 
 class HierarchicalConfigParser(ConfigParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.files = set()
+
     def read(self,filename):
         """First read the requested filename into a temporary config parser.
         Scan for any INCLUDE statements.If any are found in any section, read the included file 
         recursively, unless it has already been read.
         """
+
         if filename[0]!='/':
             filename = os.path.abspath(filename)
 
+        self.files.add(filename)
         cf = ConfigParser()
         if not os.path.exists(filename):
             raise FileNotFoundError(filename)
@@ -66,6 +72,7 @@ class HierarchicalConfigParser(ConfigParser):
                         if section not in sections:
                             #print(filename,"ADDING SECTION",section)
                             sections.add(section)
+                    self.files.update(cp.files) # add in the files
 
         # Now, for each section from the file we were supposed to read combined with the sections
         # specified in the default include file, see if there are any include files.
@@ -96,6 +103,7 @@ class HierarchicalConfigParser(ConfigParser):
                         #print(filename,"ADDING SECTION",section)
                         for option in cp[section]:
                             self.set(section,option, cp[section][option])
+                    self.files.update(cp.files)
 
             # Now, copy over all of the options for this section in the file that we were 
             # actually asked to read, rather than the include file
