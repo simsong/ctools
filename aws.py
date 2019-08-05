@@ -18,10 +18,10 @@ BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
 BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
 NO_PROXY='NO_PROXY'
 
-def proxy_on():
-    if BCC_HTTP_PROXY in os.environ:
+def proxy_on(http=True,https=True):
+    if http and (BCC_HTTP_PROXY in os.environ):
         os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
-    if BCC_HTTPS_PROXY in os.environ:
+    if https and (BCC_HTTPS_PROXY in os.environ):
         os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
 
 def proxy_off():
@@ -31,11 +31,12 @@ def proxy_off():
         del os.environ[HTTPS_PROXY]
 
 class Proxy:    
-    def __init__(self):
-        pass
+    def __init__(self,http=True,https=True):
+        self.http = http
+        self.https = https
 
     def __enter__(self):
-        proxy_on()
+        proxy_on(http=self.http, https=self.https)
         return self
 
     def __exit__(self, *args):
