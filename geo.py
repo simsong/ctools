@@ -19,7 +19,7 @@ STATE_DATA=[
     "Colorado/,Colorado,CO,08",
     "Connecticut/,Connecticut,CT,09",
     "Delaware/,Delaware,DE,10",
-    "District_of_Columbia/,Dictrict_of_Columbia,DC,11",
+    "District_of_Columbia/,District_of_Columbia,DC,11",
     "Florida/,Florida,FL,12",
     "Georgia/,Georgia,GA,13",
     "Hawaii/,Hawaii,HI,15",
@@ -80,7 +80,7 @@ def state_fips(name):
     return state_rec(name=name)['fips_state']
 
 def state_abbr(fips):
-    """Convert state FIPS code to the appreviation"""
+    """Convert state FIPS code to the abbreviation"""
     return state_rec(fips=fips)['state_abbr']
 
 def all_state_abbrs():

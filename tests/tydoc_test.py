@@ -56,7 +56,7 @@ def test_tytable_attribs():
 
     
 
-def test_tydoc_latex():
+def test_tydoc_latex(tmpdir):
     """Create a document that tries lots of features and then make a LaTeX document and run LaTeX"""
 
     doc = tydoc()
@@ -75,6 +75,41 @@ def test_tydoc_latex():
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
 
-    doc.save("tydoc.tex", format="latex")
-    run_latex("tydoc.tex")
+    doc.save(os.path.join(tmpdir, "tydoc.tex"), format="latex")
+    run_latex(os.path.join(tmpdir, "tydoc.tex"))
 
+def test_tydoc_toc():
+    """Test the Tydoc table of contents feature."""
+    doc = tydoc()
+    doc.h1("First Head1")
+    doc.p("blah blah blah")
+    doc.h1("Second Head1 2")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.1")
+    doc.p("blah blah blah")
+    doc.h2("Head 2.2")
+    doc.p("blah blah blah")
+    doc.h3("Head 2.2.1")
+    doc.p("blah blah blah")
+    doc.h1("Third Head1 3")
+    doc.p("blah blah blah")
+
+    # Add a toc
+    doc.insert_toc()
+
+    # Make sure that the TOC has a pointer to the first H1
+    print(doc.prettyprint())
+    key = f".//{TAG_X_TOC}"
+    tocs = doc.findall(key)
+    assert len(tocs)==1
+    toc = tocs[0]
+
+    h1s = doc.findall(".//{}/{}".format(TAG_BODY,TAG_H1))
+    assert len(h1s)==3
+    h1 = h1s[0]
+
+    # Make sure that they both have the same ID
+    id1 = toc.find('.//{}'.format(TAG_A)).attrib['HREF']
+    id2 = h1.find('.//{}'.format(TAG_A)).attrib['NAME']
+    
+    assert id1=='#' + id2

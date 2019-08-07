@@ -5,24 +5,24 @@
 This module adds support for logging to syslog to the Python logging system. 
 
 All messages sent to the default logger will also go to syslog. We use
-this in some production enviornments to aggregate log messages using
+this in some production environments to aggregate log messages using
 syslog and Splunk.
 
 In the 2020 Disclosure Avoidance System, we will be using local1 as our logging facility. 
 Within Amazon's Elastic Map Reduce system, we set up the EMR CORE nodes to send all local1 messages
 to the MASTER node, and we set up the MASTER node to send all local1 messages to the Splunk server.
 
-This code also sets up the python logger so that it reports the
+This code also sets up the Python logger so that it reports the
 filename, line number, and function name associated with all log
 messages. That's proven to be useful. You can change that by changing
 the module variables after the module is imported.
 
 To use this logging module, you must call clogging.setup().  The call
-must be called in every python process in which you want logging to go
+must be called in every Python process in which you want logging to go
 to syslog. In an EMR system, this means that you need to call it at
 least once in every mapper (because a new Python process may be
 started up at any time by the Spark system). Calling clogging.setup()
-is fast and indepotent---you can call it as often as you want. It
+is fast and idempotent---you can call it as often as you want. It
 tracks to see if it has been previously called and immediately returns
 if it has been.
 
@@ -35,10 +35,16 @@ import logging.handlers
 import os
 import os.path
 import datetime
+import sys
+
+try:
+    import cspark
+except ImportError as e:
+    sys.path.append( os.path.dirname( __file__ ))
+    import cspark
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
-
 
 DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
@@ -58,12 +64,18 @@ added_syslog = False
 called_basicConfig = False
 
 
+def applicationIdFromEnvironment():
+    return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])    
+
 def applicationId():
-    """Return the Yarn applicationID.
+    """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
     """
+    if not cspark.spark_running():
+        return f"NoSpark-or-local{os.getpid()}"
+
     try:
-        return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
+        return applicationIdFromEnvironment()
     except KeyError:
         pass
 
@@ -71,13 +83,16 @@ def applicationId():
     try:
         from pyspark     import SparkConf, SparkContext
         sc = SparkContext.getOrCreate()
-        appid = sc.parallelize([1]).map(lambda x:applicationId()).collect()
+        if "local" in sc.getConf().get("spark.master"):
+            return f"local{os.getpid()}"
+        # Note: make sure that the following map does not require access to any existing module.
+        appid = sc.parallelize([1]).map(lambda x: "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])).collect()
         return appid[0]
     except ImportError:
         pass
 
     # Application ID cannot be determined.
-    return "unknown"
+    return f"unknown{os.getpid()}"
 
 def shutdown():
     """Turn off the logging system."""

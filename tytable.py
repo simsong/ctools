@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
 tytable.py:
+
+DO NOT START NEW PROJECTS WITH THIS! USE TYDOC INSTEAD
+
 Module for typesetting tables in ASCII, LaTeX, and HTML.  Perhaps even CSV!
 Also creates LaTeX variables.
 
@@ -116,7 +119,7 @@ def icomma(i):
 ################################################################
 
 
-# The row class holds the row and anny annotations
+# The row class holds the row and any annotations
 class Row:
     __slots__ = ['data', 'annotations']
 
@@ -172,7 +175,7 @@ def line_end(mode):
 class ttable:
     """ Python class that prints formatted tables. It can also output LaTeX.
     Typesetting:
-       Each entry is formatted and then typset.
+       Each entry is formatted and then typeset.
        Formatting is determined by the column formatting that is provided by the caller.
        Typesetting is determined by the typesetting engine (text, html, LaTeX, etc).
        Numbers are always right-justified, text is always left-justified, and headings
@@ -327,7 +330,7 @@ class ttable:
         self.col_totals = totals
 
     def set_col_fmt(self, col, fmt):
-        """Set the formatting for colum COL. Format is specified with a Python format string.
+        """Set the formatting for column COL. Format is specified with a Python format string.
         You can create a prefix and suffix by putting them on either side of the formatter.
         e.g. prefix{:,}suffix.
         """
@@ -437,7 +440,7 @@ class ttable:
             return formatted_value  # don't indent last column
 
     def typeset_row(self, row, html_delim='td'):
-        """row is a an array. It should be typset. Return the string. """
+        """row is a an array. It should be typeset. Return the string. """
         ret = []
         if isinstance(row, Raw):
             return row.data
@@ -525,7 +528,7 @@ class ttable:
         return ret
 
     def typeset(self, *, mode=None, option=None, out=None):
-        """ Returns the typset output of the entire table. Builds it up in """
+        """ Returns the typeset output of the entire table. Builds it up in """
 
         if (self.OPTION_LONGTABLE in self.options) and (self.OPTION_TABULARX in self.options):
             raise RuntimeError("OPTION_LONGTABLE and OPTION_TABULARX conflict")
@@ -538,7 +541,7 @@ class ttable:
             self.set_mode(mode)
 
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
-            raise ValueError("Invalid typsetting mode " + self.mode)
+            raise ValueError("Invalid typesetting mode " + self.mode)
 
         if option:
             self.add_option(option)
@@ -549,10 +552,10 @@ class ttable:
             return ""
 
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
-            raise ValueError("Invalid typsetting mode " + self.mode)
+            raise ValueError("Invalid typesetting mode " + self.mode)
 
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
-            raise ValueError("Invalid typsetting mode " + self.mode)
+            raise ValueError("Invalid typesetting mode " + self.mode)
 
         ret = [""]  # array of strings that will be concatenatted
 

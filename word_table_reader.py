@@ -45,7 +45,7 @@ def get_docx_table(path):
     tree = XML(xml_content)
 
     rows = []
-    for xml_row in tree.getiterator(TR):
+    for xml_row in tree.iter(TR):
         row = []
         for xml_cell in xml_row.iter(TC):
             # Each cell consists of one or more paragraph
