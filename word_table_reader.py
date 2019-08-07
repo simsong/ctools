@@ -47,11 +47,11 @@ def get_docx_table(path):
     rows = []
     for xml_row in tree.getiterator(TR):
         row = []
-        for xml_cell in xml_row.getiterator(TC):
+        for xml_cell in xml_row.iter(TC):
             # Each cell consists of one or more paragraph
             text = ""
-            for paragraph in xml_cell.getiterator(PARA):
-                texts = [node.text for node in paragraph.getiterator(TEXT) if node.text]
+            for paragraph in xml_cell.iter(PARA):
+                texts = [node.text for node in paragraph.iter(TEXT) if node.text]
                 paragraph_text = "".join(texts)
                 if paragraph_text:
                     text += paragraph_text + "\n"
@@ -66,13 +66,13 @@ def get_text_for_table(table):
     Find the table inside the .docx file and return it in an array
     """
     rows = []
-    for xml_row in table.getiterator(TR):
+    for xml_row in table.iter(TR):
         row = []
-        for xml_cell in xml_row.getiterator(TC):
+        for xml_cell in xml_row.iter(TC):
             # Each cell consists of one or more paragraph
             text = ""
-            for paragraph in xml_cell.getiterator(PARA):
-                texts = [node.text for node in paragraph.getiterator(TEXT) if node.text]
+            for paragraph in xml_cell.iter(PARA):
+                texts = [node.text for node in paragraph.iter(TEXT) if node.text]
                 paragraph_text = "".join(texts)
                 if paragraph_text:
                     text += paragraph_text + "\n"
@@ -90,22 +90,22 @@ def get_docx_tables(path):
     xml_content = document.read('word/document.xml')
     document.close()
     tree = XML(xml_content)
-    for tbl in tree.getiterator(TBL):
+    for tbl in tree.iter(TBL):
         yield tbl
 
 def get_table_rows(tbl):
-    return [row for row in tbl.getiterator(TR)]
+    return [row for row in tbl.iter(TR)]
 
 def get_row_cells(row):
-    return [cell for cell in row.getiterator(TC)]
+    return [cell for cell in row.iter(TC)]
 
 def get_docx_text(path):
     """
     Take the path of a docx file as argument, return the text in unicode.
     """
     texts = []
-    for paragraph in path.getiterator(PARA):
-        texts = [node.text for node in paragraph.getiterator(TEXT) if node.text]
+    for paragraph in path.iter(PARA):
+        texts = [node.text for node in paragraph.iter(TEXT) if node.text]
         paragraph_text = "".join(texts)
         if paragraph_text:
             text += paragraph_text + "\n"

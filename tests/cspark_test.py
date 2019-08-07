@@ -46,6 +46,9 @@ def test_spark_submit():
         os.environ[TEST_RUN_SPARK_FILENAME] = f.name
         f.close()
 
+    """
+    redo this so that it creates a file and submits it with spark-submit.
+
     with open(os.environ[TEST_RUN_SPARK_FILENAME], "w+") as f:
         if cspark.spark_submit(logLevel='error',pyfiles=[CSPARK_PATH], argv=[__file__]):
             from pyspark.sql import SparkSession
@@ -77,7 +80,7 @@ def test_spark_submit():
             print("spark ran successfully")
             f.close()
     os.unlink(os.environ[TEST_RUN_SPARK_FILENAME])
-
+    """
 
 if __name__=="__main__":
     # This is solely so that we can run under py.test

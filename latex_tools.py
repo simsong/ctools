@@ -16,7 +16,7 @@ import hashlib
 ERROR_LINES=50
 __version__ = "0.1.0"
 
-DEBUG=False
+DEBUG=True
 
 HEIGHT='height'
 LANDSCAPE = 'LANDSCAPE'
@@ -201,6 +201,9 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
               callback_aux=None,callback_log=None,ignore_ret=False,chdir=True,verbose=False):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
 
+    if DEBUG:
+        verbose=True
+
     # Are we setting TEXINPUTS? If so, remember old value.
     oldenv   = os.environ.get(TEXINPUTS,None)
     if texinputs:
@@ -220,7 +223,6 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         dirname="."                 
         pathname=filename
         assert os.path.exists(filename) # make sure we can still reach it
-
 
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
@@ -255,7 +257,6 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
 
     if not os.path.exists(auxfilename):
         raise FileNotFoundError("auxfile {} not created. filename: {}".format(auxfilename,filename))
-
 
     if callback_log: callback_log(open(logfilename,"r"))
     if callback_aux: callback_aux(open(auxfilename,"r"))
@@ -339,7 +340,6 @@ def inspect_pdf(pdf_fname,texinputs=None):
           HEIGHT:  = height (in pt)
           PAGE:   = page number
     """
-
     assert os.path.exists(pdf_fname)
     assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")
