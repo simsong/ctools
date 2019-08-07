@@ -12,6 +12,8 @@ import glob
 import tempfile
 import logging
 import hashlib
+import platform
+import shutil
 
 ERROR_LINES=50
 __version__ = "0.1.0"
@@ -111,6 +113,8 @@ PAGECOUNTER_TEX=r"""
 \endinput
 """
 
+LATEX_EXTRA_DIR=os.path.join( os.path.dirname(__file__), "latex-windows")
+
 def latex_escape(msg):
     """Quote all special characters in msg"""
     msg = "".join([LATEX_QUOTE_TRANSFORMS.get(ch,ch) for ch in msg])
@@ -209,6 +213,8 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     oldenv   = os.environ.get(TEXINPUTS,None)
     if texinputs:
         os.environ[TEXINPUTS] = texinputs
+        if DEBUG:
+            print("Set TEXINPUTS to",os.environ[TEXINPUTS])
 
     # Are we changing the directory? If so, remember old value
     assert os.path.exists(pathname)
@@ -220,11 +226,29 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         cwd = os.getcwd()
         if dirname:
             os.chdir(dirname)       # change to the directory where the file exists
+            if DEBUG:
+                print("Changed directory to",dirname)
+
         # change dirname and pathname to reflect current directory
         dirname="."                 
         pathname=filename
         assert os.path.exists(filename) # make sure we can still reach it
 
+    # If we are on windows, copy the context of the LATEX_WINDOWS_EXTRA_DIR to the current directory
+    delete_files = []
+    if platform.system()=='Windows':
+        for fn in glob.glob( os.path.join(LATEX_EXTRA_DIR, "*")):
+            dest = os.path.basename(fn)
+            if not os.path.exists(dest):
+                print("copy {} -> {}".format(fn, ))
+                shutil.copy( fn, dest )
+                delete_files.append(dest)
+
+    if DEBUG:
+        print("==============",pathname,"===========")
+        print(open(pathname).read())
+        print("======================================")
+        print("")
     for i in range(start_run,start_run+repeat):
         cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
         if verbose:
@@ -250,20 +274,35 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print("STDERR")
             print(r.stderr)
 
+    for fn in delete_files:
+        os.unlink(fn)
+
     #
     # The logfile and auxfile get written to the current directory
     logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
     auxfilename = os.path.splitext( os.path.basename(filename))[0] + ".aux"
-    assert os.path.exists(logfilename)
+
+    if DEBUG:
+        print("Current directory:",os.getcwd())
+        print("filename:",filename,os.path.exists(filename))
+        print("logfilename:",logfilename,os.path.exists(logfilename))
+        print("auxfilename:",auxfilename,os.path.exists(auxfilename))
+
+    if not os.path.exists(logfilename):
+        raise FileNotFoundError("logfile {} not created. LaTeX failed. dir: {} filename: {}".format(logfilename,os.getcwd(),filename))
 
     if not os.path.exists(auxfilename):
-        raise FileNotFoundError("auxfile {} not created. filename: {}".format(auxfilename,filename))
+        raise FileNotFoundError("auxfile {} not created. LaTeX failed. dir: {} filename: {}".format(auxfilename,os.getcwd(),filename))
 
-    if callback_log: callback_log(open(logfilename,"r"))
-    if callback_aux: callback_aux(open(auxfilename,"r"))
+    if callback_log:
+        callback_log(open(logfilename,"r"))
+
+    if callback_aux:
+        callback_aux(open(auxfilename,"r"))
         
     # Read the log file to determine the number of pages
     # This should be done with the callback
+
     log = open(logfilename).read().replace("\n","")
     pat = re.compile('Output written on .*[^\d](\d+) pages?')
     m = pat.search(log)
