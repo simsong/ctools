@@ -240,7 +240,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         for fn in glob.glob( os.path.join(LATEX_EXTRA_DIR, "*")):
             dest = os.path.basename(fn)
             if not os.path.exists(dest):
-                print("copy {} -> {}".format(fn, ))
+                print("copy {} -> {}".format(fn,dest ))
                 shutil.copy( fn, dest )
                 delete_files.append(dest)
 
@@ -255,6 +255,8 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
+            print("r.returncode=",r.returncode)
+            print("r=",r)
             outlines = r.stdout.split("\n")
             print("***************************")
             if len(outlines)<ERROR_LINES*2:
