@@ -36,7 +36,7 @@ def square(x):
     """This is the map function. It's going to run on the executors. 
     Log the hostname, the PID and X as a JSON object""" 
     from pyspark import SparkContext
-    clogging.setup(level='INFO', syslog='True')
+    clogging.setup(level=logging.INFO, syslog='True')
     logging.info( json.dumps({'hostname':socket.gethostname(), 
                               'pid':os.getpid(), 'x':x, 'func':'square', 'applicationId':applicationId()}))
     return x*x
@@ -45,7 +45,7 @@ def myadder(x,y):
     """This is the map function. It's going to run on the executors. 
     Log the hostname, the PID and X as a JSON object"""
     from pyspark import SparkContext
-    clogging.setup(level='INFO', syslog='True')
+    clogging.setup(level=logging.INFO, syslog='True')
     logging.info( json.dumps({'hostname':socket.gethostname(), 'pid':os.getpid(), 
                               'x':x, 'y':y, 'func':'myadder', 'applicationId':applicationId()}))
     return x+y
@@ -67,7 +67,7 @@ if __name__=="__main__":
 
     # Initialize logging on the head-end.
     # This is done after the Spark context is acquired, but it could be done before. 
-    clogging.setup(level='INFO', syslog=True, filename='demo_logfile.log')
+    clogging.setup(level=logging.INFO, syslog=True, filename='demo_logfile.log')
 
     # Count the squares of the numbers 1..1000
     result = sc.parallelize(range(1,1001)).map(square).reduce(myadder)

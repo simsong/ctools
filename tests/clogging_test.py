@@ -24,7 +24,7 @@ def test_logging_to_syslog():
     if platform.system()=='Windows' or platform.system()=='Darwin':
         return
 
-    clogging.setup(level='INFO',syslog=True)
+    clogging.setup(level=logging.INFO, syslog=True)
     nonce = str(time.time())
     logging.error("Logging at t={}.".format(nonce))
     # Wait a few milliseconds for the nonce to appear in the logfile

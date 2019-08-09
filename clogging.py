@@ -37,16 +37,11 @@ import os.path
 import datetime
 import sys
 
-try:
-    import cspark
-except ImportError as e:
-    sys.path.append( os.path.dirname( __file__ ))
-    import cspark
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
 
-DEVLOG = "/dev/log"
+DEVLOG     = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
 
 # Default log formats. 
@@ -71,6 +66,12 @@ def applicationId():
     """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
     """
+    try:
+        import cspark
+    except ImportError as e:
+        sys.path.append( os.path.dirname( __file__ ))
+        import cspark
+
     if not cspark.spark_running():
         return f"NoSpark-or-local{os.getpid()}"
 
@@ -106,17 +107,24 @@ def add_argument(parser):
     parser.add_argument("--loglevel", help="Set logging level",
                         choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
 
+def syslog_default_address():
+    if os.path.exists(DEVLOG):
+        return DEVLOG
+    elif os.path.exists(DEVLOG_MAC):
+        return DEVLOG_MAC
+    else:
+        raise RuntimeError("No default syslog address configured")
+
+
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
+                 syslog_address = None,
                  syslog_format = YEAR+" "+SYSLOG_FORMAT):
-    global  added_syslog
+    global added_syslog
     if not added_syslog:
         # Make a second handler that logs to syslog
-        if os.path.exists(DEVLOG):
-            handler = logging.handlers.SysLogHandler(address=DEVLOG, facility=facility)
-        elif os.path.exists(DEVLOG_MAC):
-            handler = logging.handlers.SysLogHandler(address=DEVLOG_MAC, facility=facility)
-        else:
-            return              # no dev log
+        if syslog_address is None:
+            syslog_address = syslog_default_address()
+        handler   = logging.handlers.SysLogHandler(address=syslog_address, facility=facility)
         formatter = logging.Formatter(syslog_format)
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
@@ -124,6 +132,7 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
 
 def setup(level='INFO',
           syslog=False,
+          syslog_address=None,
           filename=None,
           facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
           log_format=LOG_FORMAT,
@@ -145,7 +154,7 @@ def setup(level='INFO',
         called_basedConig = True
 
     if syslog:
-        setup_syslog(facility=facility,syslog_format=syslog_format)
+        setup_syslog(facility=facility, syslog_address=syslog_address, syslog_format=syslog_format)
 
 
 if __name__=="__main__":
