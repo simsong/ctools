@@ -30,8 +30,9 @@ def fixpath(base,name):
     return os.path.join(os.path.dirname(base), name)
 
 class HierarchicalConfigParser(ConfigParser):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, debug=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.debug = debug
         self.files = set()
 
     def read(self,filename):
@@ -50,27 +51,33 @@ class HierarchicalConfigParser(ConfigParser):
         cf.read(filename)
 
         sections = set(cf.sections())
-        #print(filename,"READ SECTIONS:",sections)
+        if self.debug:
+            print(filename,"READ SECTIONS:",sections)
 
         # If there is an INCLUDE in the default section, see if the included file
         # specifies any sections that we did not have. If there is, get those sections too
         default_include_file = None
         if DEFAULT in cf:
             if INCLUDE in cf[DEFAULT]:
-                #print(filename,"INCLUDE IS IN DEFAULT SECTION")
+                if self.debug:
+                    print(filename,"INCLUDE IS IN DEFAULT SECTION")
                 default_include_file = cf[DEFAULT][INCLUDE]
                 if default_include_file:
                     pfn = fixpath(filename, default_include_file)
-                    #print(filename,"READ",pfn,"TO GET SECTIONS")
+                    if self.debug:
+                        print(filename,"READ",pfn,"TO GET SECTIONS")
                     if not os.path.exists(pfn):
                         raise FileNotFoundError(pfn)
                     cp = HierarchicalConfigParser()
                     cp.read(pfn)
-                    #print(filename,"READ SECTIONS:",list(cp.sections()))
+                    if self.debug:
+                        print(filename,"READ SECTIONS:",list(cp.sections()))
                     for section in cp.sections():
-                        #print(filename,"FOUND SECTION",section,"IN",pfn)
+                        if self.debug:
+                            print(filename,"FOUND SECTION",section,"IN",pfn)
                         if section not in sections:
-                            #print(filename,"ADDING SECTION",section)
+                            if self.debug:
+                                print(filename,"ADDING SECTION",section)
                             sections.add(section)
                     self.files.update(cp.files) # add in the files
 
@@ -79,7 +86,9 @@ class HierarchicalConfigParser(ConfigParser):
         # Note that there may potentially be two include files: one from the section, and one from
         # the default. We therefore read the default include file first, if it exists, and copy those
         # options over. Then we read the ones in the include if, if there is any, and copy those options over.
-        #print(filename,"READING INCLUDE FILES FOR EACH SECTION")
+
+        if self.debug:
+            print(filename,"READING INCLUDE FILES FOR EACH SECTION")
         for section in sections:
             # make a local copy of the files we read for this section
 
@@ -92,7 +101,8 @@ class HierarchicalConfigParser(ConfigParser):
             section_include_file = cf[section].get(INCLUDE,None)
             for include_file in [default_include_file, section_include_file]:
                 if include_file:
-                    #print(filename,"READING SECTION",section,"FROM",include_file)
+                    if self.debug:
+                        print(filename,"READING SECTION",section,"FROM",include_file)
                     
                     pfn = fixpath(filename, include_file)
                     if not os.path.exists(pfn):
@@ -100,7 +110,8 @@ class HierarchicalConfigParser(ConfigParser):
                     cp = HierarchicalConfigParser()
                     cp.read(pfn)
                     if section in cp:
-                        #print(filename,"ADDING SECTION",section)
+                        if self.debug:
+                            print(filename,"ADDING SECTION",section)
                         for option in cp[section]:
                             self.set(section,option, cp[section][option])
                     self.files.update(cp.files)
@@ -111,9 +122,12 @@ class HierarchicalConfigParser(ConfigParser):
                 self.set(section,option, cf[section][option])
 
         # All done
-        #print(filename,"RETURNING:")
-        #self.write(open("/dev/stdout","w"))
-        #print(filename,"============")
+        if self.debug:
+            print(filename,"RETURNING:")
+        if self.debug:
+            self.write(open("/dev/stdout","w"))
+        if self.debug:
+            print(filename,"============")
 
     def read_string(self,string,source=None):
         raise RuntimeError("read_string not implemented")
