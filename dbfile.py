@@ -97,8 +97,11 @@ class DBMySQL(DBSQL):
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None):
-        """Connect, select, fetchall, and retry as necessary"""
+    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None,asDicts=False):
+        """Connect, select, fetchall, and retry as necessary.
+        get_column_names is an array in which to return the column names.
+        asDict=True to return each row as a dictionary
+        """
         try:
             import mysql.connector.errors as errors
         except ImportError as e:
@@ -128,10 +131,14 @@ class DBMySQL(DBSQL):
                 verb = cmd.split()[0].upper()
                 if verb in ['SELECT','DESCRIBE','SHOW']:
                     result = c.fetchall()
+                    if asDicts and get_column_names is None:
+                        get_column_names = []
                     if get_column_names is not None:
                         get_column_names.clear()
                         for (name,type_code,display_size,internal_size,precision,scale,null_ok) in c.description:
                             get_column_names.append(name)
+                    if asDicts:
+                        result =[dict(zip(get_column_names, row)) for row in result]
                 if verb in ['INSERT']:
                     result = c.lastrowid
                 c.close()  # close the cursor
