@@ -102,7 +102,11 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
             print("")
             word.Quit()
             return None
-        word.Quit()
+        try:
+            word.Quit()
+        except pywintypes.com_error as e:
+            print(e)
+            print("Got an error; continuing")
         return outfile
     if sys.platform=='darwin':
         #
