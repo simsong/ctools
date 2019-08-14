@@ -36,6 +36,7 @@ import sys
 import atexit
 import re
 import socket
+import functools
 
 from .s3 import s3open,s3exists
 
@@ -53,27 +54,27 @@ SRC_DIRECTORY = os.path.dirname(__file__)
 # For handling the config file
 CONFIG_FILENAME = "config.ini"
 CONFIG_PATHNAME  = os.path.join(SRC_DIRECTORY, CONFIG_FILENAME)    # can be changed
-config_file     = None              # will become a ConfigParser object
+
 
 # Get the config file. We would like to automate getting the config file and setting up logging.
+# We use lru_cache() so that only a single config file is returned
+@functools.lru_cache()
 def get_config(pathname=None,filename=None):
-    global config_file
-    if not config_file:
-        if pathname and filename:
-            raise RuntimeError("Cannot specify both pathname and filename")
-        if not pathname:
-            if not filename:
-                filename = CONFIG_FILENAME
-            pathname = os.path.join(SRC_DIRECTORY, filename ) 
-        config_file = ConfigParser(interpolation=None)
-        if os.path.exists(pathname):
-            config_file.read(pathname)
-        else:
-            print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
-        # Add our source directory to the paths
-        if SECTION_PATHS not in config_file:
-            config_file.add_section(SECTION_PATHS)
-        config_file[SECTION_PATHS][OPTION_SRC] = SRC_DIRECTORY 
+    if pathname and filename:
+        raise RuntimeError("Cannot specify both pathname and filename")
+    if not pathname:
+        if not filename:
+            filename = CONFIG_FILENAME
+        pathname = os.path.join(SRC_DIRECTORY, filename ) 
+    config_file = ConfigParser(interpolation=None)
+    if os.path.exists(pathname):
+        config_file.read(pathname)
+    else:
+        print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
+    # Add our source directory to the paths
+    if SECTION_PATHS not in config_file:
+        config_file.add_section(SECTION_PATHS)
+    config_file[SECTION_PATHS][OPTION_SRC] = SRC_DIRECTORY 
     return config_file
 
 
