@@ -99,8 +99,13 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None,asDicts=False):
         """Connect, select, fetchall, and retry as necessary.
-        get_column_names is an array in which to return the column names.
-        asDict=True to return each row as a dictionary
+        @param auth      - authentication otken
+        @param cmd       - SQL query
+        @param vals      - values for SQL parameters
+        @param time_zone - if provided, set the session.time_zone to this value
+        @param quiet     - don't print anything
+        @param get_column_names - an array in which to return the column names.
+        @param asDict    - True to return each row as a dictionary
         """
         try:
             import mysql.connector.errors as errors
