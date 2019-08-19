@@ -18,7 +18,7 @@ import shutil
 ERROR_LINES=50
 __version__ = "0.1.0"
 
-DEBUG=True
+DEBUG=False
 
 HEIGHT='height'
 LANDSCAPE = 'LANDSCAPE'
@@ -382,6 +382,7 @@ def inspect_pdf(pdf_fname,texinputs=None):
           HEIGHT:  = height (in pt)
           PAGE:   = page number
     """
+    print("*** INSPECT PDF ",pdf_fname)
     assert os.path.exists(pdf_fname)
     assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")

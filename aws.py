@@ -44,13 +44,17 @@ class Proxy:
         proxy_off()
 
 
-def get_url(url, context=None):
+def get_url(url, context=None, ignore_cert=False):
+    if ignore_cert:
+        import ssl
+        context = ssl._create_unverified_context()
+
     import urllib.request
     with urllib.request.urlopen(url, context=context) as response:
         return response.read().decode('utf-8')
 
-def get_url_json(url):
-    return json.loads(get_url(url))
+def get_url_json(url, **kwargs):
+    return json.loads(get_url(url, **kwargs))
 
 def user_data():
     return get_url_json("http://169.254.169.254/2016-09-02/user-data/")
