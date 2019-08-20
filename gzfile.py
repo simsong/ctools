@@ -38,6 +38,9 @@ class GZFile:
     def read(self,size=-1):
         return self.f.read(size)
 
+    def readline(self, size=-1):
+        return self.f.readline(size)
+
     def write(self,text):
         if self.passthrough:
             return self.f.write(text)

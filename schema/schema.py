@@ -16,7 +16,6 @@ from ctools.schema.recode import Recode
 
 from types import ModuleType
 
-
 class Schema:
     """A Schema is a collection of tables and recodes"""
     def __init__(self, name='', *, debug=False, attrib={}):

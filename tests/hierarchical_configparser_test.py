@@ -17,7 +17,6 @@ def test_fixpath():
     assert fixpath("/a/b/c", "/a/b") == "/a/b"
     assert fixpath("/a/b/c", "b") == os.path.join("/a/b","b")
 
-
 def test_hierarchical_configparser1():
     hcf = HierarchicalConfigParser()
     hcf.read(MYDIR + "/hcf_file2.ini")
@@ -28,7 +27,6 @@ def test_hierarchical_configparser1():
     assert hcf['b']['second'] == 'file2-b'
     assert hcf['c']['color'] == 'file2-c'
     assert hcf['c']['second'] == 'file2-c'
-
 
 def test_hierarchical_configparser2():
     fname = MYDIR + "/hcf_file1.ini"  # includes hcf_file2.ini as a default
@@ -49,10 +47,13 @@ def test_hierarchical_configparser2():
     # Validate that section 'c' was not included
     assert 'c' not in hcf.sections()
 
-
 def test_hierarchical_configparser3():
+    fname = MYDIR + "/hcf_file3.ini"
+    print("Original config file:")
+    print(open(fname,"r").read())
+    print("--------------------------\n\n")
     hcf = HierarchicalConfigParser()
-    hcf.read(MYDIR + "/hcf_file3.ini")
+    hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
     assert hcf['a']['color'] == 'file2-a'
@@ -62,3 +63,5 @@ def test_hierarchical_configparser3():
     assert hcf['c']['color'] == 'file2-c'
     assert hcf['c']['second'] == 'file2-c'
     assert hcf['d']['color'] == 'file1-d'
+    print("Explaination:")
+    hcf.explain(sys.stdout)

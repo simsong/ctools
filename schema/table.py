@@ -1,9 +1,10 @@
 import os
 import logging
 
-from ctools.schema import valid_sql_name,SCHEMA_SUPPORT_FUNCTIONS
+from ctools.schema import valid_sql_name,SCHEMA_SUPPORT_FUNCTIONS,SQL_SCHEMA, MYSQL, SQLITE3, SQL_TYPE_MAP, sql_type_for_python_value
 from ctools.schema.variable import Variable
 from collections import OrderedDict
+
 
 class Table:
     """A class to represent a table in a database. 
@@ -35,6 +36,14 @@ class Table:
         
     def __repr__(self):
         return f"<schema.table name:{self.name} {len(self.vardict)} vars>"
+
+    @classmethod
+    def FromDict(self,name,dict={}):
+        """Create a table from a dictionary. Only handles non-container types as dictionary values."""
+        t = self(name=name)
+        for (k,v) in dict.items():
+            t.add_variable( Variable(name=k, python_type=type(v)))
+        return t
 
     def json_dict(self):
         """Provide a JSON dict of the table name and variables"""
@@ -219,22 +228,29 @@ class Table:
         ret.append('')
         return "\n".join(ret) + "\n"
 
-    def sql_schema(self):
+    def sql_schema(self, extra={}):
         """Generate CREATE TABLE statement for this schema"""
         ret = []
         for line in self.comments:
             ret.append("-- {}".format(line))
         ret.append("CREATE TABLE {} (".format(self.name))
-        for v in self.vars():
-            ret.append("   {} {}, -- {}".format(v.name, v.sql_type(), v.desc))
+        names = list(self.varnames()) + list(extra.keys())
+        print("names:",names)
+        descs = [v.desc for v in self.vars()] + [''] * len(extra)
+        types = [v.sql_type() for v in self.vars()] + [sql_type_for_python_value(v) for v in extra.values()]
+        for (n,d,t) in zip(names,descs,types):
+            sep_comma   = ','    if n!= names[-1] else ''
+            sep_comment = '--'   if d else ''
+            ret.append("   {} {}{} {} {}".format(n, t, sep_comma, sep_comment, d))
         ret.append(");")
         return "\n".join(ret)+"\n"
 
-    def sql_insert(self):
+    def sql_insert(self, dialect=MYSQL, extra={}):
         """Generate a prepared INSERT INTO statement for this schema"""
+        param = SQL_SCHEMA[dialect]['param']
         return "INSERT INTO {} ".format(self.name) +\
-            "(" + ",".join(self.varnames()) + ") " +\
-            "VALUES (" + ",".join("?" for v in self.vars()) + ");"
+            "(" + ",".join( list(self.varnames()) + list(extra)) + ") " +\
+            "VALUES (" + ",".join( [param] * (len(self.vars())  + len(extra))) + ");"
         
     def sql_prepare(self):
         lines = []

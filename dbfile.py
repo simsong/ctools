@@ -152,8 +152,12 @@ class DBMySQL(DBSQL):
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 pass
+            except BlockingIOError as e:
+                logging.error(e)
+                logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")
+
 
 ################################################################
 ##
