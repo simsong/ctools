@@ -46,7 +46,6 @@ class HierarchicalConfigParser(ConfigParser):
                 print(f"{self.source[section][option]}:{option} = {self.get(section=section,option=option)}",file=out)
             print("",file=out)
 
-
     def read(self,filename):
         """First read the requested filename into a temporary config parser.
         Scan for any INCLUDE statements.If any are found in any section, read the included file 
