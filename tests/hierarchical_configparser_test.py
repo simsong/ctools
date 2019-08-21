@@ -18,7 +18,7 @@ def test_fixpath():
     assert fixpath("/a/b/c", "b") == os.path.join("/a/b","b")
 
 def test_hierarchical_configparser1():
-    hcf = HierarchicalConfigParser()
+    hcf = HierarchicalConfigParser(debug=True)
     hcf.read(MYDIR + "/hcf_file2.ini")
     assert sorted(list(hcf.sections())) == ['a', 'b', 'c']
     assert hcf['a']['color'] == 'file2-a'
@@ -52,7 +52,7 @@ def test_hierarchical_configparser3():
     print("Original config file:")
     print(open(fname,"r").read())
     print("--------------------------\n\n")
-    hcf = HierarchicalConfigParser()
+    hcf = HierarchicalConfigParser(debug=True)
     hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
@@ -65,3 +65,32 @@ def test_hierarchical_configparser3():
     assert hcf['d']['color'] == 'file1-d'
     print("Explaination:")
     hcf.explain(sys.stdout)
+
+def test_hierarchical_configparser4():
+    fname = MYDIR + "/hcf_file4.ini"
+    hcf = HierarchicalConfigParser(debug=True)
+    hcf.read(fname)
+    print("and we got:")
+    hcf.write(sys.stdout)
+    assert hcf['a']['filename'] == 'hcf_file4'
+    assert hcf['b']['filename'] == 'hcf_file5'
+    assert hcf['c']['filename'] == 'hcf_file6'
+    assert hcf['d']['filename'] == 'hcf_file6'
+    print("Explaination:")
+    hcf.explain(sys.stdout)
+
+def test_hierarchical_configparser5():
+    fname = MYDIR + "/hcf_test/child/hcf_file6.ini"
+    hcf = HierarchicalConfigParser()
+    hcf.read(fname)
+    print("and we got:")
+    hcf.write(sys.stdout)
+    assert hcf['level']['location'] == 'child'
+    assert hcf['parent']['children'] == '1'
+    assert hcf['a']['filename'] == 'hcf_file6'
+    assert hcf['b']['filename'] == 'hcf_file6'
+    assert hcf['c']['filename'] == 'hcf_file6'
+    assert hcf['d']['filename'] == 'hcf_file6'
+    print("Explaination:")
+    hcf.explain(sys.stdout)
+    
