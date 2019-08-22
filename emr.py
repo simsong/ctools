@@ -34,7 +34,7 @@ import aws
 DEFAULT_WORKERS=4
 
 # We also now implement exponential backoff 
-MAX_RETRIES = 7
+MAX_RETRIES = 8
 RETRY_MS_DELAY = 50
 
 
@@ -109,11 +109,11 @@ def aws_emr_cmd(cmd):
             res = check_output(rcmd, encoding='utf-8')
             return json.loads(res)
         except subprocess.CalledProcessError as e:
-            delay = (2**retries * RETRY_MS_DELAY/1000)
+            delay = (2**retries * (RETRY_MS_DELAY/1000))
             logging.warning(f"aws emr subprocess.CalledProcessError. "
                             f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
-    raise e
+    raise RuntimeError("MAX_RETRIES {} reached".format(MAX_RETRIES))
     
 
 def list_clusters(*,state=None):
