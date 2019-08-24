@@ -36,6 +36,7 @@ TYPE_VARCHAR   = "VARCHAR"
 TYPE_CHAR      = "CHAR"
 TYPE_DECIMAL   = "DECIMAL"
 TYPE_FLOAT     = "FLOAT"
+# map SQL names to Python types
 PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_INTEGER:int,
                   TYPE_INT:int,
@@ -43,6 +44,13 @@ PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_CHAR:str,
                   TYPE_FLOAT:float,
                   TYPE_DECIMAL:decimal.Decimal }
+# Python types to SQL names
+SQL_TYPE_MAP = { int: {'type': TYPE_INTEGER,'width':8},
+                 str: {'type': TYPE_VARCHAR,'width':254},
+                 float: {'type': TYPE_FLOAT,'width': 15},
+                 decimal.Decimal: {'type': TYPE_DECIMAL, 'width':15}}
+    
+
 DEFAULT_VARIABLE_WIDTH = 8
 WIDTH_MAX       = 255
 
@@ -56,6 +64,11 @@ PANDAS_CHUNKSIZE = 1000
 RANGE_NULL = "NULL"           # if NULL, then interpret as the empty string
 RANGE_ANY  = "N/A"            # if N/A, allow any
 
+SQLITE3 = 'sqlite3'
+MYSQL = 'mysql'
+SQL_SCHEMA = {MYSQL : {'param':'%s'},
+              SQLITE3 : {'param':'?'}
+              }
 
 # Included in programmatically-generated output
 SCHEMA_SUPPORT_FUNCTIONS="""
@@ -119,6 +132,9 @@ def vtype_for_numpy_type(t):
         logging.error("Unknown type: {}".format(t))
         raise e
 
+def sql_type_for_python_value(val):
+    stm = SQL_TYPE_MAP[type(val)]
+    return f"{stm['type']}({stm['width']})"
 
 def unquote(s):
     m = unquote_re.match(s)
