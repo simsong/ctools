@@ -6,6 +6,7 @@ import datetime
 import time
 import os
 import logging
+import sys
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -97,7 +98,7 @@ class DBMySQL(DBSQL):
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None,asDicts=False):
+    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None,asDicts=False,debug=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -122,7 +123,15 @@ class DBMySQL(DBSQL):
                 try:
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+                    if debug:
+                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+                    
+                    ###
+                    ###
                     c.execute(cmd,vals)
+                    ###
+                    ###
+
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
                 except errors.ProgrammingError as e:
