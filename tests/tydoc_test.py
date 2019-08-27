@@ -112,4 +112,5 @@ def test_tydoc_toc():
     id1 = toc.find('.//{}'.format(TAG_A)).attrib['HREF']
     id2 = h1.find('.//{}'.format(TAG_A)).attrib['NAME']
     
-    assert id1=='#' + id2
+    assert id1==('#'+id2)
+

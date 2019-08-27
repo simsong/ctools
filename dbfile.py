@@ -66,10 +66,14 @@ class DBMySQLAuth:
         self.user=user
         self.password = password
 
+    def __eq__(self,other):
+        return ((self.host==other.host) and (self.database=other.database)
+                and (self.user==other.user) and (self.password==other.password))
 
 RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
+    """MySQL Database Connection"""
     def __init__(self,auth):
         try:
             import mysql.connector as mysql
@@ -96,8 +100,10 @@ class DBMySQL(DBSQL):
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
+    CACHED_CONNECTIONS = {}
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,get_column_names=None,asDicts=False):
+    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
+             get_column_names=None,asDicts=False,cache=True):
         """Connect, select, fetchall, and retry as necessary.
         get_column_names is an array in which to return the column names.
         asDict=True to return each row as a dictionary
@@ -108,7 +114,10 @@ class DBMySQL(DBSQL):
             import pymysql.err as errors
         for i in range(1,RETRIES):
             try:
-                db = DBMySQL(auth)
+                if cache and auth in CACHED_CONNECTIONS:
+                    db = CACHED_CONNECTIONS(auth)
+                else:
+                    db = DBMySQL(auth)
                 result = None
                 c = db.cursor()
                 c.execute('SET autocommit=1')
@@ -142,19 +151,28 @@ class DBMySQL(DBSQL):
                 if verb in ['INSERT']:
                     result = c.lastrowid
                 c.close()  # close the cursor
-                db.close() # close the connection
+                if cache:
+                    CACHED_CONNECTIONS[auth] = db
+                else:
+                    db.close() # close the connection
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: NO RESULT SET??? RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if db in CACHED_CONNECTIONS:
+                    del CACHED_CONNECTIONS[auth]
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: OPERATIONAL ERROR??? RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.error(f"PID{os.getpid()}: OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if db in CACHED_CONNECTIONS:
+                    del CACHED_CONNECTIONS[auth]
                 pass
             except BlockingIOError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if db in CACHED_CONNECTIONS:
+                    del CACHED_CONNECTIONS[auth]
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")
 

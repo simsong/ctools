@@ -29,9 +29,11 @@ tytable - a class for tables. Lots of methods for adding content and formatting.
 
 Output formats:
 
-HTML - It's not just the DOM; we edit it on output to add functionality. But we can round-trip.
+HTML - It's not just the DOM; we edit it on output to add functionality. Does not support round-tripping.
 
-LaTeX
+LaTeX - Original purpose for this package, makes it easy to create
+   LaTeX tables that can be inserted into your documents. Or make the
+   whole document!
 
 Markdown - Generally we follow:
   * https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links
@@ -62,9 +64,18 @@ To render, we walk the tree.
          - If it returns a result, the result emitted.
       - Otherwise, the renderer's class write_tag_end() is called to come up with the text 
         that is produced as the beginning of the tag. 
+
+Things still needed:
+
+-- TYTABLE -- 
+* Column-based formats
+* Automatic formatting of numbers, titles and text
+* More sensible handling of spans.
+
+
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
@@ -89,14 +100,15 @@ TAG_H1 = 'H1'
 TAG_H2 = 'H2'
 TAG_H3 = 'H3'
 TAG_HTML = 'HTML'
-TAG_PRE = 'PRE'
-TAG_TR = 'TR'
-TAG_TH = 'TH'
-TAG_TD = 'TD'
-TAG_HR = 'HR'
-TAG_UL = 'UL'
-TAG_LI = 'LI'
-TAG_A = 'A'
+TAG_PRE  = 'PRE'
+TAG_TR   = 'TR'
+TAG_TH   = 'TH'
+TAG_HR   = 'HR'
+TAG_TD   = 'TD'
+TAG_UL   = 'UL'
+TAG_OL   = 'OL'
+TAG_LI   = 'LI'
+TAG_A    = 'A'
 TAG_TABLE = 'TABLE'
 TAG_TITLE = 'TITLE'
 TAG_CAPTION = 'CAPTION'
@@ -107,8 +119,11 @@ TAG_X_TOC = 'X-TOC'  # a custom tag; should not appear in output
 TAG_LINK  = 'LINK'
 TAG_SCRIPT = 'SCRIPT'
 
-ATTR_VAL = 'v'  # where we keep the original values
-ATTR_TYPE = 't'  # the Python type of the value
+# Automatically put a newline in the HTML stream after one of these tag blocks
+HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
+
+ATTR_VAL  = 'v'               # where we keep the original values
+ATTR_TYPE = 't'              # the Python type of the value
 
 ATTRIB_OPTIONS = 'OPTIONS'
 ATTRIB_ALIGN = 'ALIGN'
@@ -139,6 +154,9 @@ LATEX_TAGS = {TAG_P: ('\n', '\n\n'),
               # do something better
               TAG_HEAD: ('', ''),
               TAG_BODY: ('', ''),
+              TAG_UL:('\\begin{itemize}\n','\\end{itemize}\n'),
+              TAG_OL:('\\begin{enumerate}\n','\\end{enumerate}\n'),
+              TAG_LI:('\\item ',''),
               TAG_TITLE: ('\\title{', '}\n\\maketitle\n')}
 
 
@@ -152,19 +170,22 @@ MARKDOWN_TAGS = {TAG_HTML: ('', ''),
                  TAG_H3: ('### ', '\n'),
                  TAG_HR: ('=' * 64, '\n'),
                  TAG_HEAD: ('', ''),
-                 TAG_BODY: ('', '')}
+                 TAG_BODY: ('', ''),
+                 TAG_UL:('',''), # should set a flag.
+                 TAG_OL:('',''), # should set a different flag
+                 TAG_LI:('* ','\n'), # should read the flag
+}
 
 # For the Python
-OPTION_LONGTABLE = 'longtable'  # use LaTeX {longtable} environment
-OPTION_TABLE = 'table'  # use LaTeX {table} environment
-OPTION_TABULARX = 'tabularx'  # use LaTeX {tabularx} environment
-OPTION_CENTER = 'center'  # use LaTeX {center} environment
-OPTION_NO_ESCAPE = 'noescape'  # do not escape LaTeX values
-OPTION_SUPPRESS_ZERO = "suppress_zero"  # suppress zeros
-OPTION_DATATABLES = 'datatables'  #
+OPTION_LONGTABLE = 'longtable' # use LaTeX {longtable} environment
+OPTION_TABLE     = 'table'    # use LaTeX {table} enviornment
+OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
+OPTION_CENTER    = 'center'   # use LaTeX {center} environment
+OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
+OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
+OPTION_DATATABLES = 'datatables' # 
 
-LATEX_COLSPEC = 'latex_colspec'
-
+ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
@@ -172,6 +193,9 @@ ATTRIB_FONT_SIZE = 'FONTSIZE'
 ATTRIB_TITLE = 'TITLE'
 ATTRIB_FOOTER = 'FOOTER'
 ATTRIB_LABEL = 'LABEL'
+
+# For the Python table maker
+
 
 ALIGN_LEFT = "LEFT"
 ALIGN_CENTER = "CENTER"
@@ -690,13 +714,6 @@ class tydoc(TyTag):
         """Add a LI"""
         self.body.add_tag_text(TAG_UL, text)
 
-    # Pass throughs
-    def append_image(self, *args, **kwargs):
-        return self.body.append_image(*args, **kwargs)
-
-    def append_matplotlib(self, *args, **kwargs):
-        return self.body.append_matplotlib(*args, **kwargs)
-
 
 class html(tydoc):
     """We can also call the tydoc an html file"""
@@ -946,12 +963,12 @@ class tytable(TyTag):
         """LaTeX colspec is just used when typesetting with latex. If one is
 not set, it auto-generated"""
 
-        self.attrib[LATEX_COLSPEC] = latex_colspec
+        self.attrib[ATTRIB_LATEX_COLSPEC] = latex_colspec
 
     def latex_colspec(self):
         """Use the user-supplied LATEX COLSPEC; otherwise figure one out"""
         try:
-            return self.attrib[LATEX_COLSPEC]
+            return self.attrib[ATTRIB_LATEX_COLSPEC]
         except KeyError as c:
             return "l" * self.max_cols()
 
