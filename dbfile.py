@@ -6,6 +6,7 @@ import datetime
 import time
 import os
 import logging
+import sys
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -103,10 +104,15 @@ class DBMySQL(DBSQL):
     CACHED_CONNECTIONS = {}
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,cache=True):
+             get_column_names=None,asDicts=False,debug=False,cache=True):
         """Connect, select, fetchall, and retry as necessary.
-        get_column_names is an array in which to return the column names.
-        asDict=True to return each row as a dictionary
+        @param auth      - authentication otken
+        @param cmd       - SQL query
+        @param vals      - values for SQL parameters
+        @param time_zone - if provided, set the session.time_zone to this value
+        @param quiet     - don't print anything
+        @param get_column_names - an array in which to return the column names.
+        @param asDict    - True to return each row as a dictionary
         """
         try:
             import mysql.connector.errors as errors
@@ -126,7 +132,15 @@ class DBMySQL(DBSQL):
                 try:
                     if quiet==False:
                         print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+                    if debug:
+                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+                    
+                    ###
+                    ###
                     c.execute(cmd,vals)
+                    ###
+                    ###
+
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
                 except errors.ProgrammingError as e:

@@ -139,7 +139,7 @@ class HierarchicalConfigParser(ConfigParser):
         # All done
         if self.debug:
             print(self.depth, filename,"RETURNING:",file=sys.stderr)
-            self.write(open("/dev/stderr","w"))
+            self.write(sys.stderr)
             print(self.depth, filename,"*** EXIT ***",file=sys.stderr)
 
     def read_string(self,string,source=None):
