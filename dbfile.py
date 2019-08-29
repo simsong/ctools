@@ -62,14 +62,17 @@ class DBSqlite3(DBSQL):
 
 class DBMySQLAuth:
     def __init__(self,*,host,database,user,password):
-        self.host = host
+        self.host     = host
         self.database = database
-        self.user=user
+        self.user     =user
         self.password = password
 
     def __eq__(self,other):
-        return ((self.host==other.host) and (self.database=other.database)
+        return ((self.host==other.host) and (self.database==other.database)
                 and (self.user==other.user) and (self.password==other.password))
+
+    def __hash__(self):
+        return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
 RETRIES = 10
 RETRY_DELAY_TIME = 1
@@ -120,8 +123,8 @@ class DBMySQL(DBSQL):
             import pymysql.err as errors
         for i in range(1,RETRIES):
             try:
-                if cache and auth in CACHED_CONNECTIONS:
-                    db = CACHED_CONNECTIONS(auth)
+                if cache and auth in DBMySQL.CACHED_CONNECTIONS:
+                    db = DBMySQL.CACHED_CONNECTIONS[auth]
                 else:
                     db = DBMySQL(auth)
                 result = None
@@ -166,7 +169,7 @@ class DBMySQL(DBSQL):
                     result = c.lastrowid
                 c.close()  # close the cursor
                 if cache:
-                    CACHED_CONNECTIONS[auth] = db
+                    DBMySQL.CACHED_CONNECTIONS[auth] = db
                 else:
                     db.close() # close the connection
                 return result
