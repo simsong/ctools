@@ -5,13 +5,13 @@ import os
 import tempfile
 import sys
 import subprocess
+import time
 
 from urllib.parse import urlparse
 
 # 
 # This creates an S3 file that supports seeking and caching.
 # We keep this file at Python2.7 for legacy reasons
-
 
 global debug
 
@@ -20,6 +20,7 @@ _ETag='ETag'
 _StorageClass='StorageClass'
 _Key='Key'
 _Size='Size'
+_Prefix='Prefix'
 
 READ_CACHE_SIZE=4096                 # big enough for front and back caches
 MAX_READ=65536*16
@@ -134,6 +135,62 @@ def list_objects(bucket, prefix=None, limit=None, delimiter=None):
         else:
             return
             
+def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, searchFoundPrefixes=True, threads=20):
+    """Search for occurences of a name. Returns a list of all found keys as dictionaries.
+    @param bucket - the bucket to search
+    @param prefix - the prefix to start with
+    @param name   - the name being searched for
+    @param delimiter - the delimiter that separates names
+    @param limit  - the maximum number of names keys to return
+    @param searchFoundPrefixes - If true, do not search for prefixes below where name is found.
+    @param threads - the number of Python threds to use. Note that this is all in the same process.
+    """
+
+    import queue, threading
+
+    if limit is None:
+        limit = sys.maxsize     # should be big enough
+    ret = []
+    def worker():
+        while True:
+            prefix = q.get()
+            if prefix is None:
+                break
+            found_prefixes = []
+            found_names    = 0
+            for obj in list_objects(bucket, prefix=prefix, delimiter=delimiter):
+                if _Prefix in obj:
+                    found_prefixes.append( obj[_Prefix] )
+                if (_Key in obj) and obj[_Key].split(delimiter)[-1]==name:
+                    if len(ret) < limit:
+                        ret.append(obj)
+                if len(ret) > limit:
+                    break
+            if found_names==0 or searchFoundPrefixes:
+                if len(ret) < limit:
+                    for lp in found_prefixes:
+                        q.put(lp)
+            q.task_done()
+
+    q = queue.Queue()
+    thread_pool = []
+    for i in range(threads):
+        t = threading.Thread(target=worker)
+        t.start()
+        thread_pool.append(t)
+    q.put(prefix)
+
+    # block until all tasks are done
+    q.join()
+
+    # stop workers
+    for i in range(threads):
+        q.put(None)
+    for t in thread_pool:
+        t.join()
+    return ret
+    
+
 def etag(obj):
     """Return the ETag of an object. It is a known bug that the S3 API returns ETags wrapped in quotes
     see https://github.com/aws/aws-sdk-net/issue/815"""
@@ -375,19 +432,33 @@ def s3rm(path):
     
 
 if __name__=="__main__":
+    t0 = time.time()
+    count = 0
     from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
     parser = ArgumentParser( formatter_class = ArgumentDefaultsHelpFormatter,
                              description="Combine multiple files on Amazon S3 to the same file." )
-    parser.add_argument("--ls", help="list a s3 prefix")
+    parser.add_argument("--ls", action='store_true', help="list a s3 prefix")
+    parser.add_argument("--delimiter", help="specify a delimiter for ls")
     parser.add_argument("--debug", action='store_true')
+    parser.add_argument("--search", help="Search for something")
+    parser.add_argument("--threads", help="For searching, the number of threads to use", type=int, default=20)
+    parser.add_argument("roots", nargs="+")
     args = parser.parse_args()
     if args.debug:
         debug=args.debug
-    if args.ls:
-        (bucket,prefix) = get_bucket_key(args.ls)
-        for data in list_objects(bucket,prefix):
-            print("{:18,} {}".format(data[_Size],data[_Key]))
-    
+    for root in args.roots:
+        (bucket,prefix) = get_bucket_key(root)
+        if args.ls:
+            for data in list_objects(bucket, prefix, delimiter=args.delimiter):
+                print("{:18,} {}".format(data[_Size],data[_Key]))
+                count +=1 
+        if args.search:
+            for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
+                print("{:18,} {}".format(data[_Size],data[_Key]))
+                count +=1 
+    t1 = time.time()
+    print("Total files:  {}".format(count), file=sys.stderr)
+    print("Elapsed time: {}".format(t1-t0), file=sys.stderr)
 
 
 
