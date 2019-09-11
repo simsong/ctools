@@ -401,10 +401,10 @@ class s3open:
         if self.fsync and "w" in self.mode:
             (bucket,key) = get_bucket_key(self.path)
             aws_s3api(['wait','object-exists','--bucket',bucket,'--key',key])
-            
 
-    def __iter__(self):
-        return self.file_obj
+    # This is not needed
+    # def __iter__(self):
+    #     return self.file_obj
 
     def read(self, *args, **kwargs):
         return self.file_obj.read(*args, **kwargs)
@@ -413,7 +413,10 @@ class s3open:
         return self.file_obj.write(*args, **kwargs)
 
     def close(self, *args, **kwargs):
-        return self.file_obj.close(*args, **kwargs)
+        if self.fsync and "w" in self.mode:
+            (bucket,key) = get_bucket_key(self.path)
+            aws_s3api(['wait','object-exists','--bucket',bucket,'--key',key])
+        return self.file_obj.close()
 
 def s3exists(path):
     """Return True if the S3 file exists. Should be replaced with an s3api function"""
