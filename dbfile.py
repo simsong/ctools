@@ -74,6 +74,12 @@ class DBMySQLAuth:
     def __hash__(self):
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
+    def __repr__(self):
+        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****>"
+
+
+
+
 RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
