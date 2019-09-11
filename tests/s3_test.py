@@ -63,6 +63,26 @@ def test_s3open_write_fsync():
         assert buf==TEST_STRING
 
     s3.s3rm(path)
+
+
+def test_s3open_iter():
+    path = os.path.join(DAS_S3ROOT, f"tmp/tmp.{os.getpid()}")
+    with s3.s3open(path,"w", fsync=True) as f:
+        for i in range(10):
+            f.write( TEST_STRING[:-1] + str(i) + "\n")
+
+    with s3.s3open(path, "r") as f:
+        fl = [l for l in f]
+        for i, l in enumerate(fl):
+            assert l == TEST_STRING[:-1]  + str(i) + "\n"
+
+    f = s3.s3open(path, "r")
+    fl = [l for l in f]
+    for i, l in enumerate(fl):
+        assert l == TEST_STRING[:-1] + str(i) + "\n"
+
+    s3.s3rm(path)
+
     
 if __name__=="__main__":
     test_s3open()
