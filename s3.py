@@ -425,6 +425,9 @@ class s3open:
         self.file_obj.close()
         if self.p.wait() != 0:
             raise RuntimeError(self.p.stderr.read())
+        self.waitObjectExists()
+
+    def waitObjectExists(self):
         if self.fsync and "w" in self.mode:
             (bucket, key) = get_bucket_key(self.path)
             aws_s3api(['wait', 'object-exists', '--bucket', bucket, '--key', key])
@@ -439,10 +442,8 @@ class s3open:
     def write(self, *args, **kwargs):
         return self.file_obj.write(*args, **kwargs)
 
-    def close(self, *args, **kwargs):
-        if self.fsync and "w" in self.mode:
-            (bucket, key) = get_bucket_key(self.path)
-            aws_s3api(['wait', 'object-exists', '--bucket', bucket, '--key', key])
+    def close(self):
+        self.waitObjectExists()
         return self.file_obj.close()
 
 
@@ -478,13 +479,13 @@ if __name__ == "__main__":
     if args.debug:
         debug = args.debug
     for root in args.roots:
-        (bucket1, prefix1) = get_bucket_key(root)
+        (bucket, prefix) = get_bucket_key(root)
         if args.ls:
-            for data in list_objects(bucket1, prefix1, delimiter=args.delimiter):
+            for data in list_objects(bucket, prefix, delimiter=args.delimiter):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
         if args.search:
-            for data in search_objects(bucket1, prefix1, name=args.search, searchFoundPrefixes=False, threads=args.threads):
+            for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
     t1 = time.time()
