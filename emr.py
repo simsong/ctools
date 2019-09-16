@@ -90,8 +90,10 @@ def user_data():
     error, which we turn into a FileNotFound error"""
     try:
         user_data_raw = get_url("http://169.254.169.254/2016-09-02/user-data/")
+        if user_data_raw.startswith("#!"):
+            raise FileNotFoundError("user-data is only available in EMR")
     except urllib.error.URLError as e:
-        raise FileNotFoundError("user-data is only available on EMR")
+        raise FileNotFoundError("user-data is only available in EMR")
     return decode_user_data(user_data_raw)
 
 
