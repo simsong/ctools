@@ -113,7 +113,7 @@ class DBMySQL(DBSQL):
     CACHED_CONNECTIONS = {}
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,debug=False,cache=True):
+             get_column_names=None,asDicts=False,debug=False,cache=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -182,20 +182,21 @@ class DBMySQL(DBSQL):
             except errors.InterfaceError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in CACHED_CONNECTIONS:
-                    del CACHED_CONNECTIONS[auth]
+                if db in DBMySQL.CACHED_CONNECTIONS:
+                    del DBMySQL.CACHED_CONNECTIONS[auth]
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in CACHED_CONNECTIONS:
-                    del CACHED_CONNECTIONS[auth]
+                if db in DBMySQL.CACHED_CONNECTIONS:
+                    del DBMySQL.CACHED_CONNECTIONS[auth]
                 pass
             except BlockingIOError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in CACHED_CONNECTIONS:
-                    del CACHED_CONNECTIONS[auth]
+                if db in DBMySQL.CACHED_CONNECTIONS:
+                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                pass
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")
 
