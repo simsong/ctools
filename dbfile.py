@@ -201,6 +201,12 @@ class DBMySQL(DBSQL):
         raise RuntimeError("Retries Exceeded")
 
 
+    @staticmethod
+    def table_columns(auth, table_name):
+        """Return a dictionary of the schema. This should probably be upgraded to return the ctools schema"""
+        return [row[0] for row in DBMySQL.csfr(auth, "describe "+table_name)]
+                    
+
 ################################################################
 ##
 ## memory profiling tools
