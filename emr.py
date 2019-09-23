@@ -97,6 +97,9 @@ def user_data():
     return decode_user_data(user_data_raw)
 
 
+def releaseLabel():
+    return json.loads(open("/emr/instance-controller/lib/info/extraInstanceData.json","r").read())['releaseLabel']
+
 def encryptionEnabled():
     return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
 
