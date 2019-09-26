@@ -88,7 +88,7 @@ def put_s3url(url, fname):
 def get_object(bucket, key, fname):
     """Given a bucket and a key, download a file"""
     if os.path.exists(fname):
-        raise Exception("{} exists".format(fname))
+        raise FileExistsError(fname)
     return aws_s3api(['get-object', '--bucket', bucket, '--key', key, fname])
 
 
