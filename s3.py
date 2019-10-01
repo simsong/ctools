@@ -58,12 +58,15 @@ def aws_s3api(cmd, debug=False):
         sys.stderr.write("\n")
 
     try:
-        if sys.version[0] == '2':
-            data = subprocess.check_output(fcmd)
+        p = subprocess.Popen(fcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out,err) = p.communicate()
+        if p.returncode==0:
+            return out.decode('utf-8')
         else:
-            data = subprocess.check_output(fcmd, encoding='utf-8')
+            raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
     except TypeError as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, e))
+
 
     if not data:
         return None
