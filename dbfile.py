@@ -66,6 +66,9 @@ class DBMySQLAuth:
         self.database = database
         self.user     =user
         self.password = password
+        self.debug    = False   # enable debugging
+        self.cached_db= None    # cached connection
+
 
     def __eq__(self,other):
         return ((self.host==other.host) and (self.database==other.database)
@@ -110,10 +113,9 @@ class DBMySQL(DBSQL):
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
-    CACHED_CONNECTIONS = {}
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,debug=False,cache=False):
+             get_column_names=None,asDicts=False,debug=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -123,16 +125,19 @@ class DBMySQL(DBSQL):
         @param get_column_names - an array in which to return the column names.
         @param asDict    - True to return each row as a dictionary
         """
+
+        debug = (debug or auth.debug)
+
+
         try:
             import mysql.connector.errors as errors
         except ImportError as e:
             import pymysql.err as errors
         for i in range(1,RETRIES):
             try:
-                if cache and auth in DBMySQL.CACHED_CONNECTIONS:
-                    db = DBMySQL.CACHED_CONNECTIONS[auth]
-                else:
-                    db = DBMySQL(auth)
+                if auth.cached_db is None:
+                    auth.cached_db = DBMySQL(auth)
+                db = auth.cached_db
                 result = None
                 c = db.cursor()
                 c.execute('SET autocommit=1')
@@ -174,28 +179,21 @@ class DBMySQL(DBSQL):
                 if verb in ['INSERT']:
                     result = c.lastrowid
                 c.close()  # close the cursor
-                if cache:
-                    DBMySQL.CACHED_CONNECTIONS[auth] = db
-                else:
-                    db.close() # close the connection
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                auth.cached_db = None
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                auth.cached_db = None
                 pass
             except BlockingIOError as e:
                 logging.error(e)
                 logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                auth.cached_db = None
                 pass
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")

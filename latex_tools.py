@@ -306,7 +306,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     # This should be done with the callback
 
     log = open(logfilename).read().replace("\n","")
-    pat = re.compile('Output written on .*[^\d](\d+) pages?')
+    pat = re.compile(r'Output written on .*[^\d](\d+) pages?')
     m = pat.search(log)
     if m:
         pages = int(m.group(1))
