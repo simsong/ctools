@@ -1,4 +1,5 @@
 import json
+import errno
 import os
 import tempfile
 import sys
@@ -63,7 +64,11 @@ def aws_s3api(cmd, debug=False):
         if p.returncode==0:
             return out.decode('utf-8')
         else:
-            raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
+            err = err.decode('utf-8')
+            if 'does not exist' in err:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(cmd))
+            else:
+                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
     except TypeError as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, e))
 
