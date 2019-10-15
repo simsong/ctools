@@ -136,6 +136,13 @@ class HierarchicalConfigParser(ConfigParser):
         # Store results in the cache
         HierarchicalConfigParser.cache[filename] = self
 
+        # If we are in the root, delete [DEFAULT]include
+        if self.depth==1:
+            try:
+                del self['default']['include']
+            except KeyError:
+                pass
+
         # All done
         if self.debug:
             print(self.depth, filename,"RETURNING:",file=sys.stderr)
