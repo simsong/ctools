@@ -696,7 +696,7 @@ class tydoc(TyTag):
         return self
 
     def table(self, **kwargs):
-        t = tytable()
+        t = tytable(**kwargs)
         self.body.append(t)
         return t
 

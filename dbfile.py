@@ -7,6 +7,7 @@ import time
 import os
 import logging
 import sys
+from collections import OrderedDict
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -175,7 +176,7 @@ class DBMySQL(DBSQL):
                         for (name,type_code,display_size,internal_size,precision,scale,null_ok) in c.description:
                             get_column_names.append(name)
                     if asDicts:
-                        result =[dict(zip(get_column_names, row)) for row in result]
+                        result =[OrderedDict(zip(get_column_names, row)) for row in result]
                 if verb in ['INSERT']:
                     result = c.lastrowid
                 c.close()  # close the cursor
