@@ -62,7 +62,14 @@ def aws_s3api(cmd, debug=False):
         p = subprocess.Popen(fcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out,err) = p.communicate()
         if p.returncode==0:
-            return out.decode('utf-8')
+            if out==b'':
+                return out
+            try:
+                return json.loads(out.decode('utf-8'))
+            except json.decoder.JSONDecodeError as e:
+                print(e,file=sys.stderr)
+                print("out=",out,file=sys.stderr)
+                raise e
         else:
             err = err.decode('utf-8')
             if 'does not exist' in err:
@@ -466,6 +473,7 @@ def s3rm(path):
     """Remove an S3 object"""
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
+    print("res:",type(res))
     if res['DeleteMarker'] != True:
         raise RuntimeError("Unknown response from delete-object: {}".format(res))
 

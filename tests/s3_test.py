@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+3#!/usr/bin/env python3
 # Test S3 code
 
 import os
@@ -10,9 +10,9 @@ sys.path.append( os.path.join( os.path.dirname(__file__), "../..") )
 
 import ctools.s3 as s3
 
-DAS_S3ROOT = os.getenv("DAS_S3ROOT")
-TEST_STRING = "As it is written " + str(os.getpid()) + "\n"
-MOTD = 'etc/motd'
+DAS_S3ROOT   = os.getenv("DAS_S3ROOT")
+TEST_STRING  = "As it is written " + str(os.getpid()) + "\n"
+TEST_S3_FILE = "Examples/testfile.txt"
 
 def test_s3open():
     if "EC2_HOME" not in os.environ:
@@ -29,21 +29,24 @@ def test_s3open():
     if got_exception==False:
         raise RuntimeError("should have gotten exception for bad path")
 
-    print("DAS_S3ROOT:",DAS_S3ROOT)
-    path = os.path.join( DAS_S3ROOT, MOTD)
-
-    print("path:",path)
+    path = os.path.join( DAS_S3ROOT, TEST_S3_FILE )
 
     # Make sure s3open works in a variety of approaches
 
+    # Reading s3open as an iterator
+    val1 = ""
     for line in s3.s3open(path,"r"):
-        print("> ",line)
+        val1 += line 
 
+    # Reading s3open with .read():
     f = s3.s3open(path,"r")
-    print("motd: ",f.read())
+    val2 = f.read()
 
+    # Reading s3open with a context manager
     with s3.s3open(path,"r") as f:
-        print("motd: ",f.read())
+        val3 = f.read()
+
+    assert val1==val2==val3
 
 
 def test_s3open_write_fsync():
@@ -62,7 +65,11 @@ def test_s3open_write_fsync():
         print("Got:: ",buf)
         assert buf==TEST_STRING
 
-    s3.s3rm(path)
+    try:
+        s3.s3rm(path)
+    except RuntimeError as e:
+        print("path:",file=sys.stderr)
+        raise e
 
 
 def test_s3open_iter():
