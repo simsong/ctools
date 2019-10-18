@@ -137,10 +137,13 @@ class DBMySQL(DBSQL):
         for i in range(1,RETRIES):
             try:
                 if auth.cached_db is None:
+                    if i>1:
+                        logging.error(f"Reconnecting. i={i}")
                     auth.cached_db = DBMySQL(auth)
-                db = auth.cached_db
+                    assert auth.cached_db is not None
+                db     = auth.cached_db
                 result = None
-                c = db.cursor()
+                c      = db.cursor()
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
@@ -180,6 +183,8 @@ class DBMySQL(DBSQL):
                 if verb in ['INSERT']:
                     result = c.lastrowid
                 c.close()  # close the cursor
+                if i>1:
+                    logging.error(f"Success with i={i}")
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
