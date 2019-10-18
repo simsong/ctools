@@ -146,9 +146,9 @@ class DBMySQL(DBSQL):
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
                     if quiet==False:
-                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+                        print(f"cmd:{cmd} vals:{vals}")
                     if debug:
-                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+                        print(f"cmd:{cmd} vals:{vals}",file=sys.stderr)
                     
                     ###
                     ###
@@ -183,17 +183,17 @@ class DBMySQL(DBSQL):
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.error(f"InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cached_db = None
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cached_db = None
                 pass
             except BlockingIOError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cached_db = None
                 pass
             time.sleep(RETRY_DELAY_TIME)
