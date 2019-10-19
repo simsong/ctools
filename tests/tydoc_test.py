@@ -117,5 +117,17 @@ def test_tytable_autoid():
     t.add_data([1,2,3], row_auto_id="row1")
     t.add_data([2,3,4], row_auto_id="row2")
     t.add_data([5,6,7], row_auto_id="row3")
-    t.save(os.path.join("/tmp", "tydoc.html"), format="html")
-
+    t.save(os.path.join("/tmp", "autoid.html"), format="html")
+    # Should read it and do something with it here.
+    
+def test_tytable_colspan():
+    """test the colspan feature"""
+    t = tytable()
+    wide_cell = TyTag(TAG_TD,attrib={'colspan':2},text='Wide Column')
+    t.add_head(['foo','bar','baz','bif'],col_auto_ids=['foo','bar','baz','bif'])
+    t.add_data([1,2,3,4], row_auto_id="row1")
+    t.add_data([2,wide_cell,5], row_auto_id="row2")
+    t.add_data([3,4,5,6], row_auto_id="row3")
+    t.save(os.path.join("/tmp", "colspan.html"), format="html")
+    # Should read it and do something with it here.
+    

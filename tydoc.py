@@ -1019,8 +1019,8 @@ not set, it auto-generated"""
         """Add a row of cells to the table. 
         You probably want to call add_head(), add_data() or add_foot().
         @param where      - must be TAG_THEAD, TAG_TBODY or TAG_TFOOT
-        @param cells      - a list of cells that are added. 
-                            Each will have its id= attribute set if row_auto_id and self.col_auto_ids are set..
+        @param cells      - a list of cells that are added. These are typically Elements made with make_cells()
+                            Each will have its id= attribute set if row_auto_id and self.col_auto_ids are set.
         @param row_attrib - the attribute for the row
         """
         # Mutable default value for row_attrib is ok, since we're not changing attrib here or in any subclasses
@@ -1033,15 +1033,18 @@ not set, it auto-generated"""
                     cell.attrib['id'] = row_auto_id + "-" + name
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
         for cell in cells:
+            assert isinstance(cell,ET.Element)
             row.append(cell)
         
 
     def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None, row_auto_id=None):
-        """Create a row of cells and add it to the table.
+        """Create a row of cells and add it to the table. This is called by add_head, add_data, or add_foot.
         @param where  - should be TAG_THEAD/TAG_TBODY/TAG_TFOOT
-        @param tags   - a single tag, or a list of tags. 
-        @param values - a list of values.  Each is automatically formatted.
-        @param cell_attribs - a single cell attrib, or a list of attribs
+        @param tags   - a single tag, or a list of tags. If it is a tag, all of the cells are that tag.
+        @param values - a list of values, one per column.  Each is automatically formatted. 
+                        However, if a value is a TD or a TH element, we just copy that element and use it.
+        @param cell_attribs - a single cell attrib, or a list of attribs. 
+                       If a single attrib, it is given to all the cells.
         @param row_attrib - a single attrib for the row, or a list of attribs
         @param row_auto_id - the id for the row. Cell IDs will be row-col when rendered if row and col auto_id are provied.
         """
@@ -1090,10 +1093,19 @@ not set, it auto-generated"""
 
     def make_cell(self, tag, value, attrib):
         """Given a tag, value and attributes, return a cell formatted with the default format. 
-        If value is a scalar, make and format it. If it is an element, then just make it the children."""
+        If value is a scalar, make and format it. If it is an element, then just make it the children.
+        This is called by add_row.
+        Note - if value is a ET.Element that is either a TAG_TD or TAG_TH, it will be copied and used, otherwise
+               it will be put inside a newly-created TAG_TD or TAG_TH.
+        """
         if isinstance(value, xml.etree.ElementTree.Element):
-            cell = ET.Element(tag, attrib)
-            cell.insert(0, value)
+            if value.tag.upper() in [TAG_TH,TAG_TD]:
+                cell = copy.copy(value)
+                for (k,v) in attrib:
+                    cell.attrib[k] = v
+            else:
+                cell = ET.Element(tag, attrib)
+                cell.insert(0, value)
             return cell
 
         cell = ET.Element(tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
