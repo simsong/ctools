@@ -21,7 +21,6 @@ def test_tytag_option():
     assert t.option("FOO")==False
     assert t.option("BAR")==True
 
-    
 def test_tytable_access():
     """Make sure construction and access methods work properly"""
     t = tytable()
@@ -54,8 +53,6 @@ def test_tytable_attribs():
     assert d2.get_cell(1,1).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
     assert d2.get_cell(1,2).attrib[ATTRIB_ALIGN]==ALIGN_RIGHT
 
-    
-
 def test_tydoc_latex(tmpdir):
     """Create a document that tries lots of features and then make a LaTeX document and run LaTeX"""
 
@@ -67,7 +64,6 @@ def test_tydoc_latex(tmpdir):
     d2.add_head(['State','Abbreviation','Population'])
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
-
 
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
@@ -113,4 +109,13 @@ def test_tydoc_toc():
     id2 = h1.find('.//{}'.format(TAG_A)).attrib['NAME']
     
     assert id1==('#'+id2)
+
+def test_tytable_autoid():
+    """test the autoid feature"""
+    t = tytable()
+    t.add_head(['foo','bar','baz'],col_auto_ids=['foo','bar','baz'])
+    t.add_data([1,2,3], row_auto_id="row1")
+    t.add_data([2,3,4], row_auto_id="row2")
+    t.add_data([5,6,7], row_auto_id="row3")
+    t.save(os.path.join("/tmp", "tydoc.html"), format="html")
 

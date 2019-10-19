@@ -777,6 +777,8 @@ class tytable(TyTag):
 
     3. Creating a <table> HTML tag automatically creates child <thead>, <tbody> and <tfoot> nodes.
        Most people don't know that these tags even exist, but the browsers do.
+
+    4. autoid mode adds a ids to rows and columns automatically
     """
 
     VALID_ALIGNS = {ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT}
@@ -798,6 +800,9 @@ class tytable(TyTag):
         self.thead = self.add_tag(TAG_THEAD)
         self.tbody = self.add_tag(TAG_TBODY)
         self.tfoot = self.add_tag(TAG_TFOOT)
+
+        # Autoid support
+        self.col_auto_ids = None
 
     def custom_renderer(self, f, format=FORMAT_HTML):
         if format in (FORMAT_LATEX, FORMAT_TEX):
@@ -1010,23 +1015,35 @@ not set, it auto-generated"""
     #################################################################
     ### Table Manipulation Routines
 
-    def add_row(self, where, cells, row_attrib={}):
-        """Add a row of cells to the table. You probably want to call add_head() or add_data()
-        @param cells - a list of cells.
+    def add_row(self, where, cells, row_attrib={}, row_auto_id=None):
+        """Add a row of cells to the table. 
+        You probably want to call add_head(), add_data() or add_foot().
+        @param where      - must be TAG_THEAD, TAG_TBODY or TAG_TFOOT
+        @param cells      - a list of cells that are added. 
+                            Each will have its id= attribute set if row_auto_id and self.col_auto_ids are set..
+        @param row_attrib - the attribute for the row
         """
         # Mutable default value for row_attrib is ok, since we're not changing attrib here or in any subclasses
+        assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
         where_node = self.findall(f".//{where}")[0]
+        if row_auto_id is not None:
+            row_attrib = {**row_attrib, **{'id':row_auto_id}}
+            if self.col_auto_ids is not None:
+                for (cell,name) in zip(cells, self.col_auto_ids):
+                    cell.attrib['id'] = row_auto_id + "-" + name
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
         for cell in cells:
             row.append(cell)
+        
 
-    def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None):
+    def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None, row_auto_id=None):
         """Create a row of cells and add it to the table.
         @param where  - should be TAG_THEAD/TAG_TBODY/TAG_TFOOT
         @param tags   - a single tag, or a list of tags. 
         @param values - a list of values.  Each is automatically formatted.
         @param cell_attribs - a single cell attrib, or a list of attribs
         @param row_attrib - a single attrib for the row, or a list of attribs
+        @param row_auto_id - the id for the row. Cell IDs will be row-col when rendered if row and col auto_id are provied.
         """
         assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
 
@@ -1045,18 +1062,27 @@ not set, it auto-generated"""
 
         if not (len(tags) == len(values) == len(cell_attribs)):
             raise ValueError(
-                "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(len(tags), len(values), len(cell_attribs)))
+                "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(
+                    len(tags), len(values), len(cell_attribs)))
         cells = [self.make_cell(t, v, a) for (t, v, a) in zip(tags, values, cell_attribs)]
-        self.add_row(where, cells, row_attrib=row_attrib)
+        self.add_row(where, cells, row_attrib=row_attrib, row_auto_id=row_auto_id)
 
-    def add_head(self, values, row_attrib=None, cell_attribs=None):
-        self.add_row_values(TAG_THEAD, 'TH', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
+    def add_head(self, values, row_attrib=None, cell_attribs=None, col_auto_ids=None, row_auto_id="head"):
+        if col_auto_ids is not None:
+            if self.col_auto_ids is None:
+                self.col_auto_ids = col_auto_ids
+            else:
+                raise RuntimeError("auto_ids may only be specified once")
+        self.add_row_values(TAG_THEAD, 'TH', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                            row_auto_id=row_auto_id)
 
-    def add_data(self, values, row_attrib=None, cell_attribs=None):
-        self.add_row_values(TAG_TBODY, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
+    def add_data(self, values, row_attrib=None, cell_attribs=None, row_auto_id=None):
+        self.add_row_values(TAG_TBODY, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                            row_auto_id=row_auto_id)
 
     def add_foot(self, values, row_attrib=None, cell_attribs=None):
-        self.add_row_values(TAG_TFOOT, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs)
+        self.add_row_values(TAG_TFOOT, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                            row_auto_id="foot")
 
     def add_data_array(self, rows):
         for row in rows:
