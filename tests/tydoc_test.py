@@ -123,11 +123,29 @@ def test_tytable_autoid():
 def test_tytable_colspan():
     """test the colspan feature"""
     t = tytable()
-    wide_cell = TyTag(TAG_TD,attrib={'colspan':2},text='Wide Column')
+    wide_cell = TyTag(TAG_TD,attrib={'COLSPAN':2},text='Wide Column')
     t.add_head(['foo','bar','baz','bif'],col_auto_ids=['foo','bar','baz','bif'])
     t.add_data([1,2,3,4], row_auto_id="row1")
     t.add_data([2,wide_cell,5], row_auto_id="row2")
     t.add_data([3,4,5,6], row_auto_id="row3")
+
+    # Make sure that the colspan is working
+    assert t.get_cell(0,0).text == 'foo'
+    assert t.get_cell(0,1).text == 'bar'
+    assert t.get_cell(0,2).text == 'baz'
+    assert t.get_cell(0,3).text == 'bif'
+    
+    assert t.get_cell(1,0).text == '1'
+    assert t.get_cell(1,1).text == '2'
+    assert t.get_cell(1,2).text == '3'
+    assert t.get_cell(1,3).text == '4'
+    
+    assert t.get_cell(2,0).text == '2'
+    assert t.get_cell(2,1).text == 'Wide Column'
+    assert t.get_cell(2,2).text == None
+    assert t.get_cell(2,3).text == '5'
+    
     t.save(os.path.join("/tmp", "colspan.html"), format="html")
+    t.save(os.path.join("/tmp", "colspan.json"), format="json")
     # Should read it and do something with it here.
     
