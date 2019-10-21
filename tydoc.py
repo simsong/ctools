@@ -767,6 +767,10 @@ class X_TOC(TyTag):
         return False
 
 
+def tag_ignore():
+    return ET.Element(TAG_TIGNORE)
+
+
 ################################################################
 ### Improved tytable with the new API.
 ### Class name has changed from ttable to tytable.

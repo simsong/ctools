@@ -127,6 +127,7 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
+        assert isinstance(auth,DBMySQLAuth)
         debug = (debug or auth.debug)
 
 
