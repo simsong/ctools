@@ -21,7 +21,6 @@ def test_tytag_option():
     assert t.option("FOO")==False
     assert t.option("BAR")==True
 
-    
 def test_tytable_access():
     """Make sure construction and access methods work properly"""
     t = tytable()
@@ -54,8 +53,6 @@ def test_tytable_attribs():
     assert d2.get_cell(1,1).attrib[ATTRIB_ALIGN]==ALIGN_CENTER
     assert d2.get_cell(1,2).attrib[ATTRIB_ALIGN]==ALIGN_RIGHT
 
-    
-
 def test_tydoc_latex(tmpdir):
     """Create a document that tries lots of features and then make a LaTeX document and run LaTeX"""
 
@@ -67,7 +64,6 @@ def test_tydoc_latex(tmpdir):
     d2.add_head(['State','Abbreviation','Population'])
     d2.add_data(['Virginia','VA',8001045])
     d2.add_data(['California','CA',37252895])
-
 
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
@@ -114,3 +110,42 @@ def test_tydoc_toc():
     
     assert id1==('#'+id2)
 
+def test_tytable_autoid():
+    """test the autoid feature"""
+    t = tytable()
+    t.add_head(['foo','bar','baz'],col_auto_ids=['foo','bar','baz'])
+    t.add_data([1,2,3], row_auto_id="row1")
+    t.add_data([2,3,4], row_auto_id="row2")
+    t.add_data([5,6,7], row_auto_id="row3")
+    t.save(os.path.join("/tmp", "autoid.html"), format="html")
+    # Should read it and do something with it here.
+    
+def test_tytable_colspan():
+    """test the colspan feature"""
+    t = tytable()
+    wide_cell = TyTag(TAG_TD,attrib={'COLSPAN':2},text='Wide Column')
+    t.add_head(['foo','bar','baz','bif'],col_auto_ids=['foo','bar','baz','bif'])
+    t.add_data([1,2,3,4], row_auto_id="row1")
+    t.add_data([2,wide_cell,5], row_auto_id="row2")
+    t.add_data([3,4,5,6], row_auto_id="row3")
+
+    # Make sure that the colspan is working
+    assert t.get_cell(0,0).text == 'foo'
+    assert t.get_cell(0,1).text == 'bar'
+    assert t.get_cell(0,2).text == 'baz'
+    assert t.get_cell(0,3).text == 'bif'
+    
+    assert t.get_cell(1,0).text == '1'
+    assert t.get_cell(1,1).text == '2'
+    assert t.get_cell(1,2).text == '3'
+    assert t.get_cell(1,3).text == '4'
+    
+    assert t.get_cell(2,0).text == '2'
+    assert t.get_cell(2,1).text == 'Wide Column'
+    assert t.get_cell(2,2).text == None
+    assert t.get_cell(2,3).text == '5'
+    
+    t.save(os.path.join("/tmp", "colspan.html"), format="html")
+    t.save(os.path.join("/tmp", "colspan.json"), format="json")
+    # Should read it and do something with it here.
+    
