@@ -1226,7 +1226,7 @@ def pre(*text, **kwargs):
 
 def b(text):
     """Return a bold run"""
-    e = ET.Element('b')
+    e = ET.Element(TAG_B)
     e.text = text
     return e
 
@@ -1236,17 +1236,28 @@ def a(text, href=None):
     attrib = {}
     if href:
         attrib['href'] = href
-    e = ET.Element('a', attrib)
+    e = ET.Element(TAG_A, attrib)
     e.text = text
     return e
 
 
 def i(text):
     """Return an itallic run """
-    e = ET.Element('i')
+    e = ET.Element(TAG_I)
     e.text = text
     return e
 
+def th(text):
+    """Return an td element """
+    e = ET.Element(TAG_TH)
+    e.text = text
+    return e
+
+def td(text):
+    """Return an td element """
+    e = ET.Element(TAG_TD)
+    e.text = text
+    return e
 
 def showcase(doc):
     print("---DOM---")
