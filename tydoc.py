@@ -897,20 +897,18 @@ class tytable(TyTag):
         """Output the data in the body of the table as a JSON object."""
         data = dict()
         for tr in self.findall("./TBODY/TR"):
-            row = dict()
             for cell in tr:
                 if cell.tag==TAG_TIGNORE:
                     continue
                 if ATTR_VAL in cell.attrib:
                     if cell.attrib[ATTR_TYPE]=='int':
-                        row[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
                     elif cell.attrib[ATTR_TYPE]=='float':
-                        row[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
                     else:
-                        row[cell.attrib['id']] = cell.attrib[ATTR_VAL]
+                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
                 else:
-                    row[cell.attrib['id']] = cell.text
-            data[tr.attrib['id']] = row
+                    data[cell.attrib['id']] = cell.text
         f.write( json.dumps( data ) )
         return True
 
