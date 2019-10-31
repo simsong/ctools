@@ -163,9 +163,7 @@ class DBMySQL(DBSQL):
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
-                    if quiet==False:
-                        print(f"cmd:{cmd} vals:{vals}")
-                    if debug:
+                    if quiet==False or debug:
                         print(f"cmd:{cmd} vals:{vals}",file=sys.stderr)
                     
                     ###
