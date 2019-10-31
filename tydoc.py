@@ -630,7 +630,7 @@ class tydoc(TyTag):
         some clever XPath..."""
         return ret  # TODO: ret is undefined
 
-    def set_title(self, text):
+    def title(self, text):
         self.head.add_tag_elems(TAG_TITLE, [text])
 
     def insert_toc(self, level=3):
@@ -1309,7 +1309,7 @@ def demo4():
 
 def tabdemo1():
     doc = tydoc()
-    doc.set_title("Test Document")
+    doc.title("Test Document")
     doc.h1("Table demo")
 
     lcr = [{}, {ATTRIB_ALIGN: ALIGN_CENTER}, {ATTRIB_ALIGN: ALIGN_RIGHT}]
