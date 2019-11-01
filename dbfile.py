@@ -198,6 +198,8 @@ class DBMySQL(DBSQL):
                 c.close()  # close the cursor
                 if i>1:
                     logging.error(f"Success with i={i}")
+                if debug:
+                    print("   rows={}  row[0]={}".format(len(result), result[0] if len(result)>0 else None),file=sys.stderr)
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
