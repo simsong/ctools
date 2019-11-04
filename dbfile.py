@@ -164,7 +164,7 @@ class DBMySQL(DBSQL):
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
                     if quiet==False or debug:
-                        print(f"cmd:{cmd} vals:{vals}",file=sys.stderr)
+                        print(f"quiet:{quiet} debug:{debug} cmd:{cmd} vals:{vals}",file=sys.stderr)
                     
                     ###
                     ###
