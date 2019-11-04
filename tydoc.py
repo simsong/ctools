@@ -701,6 +701,9 @@ class tydoc(TyTag):
         self.body.add_tag_text(TAG_H3, text)
         return self
 
+    def div(self, text, **attrib):
+        self.body.add_tag_text(TAG_DIV, text, **attrib)
+
     def pre(self, text):
         """Add a preformatted"""
         self.body.add_tag_text(TAG_PRE, text)
