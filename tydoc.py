@@ -557,6 +557,59 @@ class TyTag(xml.etree.ElementTree.Element):
         buf.seek(0)
         self.append_image(buf, format='png')
 
+    # convenience classes add to body if present, otherwise add local
+    def body_(self):
+        return self.body if hasattr(self,'body') else self
+
+    def p(self, text):
+        """Add a paragraph. Multiple arguments are combined 
+        and can be text or other HTML elements""" 
+        self.body_().add_tag_text(TAG_P, text)
+        return self
+        
+    def h1(self, text):
+        """Append H1 to the current tag"""
+        self.body_().add_tag_text(TAG_H1, text)
+        return self
+
+    def h2(self, text):
+        """Add a H2"""
+        self.body_().add_tag_text(TAG_H2, text)
+        return self
+
+    def h3(self, text):
+        """Add a H3"""
+        self.body_().add_tag_text(TAG_H3, text)
+        return self
+
+    def div(self, text, **attrib):
+        self.body_().add_tag_text(TAG_DIV, text, **attrib)
+
+    def pre(self, text):
+        """Add a preformatted"""
+        self.body_().add_tag_text(TAG_PRE, text)
+        return self
+
+    def hr(self):
+        """Add a horizontal rule"""
+        self.add_tag_text(TAG_HR)
+        return self
+
+    def table(self, **kwargs):
+        t = tytable(**kwargs)
+        self.body_().append(t)
+        return t
+
+    def ul(self, text):
+        """Add a UL"""
+        self.body_().add_tag_text(TAG_UL, text)
+
+    def li(self, text):
+        """Add a LI"""
+        self.body_().add_tag_text(TAG_UL, text)
+
+
+
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
         """Create an image. You must specify the format. 
@@ -680,60 +733,11 @@ class tydoc(TyTag):
         # And add it to the body
         body.insert(0,xtoc)
         
-    # passthroughs
-    def p(self, text):
-        """Add a paragraph. Multiple arguments are combined 
-        and can be text or other HTML elements""" 
-        self.body.add_tag_text(TAG_P, text)
-        return self
-        
-    def h1(self, text):
-        """Append H1 to the current tag"""
-        self.body.add_tag_text(TAG_H1, text)
-        return self
-
-    def h2(self, text):
-        """Add a H2"""
-        self.body.add_tag_text(TAG_H2, text)
-        return self
-
-    def h3(self, text):
-        """Add a H3"""
-        self.body.add_tag_text(TAG_H3, text)
-        return self
-
-    def div(self, text, **attrib):
-        self.body.add_tag_text(TAG_DIV, text, **attrib)
-
-    def pre(self, text):
-        """Add a preformatted"""
-        self.body.add_tag_text(TAG_PRE, text)
-        return self
-
-    def hr(self):
-        """Add a horizontal rule"""
-        self.add_tag_text(TAG_HR)
-        return self
-
-    def table(self, **kwargs):
-        t = tytable(**kwargs)
-        self.body.append(t)
-        return t
-
-    def stylesheet(self, url):
+    def add_stylesheet(self, url):
         self.head.append(TyTag('link', {'rel': "stylesheet", 'type': "text/css", 'href': url}))
 
-    def script(self, url):
+    def add_script(self, url):
         self.head.append(TyTag('script', {'type': "text/javascript", 'src': url}))
-
-    def ul(self, text):
-        """Add a UL"""
-        self.body.add_tag_text(TAG_UL, text)
-
-    def li(self, text):
-        """Add a LI"""
-        self.body.add_tag_text(TAG_UL, text)
-
 
 class html(tydoc):
     """We can also call the tydoc an html file"""
