@@ -88,6 +88,7 @@ import os.path
 import sys
 import uuid
 import json
+import logging
 
 sys.path.append(os.path.dirname(__file__))
 from latex_tools import latex_escape
@@ -121,6 +122,7 @@ TAG_TFOOT = 'TFOOT'
 TAG_X_TOC = 'X-TOC'  # a custom tag; should not appear in output
 TAG_LINK  = 'LINK'
 TAG_SCRIPT = 'SCRIPT'
+TAG_SPAN   = 'SPAN'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
@@ -564,36 +566,30 @@ class TyTag(xml.etree.ElementTree.Element):
     def p(self, text):
         """Add a paragraph. Multiple arguments are combined 
         and can be text or other HTML elements""" 
-        self.body_().add_tag_text(TAG_P, text)
-        return self
+        return self.body_().add_tag_text(TAG_P, text)
         
     def h1(self, text):
         """Append H1 to the current tag"""
-        self.body_().add_tag_text(TAG_H1, text)
-        return self
+        return self.body_().add_tag_text(TAG_H1, text)
 
     def h2(self, text):
         """Add a H2"""
-        self.body_().add_tag_text(TAG_H2, text)
-        return self
+        return self.body_().add_tag_text(TAG_H2, text)
 
     def h3(self, text):
         """Add a H3"""
-        self.body_().add_tag_text(TAG_H3, text)
-        return self
+        return self.body_().add_tag_text(TAG_H3, text)
 
     def div(self, text, **attrib):
-        self.body_().add_tag_text(TAG_DIV, text, **attrib)
+        return self.body_().add_tag_text(TAG_DIV, text, **attrib)
 
     def pre(self, text):
         """Add a preformatted"""
-        self.body_().add_tag_text(TAG_PRE, text)
-        return self
+        return self.body_().add_tag_text(TAG_PRE, text)
 
     def hr(self):
         """Add a horizontal rule"""
-        self.add_tag_text(TAG_HR)
-        return self
+        return self.add_tag_text(TAG_HR)
 
     def table(self, **kwargs):
         t = tytable(**kwargs)
@@ -602,12 +598,14 @@ class TyTag(xml.etree.ElementTree.Element):
 
     def ul(self, text):
         """Add a UL"""
-        self.body_().add_tag_text(TAG_UL, text)
+        return self.body_().add_tag_text(TAG_UL, text)
 
     def li(self, text):
         """Add a LI"""
-        self.body_().add_tag_text(TAG_UL, text)
+        return self.body_().add_tag_text(TAG_UL, text)
 
+    def span(self, text):
+        return self.body_().add_tag_text(TAG_SPAN, text)
 
 
 class EmbeddedImageTag(TyTag):
