@@ -5,6 +5,7 @@ import time
 import os
 import logging
 import sys
+import threading
 from collections import OrderedDict
 
 """
@@ -134,13 +135,16 @@ class DBSqlite3(DBSQL):
             exit(1)
         
 class DBMySQLAuth:
-    def __init__(self,*,host,database,user,password):
+    """Class that represents MySQL credentials. Will cache the connection. If run under bottle, the bottle object can be passed in, and cached_db is stored in the request-local storage."""
+
+    def __init__(self,*,host,database,user,password,bottle=None):
         self.host     = host
         self.database = database
         self.user     =user
         self.password = password
         self.debug    = False   # enable debugging
-        self.cached_db= None    # cached connection
+        self.dbcache  = dict()  # dictionary of cached connections.
+        self.bottle   = bottle
 
     def __eq__(self,other):
         return ((self.host==other.host) and (self.database==other.database)
@@ -176,6 +180,19 @@ class DBMySQLAuth:
                            user = env[MYSQL_USER],
                            password = env[MYSQL_PASSWORD],
                            database = env[MYSQL_DATABASE])
+
+    def cache_store(self,db):
+        self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
+
+    def cache_get(self):
+        return self.dbcache[ (os.getpid(), threading.get_ident()) ]
+
+    def cache_clear(self):
+        try:
+            del self.dbcache[ (os.getpid(), threading.get_ident()) ]
+        except KeyError as e:
+            pass
+
 
 
 RETRIES = 10
@@ -221,6 +238,7 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
+        assert isinstance(auth,DBMySQLAuth)
         debug = (debug or auth.debug)
 
 
@@ -230,22 +248,23 @@ class DBMySQL(DBSQL):
             import pymysql.err as errors
         for i in range(1,RETRIES):
             try:
-                if auth.cached_db is None:
+                try:
+                    db = auth.cache_get()
+                except KeyError:
                     if i>1:
                         logging.error(f"Reconnecting. i={i}")
-                    auth.cached_db = DBMySQL(auth)
-                    assert auth.cached_db is not None
-                db     = auth.cached_db
+                    db = DBMySQL(auth)
+                    auth.cache_store(db)
                 result = None
                 c      = db.cursor()
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
-                    if quiet==False:
-                        print(f"cmd:{cmd} vals:{vals}")
-                    if debug:
-                        print(f"cmd:{cmd} vals:{vals}",file=sys.stderr)
+                    if quiet==False or debug:
+                        logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
+                        logging.warning("cmd: %s",(cmd.replace("%s","'%s'"),tuple(vals)))
+                        
                     
                     ###
                     ###
@@ -279,21 +298,28 @@ class DBMySQL(DBSQL):
                 c.close()  # close the cursor
                 if i>1:
                     logging.error(f"Success with i={i}")
+                if debug:
+                    print("   rows={}  row[0]={}".format(len(result), result[0] if len(result)>0 else None),file=sys.stderr)
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cached_db = None
+                logging.error(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
                 logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cached_db = None
+                auth.cache_clear()
+                pass
+            except errors.InternalError as e:
+                logging.error(e)
+                logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
                 pass
             except BlockingIOError as e:
                 logging.error(e)
                 logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cached_db = None
+                auth.cache_clear()
                 pass
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")

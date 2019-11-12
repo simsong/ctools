@@ -88,6 +88,7 @@ import os.path
 import sys
 import uuid
 import json
+import logging
 
 sys.path.append(os.path.dirname(__file__))
 from latex_tools import latex_escape
@@ -100,6 +101,7 @@ TAG_I = 'I'
 TAG_H1 = 'H1'
 TAG_H2 = 'H2'
 TAG_H3 = 'H3'
+TAG_DIV = 'DIV'
 TAG_HTML = 'HTML'
 TAG_PRE  = 'PRE'
 TAG_TR   = 'TR'
@@ -120,6 +122,7 @@ TAG_TFOOT = 'TFOOT'
 TAG_X_TOC = 'X-TOC'  # a custom tag; should not appear in output
 TAG_LINK  = 'LINK'
 TAG_SCRIPT = 'SCRIPT'
+TAG_SPAN   = 'SPAN'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
@@ -556,6 +559,55 @@ class TyTag(xml.etree.ElementTree.Element):
         buf.seek(0)
         self.append_image(buf, format='png')
 
+    # convenience classes add to body if present, otherwise add local
+    def body_(self):
+        return self.body if hasattr(self,'body') else self
+
+    def p(self, text):
+        """Add a paragraph. Multiple arguments are combined 
+        and can be text or other HTML elements""" 
+        return self.body_().add_tag_text(TAG_P, text)
+        
+    def h1(self, text):
+        """Append H1 to the current tag"""
+        return self.body_().add_tag_text(TAG_H1, text)
+
+    def h2(self, text):
+        """Add a H2"""
+        return self.body_().add_tag_text(TAG_H2, text)
+
+    def h3(self, text):
+        """Add a H3"""
+        return self.body_().add_tag_text(TAG_H3, text)
+
+    def div(self, text, **attrib):
+        return self.body_().add_tag_text(TAG_DIV, text, **attrib)
+
+    def pre(self, text):
+        """Add a preformatted"""
+        return self.body_().add_tag_text(TAG_PRE, text)
+
+    def hr(self):
+        """Add a horizontal rule"""
+        return self.add_tag_text(TAG_HR)
+
+    def table(self, **kwargs):
+        t = tytable(**kwargs)
+        self.body_().append(t)
+        return t
+
+    def ul(self, text):
+        """Add a UL"""
+        return self.body_().add_tag_text(TAG_UL, text)
+
+    def li(self, text):
+        """Add a LI"""
+        return self.body_().add_tag_text(TAG_UL, text)
+
+    def span(self, text):
+        return self.body_().add_tag_text(TAG_SPAN, text)
+
+
 class EmbeddedImageTag(TyTag):
     def __init__(self, buf, *, format, alt=""):
         """Create an image. You must specify the format. 
@@ -630,7 +682,7 @@ class tydoc(TyTag):
         some clever XPath..."""
         return ret  # TODO: ret is undefined
 
-    def set_title(self, text):
+    def title(self, text):
         self.head.add_tag_elems(TAG_TITLE, [text])
 
     def insert_toc(self, level=3):
@@ -679,57 +731,11 @@ class tydoc(TyTag):
         # And add it to the body
         body.insert(0,xtoc)
         
-    # passthroughs
-    def p(self, text):
-        """Add a paragraph. Multiple arguments are combined 
-        and can be text or other HTML elements""" 
-        self.body.add_tag_text(TAG_P, text)
-        return self
-        
-    def h1(self, text):
-        """Append H1 to the current tag"""
-        self.body.add_tag_text(TAG_H1, text)
-        return self
-
-    def h2(self, text):
-        """Add a H2"""
-        self.body.add_tag_text(TAG_H2, text)
-        return self
-
-    def h3(self, text):
-        """Add a H3"""
-        self.body.add_tag_text(TAG_H3, text)
-        return self
-
-    def pre(self, text):
-        """Add a preformatted"""
-        self.body.add_tag_text(TAG_PRE, text)
-        return self
-
-    def hr(self):
-        """Add a horizontal rule"""
-        self.add_tag_text(TAG_HR)
-        return self
-
-    def table(self, **kwargs):
-        t = tytable(**kwargs)
-        self.body.append(t)
-        return t
-
-    def stylesheet(self, url):
+    def add_stylesheet(self, url):
         self.head.append(TyTag('link', {'rel': "stylesheet", 'type': "text/css", 'href': url}))
 
-    def script(self, url):
+    def add_script(self, url):
         self.head.append(TyTag('script', {'type': "text/javascript", 'src': url}))
-
-    def ul(self, text):
-        """Add a UL"""
-        self.body.add_tag_text(TAG_UL, text)
-
-    def li(self, text):
-        """Add a LI"""
-        self.body.add_tag_text(TAG_UL, text)
-
 
 class html(tydoc):
     """We can also call the tydoc an html file"""
@@ -765,6 +771,10 @@ class X_TOC(TyTag):
             # Output nothing
             return True
         return False
+
+
+def tag_ignore():
+    return ET.Element(TAG_TIGNORE)
 
 
 ################################################################
@@ -1222,7 +1232,7 @@ def pre(*text, **kwargs):
 
 def b(text):
     """Return a bold run"""
-    e = ET.Element('b')
+    e = ET.Element(TAG_B)
     e.text = text
     return e
 
@@ -1232,17 +1242,28 @@ def a(text, href=None):
     attrib = {}
     if href:
         attrib['href'] = href
-    e = ET.Element('a', attrib)
+    e = ET.Element(TAG_A, attrib)
     e.text = text
     return e
 
 
 def i(text):
     """Return an itallic run """
-    e = ET.Element('i')
+    e = ET.Element(TAG_I)
     e.text = text
     return e
 
+def th(text):
+    """Return an td element """
+    e = ET.Element(TAG_TH)
+    e.text = text
+    return e
+
+def td(text):
+    """Return an td element """
+    e = ET.Element(TAG_TD)
+    e.text = text
+    return e
 
 def showcase(doc):
     print("---DOM---")
@@ -1294,7 +1315,7 @@ def demo4():
 
 def tabdemo1():
     doc = tydoc()
-    doc.set_title("Test Document")
+    doc.title("Test Document")
     doc.h1("Table demo")
 
     lcr = [{}, {ATTRIB_ALIGN: ALIGN_CENTER}, {ATTRIB_ALIGN: ALIGN_RIGHT}]
