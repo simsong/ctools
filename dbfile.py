@@ -195,13 +195,15 @@ class DBMySQL(DBSQL):
                             get_column_names.append(name)
                     if asDicts:
                         result =[OrderedDict(zip(get_column_names, row)) for row in result]
+                    if debug:
+                        logging.warning("   SELECTED ROWS count=%s  row[0]=%s",len(result), result[0] if len(result)>0 else None)
                 if verb in ['INSERT']:
                     result = c.lastrowid
+                    if debug:
+                        logging.warning("   INSERT c.lastworid=%s",c.lastrowid)
                 c.close()  # close the cursor
                 if i>1:
                     logging.error(f"Success with i={i}")
-                if debug:
-                    print("   rows={}  row[0]={}".format(len(result), result[0] if len(result)>0 else None),file=sys.stderr)
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
@@ -215,6 +217,8 @@ class DBMySQL(DBSQL):
                 pass
             except errors.InternalError as e:
                 logging.error(e)
+                if "Unknown column" in str(e):
+                    raise e
                 logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
