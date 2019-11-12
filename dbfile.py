@@ -1,6 +1,4 @@
-#
-# Methods that return File(pathid,dirname,filename) for searches
-#
+# dbfile.py
 
 import datetime
 import time
@@ -8,6 +6,81 @@ import os
 import logging
 import sys
 from collections import OrderedDict
+
+"""
+This is the dbfile.py (database file)
+
+This package is mostly here for the MySQL interface, but parts can also be used with SQLite3. 
+
+The goals of this package:
+
+- Provide a higher-level abstraction for database access than provided by Python's built-in SQLite3 anad MySQL classes.
+
+- Provide a more efficient interface than one typically gets using an Object Relation Mapper (ORM) such as SQLAlchemy.
+
+- For MySQL, provide an easy-to-use mechanism for handling authentication.
+
+- For MySQL, provide a system that allows for long-lived connections from an application to the MySQL database,
+  but which automatically re-connects and retries the last transaction when the connection is interrupted. This means
+  that connections need to be cached and to be atomic when at all possible.
+
+- Make it easy to access internals.
+
+- Make error handling easy.
+
+- Make debugging easy.
+
+- Eliminate code that tends to be repeated in applications that use a database.
+
+The following classes are provided:
+
+  DBSQL() - An abstract SQLDatbase class. Largely wraps the Python API.
+  DBSqlite3(DBQSL) - DBSQL for SQLite3. The __init__ method lets one specify the file.
+  DBMySQLAuth() - An authentication object for MySQL. Allows host, database, user, password to
+                  be passed as a single parameter. Also holds a debug flag and a cached
+                  database connection that uses these authentication parameters.
+
+  DBMySQL(DBSQL) - DBSQL for MySQL. Includes logic for retrying, and a class method
+                   that makes INSERT and SELECT an automic operation with automatic retry.
+                 - *many* functions in this should probably be migrated to DBSQL().
+
+The main DBMySQL class method that we use is:
+
+  DBMySQL.csfr(auth, cmd, vals, quiet, rowcount, time_zone, get_column_names, asDicts, debug)
+  
+When running as a server, credentials can be managed by storing them in a bash script.
+
+For example, let's say you have a WSGI script that needs to know read-only MySQL credentails for a web application. You create a MySQL username called "dbreader" with the password "magic-password-1234" on your MySQL server at mysql.company.com. You give this user SELECT access to the database "database1". You might then create a script called 'dbreader.bash' and put it at /home/www/dbreader.bash:
+
+   $ cat dbreader.bash
+   export MYSQL_HOST="mysql.company.com"
+   export MYSQL_USER="dbreader"
+   export MYSQL_PASSWORD="magic-password-1234"
+   export MYSQL_DATABASE="database1"
+   alias dbreader="mysql -hMYSQL_HOST -u$MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE"
+   $
+
+If you source this (which is not secure because it puts the password on the
+command line, but hold that thought), you can then test out the dbreader account by just typing 'dbreader'. 
+
+You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
+
+   auth = DBMySQLAUTH("/home/www/dbreader.bash")
+
+Then you can use auth as the first parameter in the .csfr() method.
+
+Note: Currently, the end of this module also a methods for a remote system load
+management system that was used to debug the persistent
+connections. That's no longer and will be removed at a later date.
+
+
+"""
+
+MYSQL_HOST = 'MYSQL_HOST'
+MYSQL_USER = 'MYSQL_USER'
+MYSQL_PASSWORD = 'MYSQL_PASSWORD'
+MYSQL_DATABASE = 'MYSQL_DATABASE'
+
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -60,7 +133,6 @@ class DBSqlite3(DBSQL):
             print(f"Cannot open database file: {fname}")
             exit(1)
         
-
 class DBMySQLAuth:
     def __init__(self,*,host,database,user,password):
         self.host     = host
@@ -69,7 +141,6 @@ class DBMySQLAuth:
         self.password = password
         self.debug    = False   # enable debugging
         self.cached_db= None    # cached connection
-
 
     def __eq__(self,other):
         return ((self.host==other.host) and (self.database==other.database)
@@ -81,7 +152,30 @@ class DBMySQLAuth:
     def __repr__(self):
         return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****>"
 
+    @staticmethod
+    def GetBashEnv(filename):
+        """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
+        DB_RE = re.compile("export (.+)=(.+)")
+        ret   = {}
+        with open( filename ) as f:
+            for line in f:
+                m = DB_RE.search(line.strip())
+                if m:
+                    name = m.group(1)
+                    val  = m.group(2)
+                    # Check for quotes
+                    if val[0] in "'\"" and val[0]==val[-1]: 
+                        val = val[1:-1]
+                    ret[name] = val
 
+    @staticmethod
+    def FromEnv(filename):
+        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemtn variables from a bash script"""
+        env = DBMySQLAuth.GetBashEnv(filename)
+        return DBMySQLAuth(host = env[MYSQL_HOST], 
+                           user = env[MYSQL_USER],
+                           password = env[MYSQL_PASSWORD],
+                           database = env[MYSQL_DATABASE])
 
 
 RETRIES = 10
