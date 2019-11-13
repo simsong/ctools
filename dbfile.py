@@ -129,7 +129,7 @@ class DBMySQL(DBSQL):
     RETRY_DELAY_TIME = 1
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,debug=False):
+             get_column_names=None,asDicts=False,debug=False,dry_run=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -170,6 +170,10 @@ class DBMySQL(DBSQL):
                     
                     ###
                     ###
+                    if dry_run:
+                        logging.warning("Would execute: %s,%s",cmd,vals)
+                        return None
+
                     c.execute(cmd,vals)
                     ###
                     ###
