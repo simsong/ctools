@@ -82,7 +82,7 @@ class DBMySQLAuth:
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
     def __repr__(self):
-        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****>"
+        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:debug={self.debug}>"
 
     def cache_store(self,db):
         self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
