@@ -171,6 +171,7 @@ class DBMySQLAuth:
                     if val[0] in "'\"" and val[0]==val[-1]: 
                         val = val[1:-1]
                     ret[name] = val
+        return ret
 
     @staticmethod
     def FromEnv(filename):
