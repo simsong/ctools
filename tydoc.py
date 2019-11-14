@@ -497,7 +497,7 @@ class TyTag(xml.etree.ElementTree.Element):
         self.attrib = {**self.attrib, **newAttribs}
         return self
 
-    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, **kwargs):
+    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None, **kwargs):
         """
         Add an element with option children.
         @param tag   - if text, create a new tag with tag tag.
@@ -505,7 +505,19 @@ class TyTag(xml.etree.ElementTree.Element):
         @param elems - If elems[0] is text, make it the child text.
                      - If elems[:] haselements inside it, add them as subelements
                      - If elems[-1] is text, make it the tail.
+        @param id    - convenience method to specify attrib['id']
+        @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
+
+        if id is not None:
+            if 'id' in attrib:
+                raise ValueError("id parameter specified and 'id' present in attrib: "+str(attrib))
+            attrib['id'] = id
+
+        if className is not None:
+            if 'class' in attrib:
+                raise ValueError("id parameter specified and 'class' present in attrib: "+str(attrib))
+            attrib['class'] = className
 
         # Mutable default value for attrib is ok, since we're not
         # changing attrib here or in any subclasses
@@ -563,29 +575,29 @@ class TyTag(xml.etree.ElementTree.Element):
     def body_(self):
         return self.body if hasattr(self,'body') else self
 
-    def p(self, text):
+    def p(self, text='', **kwargs):
         """Add a paragraph. Multiple arguments are combined 
         and can be text or other HTML elements""" 
-        return self.body_().add_tag_text(TAG_P, text)
+        return self.body_().add_tag_text(TAG_P, text, **kwargs)
         
-    def h1(self, text):
+    def h1(self, text='', **kwargs):
         """Append H1 to the current tag"""
-        return self.body_().add_tag_text(TAG_H1, text)
+        return self.body_().add_tag_text(TAG_H1, text, **kwargs)
 
-    def h2(self, text):
+    def h2(self, text='', **kwargs):
         """Add a H2"""
-        return self.body_().add_tag_text(TAG_H2, text)
+        return self.body_().add_tag_text(TAG_H2, text, **kwargs)
 
-    def h3(self, text):
+    def h3(self, text='', **kwargs):
         """Add a H3"""
-        return self.body_().add_tag_text(TAG_H3, text)
+        return self.body_().add_tag_text(TAG_H3, text, **kwargs)
 
-    def div(self, text, **attrib):
-        return self.body_().add_tag_text(TAG_DIV, text, **attrib)
+    def div(self, text='', **kwargs):
+        return self.body_().add_tag_text(TAG_DIV, text, **kwargs)
 
-    def pre(self, text):
+    def pre(self, text='', **kwargs):
         """Add a preformatted"""
-        return self.body_().add_tag_text(TAG_PRE, text)
+        return self.body_().add_tag_text(TAG_PRE, text, **kwargs)
 
     def hr(self):
         """Add a horizontal rule"""
@@ -596,16 +608,16 @@ class TyTag(xml.etree.ElementTree.Element):
         self.body_().append(t)
         return t
 
-    def ul(self, text):
+    def ul(self, text='', **kwargs):
         """Add a UL"""
-        return self.body_().add_tag_text(TAG_UL, text)
+        return self.body_().add_tag_text(TAG_UL, text, **kwargs)
 
-    def li(self, text):
+    def li(self, text='', **kwargs):
         """Add a LI"""
-        return self.body_().add_tag_text(TAG_UL, text)
+        return self.body_().add_tag_text(TAG_UL, text, **kwargs)
 
-    def span(self, text):
-        return self.body_().add_tag_text(TAG_SPAN, text)
+    def span(self, text='', **kwargs):
+        return self.body_().add_tag_text(TAG_SPAN, text, **kwargs)
 
 
 class EmbeddedImageTag(TyTag):
@@ -682,8 +694,8 @@ class tydoc(TyTag):
         some clever XPath..."""
         return ret  # TODO: ret is undefined
 
-    def title(self, text):
-        self.head.add_tag_elems(TAG_TITLE, [text])
+    def title(self, text, **kwargs):
+        self.head.add_tag_elems(TAG_TITLE, [text], **kwargs)
 
     def insert_toc(self, level=3):
         # If there is already a TOC tag, remove it, then add a new one.
