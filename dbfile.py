@@ -128,6 +128,14 @@ class DBMySQL(DBSQL):
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     @staticmethod
+    def explain(cmd,vals):
+        def myquote(v):
+            if isinstance(v,str):
+                return "'"+v+"'"
+            return str(v)
+        return cmd % tuple([myquote(v) for v in vals])
+    
+    @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
              get_column_names=None,asDicts=False,debug=False,dry_run=False):
         """Connect, select, fetchall, and retry as necessary.
@@ -165,7 +173,7 @@ class DBMySQL(DBSQL):
                 try:
                     if quiet==False or debug:
                         logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
-                        logging.warning("cmd: %s",(cmd.replace("%s","'%s'"),tuple(vals)))
+                        logging.warning(DBMySQL.explain(cmd,vals))
                         
                     
                     ###
