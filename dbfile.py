@@ -173,6 +173,7 @@ class DBMySQL(DBSQL):
                 try:
                     if quiet==False or debug:
                         logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
+                        logging.warning("EXPLAIN:")
                         logging.warning(DBMySQL.explain(cmd,vals))
                         
                     
