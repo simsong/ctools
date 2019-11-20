@@ -198,7 +198,7 @@ class DBMySQL(DBSQL):
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     raise e
                 verb = cmd.split()[0].upper()
-                if verb in ['SELECT','DESCRIBE','SHOW']:
+                if verb in ['SELECT','DESCRIBE','SHOW','UPDATE']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
                         get_column_names = []
@@ -214,6 +214,8 @@ class DBMySQL(DBSQL):
                     result = c.lastrowid
                     if debug:
                         logging.warning("   INSERT c.lastworid=%s",c.lastrowid)
+                if verb in ['UPDATE']:
+                    result = c.rowcount
                 c.close()  # close the cursor
                 if i>1:
                     logging.error(f"Success with i={i}")
