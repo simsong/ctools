@@ -189,9 +189,10 @@ class DBMySQL(DBSQL):
 
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
-                except errors.ProgrammingError as e:
+                except (errors.ProgrammingError, errors.InternalError) as e:
                     logging.error("cmd: "+str(cmd))
                     logging.error("vals: "+str(vals))
+                    logging.error("explained: "+DBMySQL.explain(cmd,vals))
                     logging.error(str(e))
                     raise e
                 except TypeError as e:
