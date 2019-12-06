@@ -509,6 +509,9 @@ class TyTag(xml.etree.ElementTree.Element):
         @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
 
+        if tag[0]=='<':
+            raise ValueError(f'tag {tag} should not include angle brackets.')
+
         if id is not None:
             if 'id' in attrib:
                 raise ValueError("id parameter specified and 'id' present in attrib: "+str(attrib))
