@@ -6,17 +6,29 @@ import sys
 import warnings
 
 sys.path.append( os.path.join( os.path.dirname(__file__), "../..") )
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import ctools.s3 as s3
 
-DAS_S3ROOT = os.getenv("DAS_S3ROOT")
+## Find a S3 bucket for testing. This is either TEST_S3ROOT or DAS_S3ROOT
+if "TEST_S3ROOT" in os.environ:
+    TEST_S3ROOT = os.environ['TEST_S3ROOT']
+elif "DAS_S3ROOT" in os.environ:
+    TEST_S3ROOT = os.environ['DAS_S3ROOT']
+else:
+    TEST_S3ROOT = None
+
+
+
 TEST_STRING = "As it is written " + str(os.getpid()) + "\n"
 MOTD = 'etc/motd'
 
 def test_s3open():
     if "EC2_HOME" not in os.environ:
         warnings.warn("test_s3open only runs on AWS EC2 computers")
+        return
+
+    if TEST_S3ROOT is None:
+        warnings.warn("no TEST_S3ROOT is defined.")
         return
 
     # Make sure attempt to read a file that doesn't exist gives a FileNotFound error
@@ -29,8 +41,7 @@ def test_s3open():
     if got_exception==False:
         raise RuntimeError("should have gotten exception for bad path")
 
-    print("DAS_S3ROOT:",DAS_S3ROOT)
-    path = os.path.join( DAS_S3ROOT, MOTD)
+    path = os.path.join( TEST_S3ROOT, MOTD)
 
     print("path:",path)
 
@@ -49,7 +60,11 @@ def test_s3open():
 def test_s3open_write_fsync():
     """See if we s3open with the fsync option works"""
     if "EC2_HOME" not in os.environ:
-        warnings.warn("test_s3open only runs on AWS EC2 computers")
+        warnings.warn("s3open only runs on AWS EC2 computers")
+        return
+
+    if TEST_S3ROOT is None:
+        warnings.warn("no TEST_S3ROOT is defined.")
         return
 
 
@@ -66,6 +81,17 @@ def test_s3open_write_fsync():
 
 
 def test_s3open_iter():
+    if "EC2_HOME" not in os.environ:
+        warnings.warn("s3open only runs on AWS EC2 computers")
+        return
+
+
+    if TEST_S3ROOT is None:
+        warnings.warn("no TEST_S3ROOT is defined.")
+        return
+
+
+
     path = os.path.join(DAS_S3ROOT, f"tmp/tmp.{os.getpid()}")
     with s3.s3open(path,"w", fsync=True) as f:
         for i in range(10):
