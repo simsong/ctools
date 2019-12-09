@@ -174,7 +174,6 @@ def add_cluster_info(cluster):
         pass
     return cluster
 
-
 def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
     """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
