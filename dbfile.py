@@ -7,6 +7,8 @@ import time
 import os
 import logging
 import sys
+import threading
+from collections import OrderedDict
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -61,11 +63,16 @@ class DBSqlite3(DBSQL):
         
 
 class DBMySQLAuth:
-    def __init__(self,*,host,database,user,password):
+    """Class that represents MySQL credentials. Will cache the connection. If run under bottle, the bottle object can be passed in, and cached_db is stored in the request-local storage."""
+
+    def __init__(self,*,host,database,user,password,bottle=None):
         self.host     = host
         self.database = database
         self.user     =user
         self.password = password
+        self.debug    = False   # enable debugging
+        self.dbcache  = dict()  # dictionary of cached connections.
+        self.bottle   = bottle
 
     def __eq__(self,other):
         return ((self.host==other.host) and (self.database==other.database)
@@ -75,9 +82,19 @@ class DBMySQLAuth:
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
     def __repr__(self):
-        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****>"
+        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:debug={self.debug}>"
 
+    def cache_store(self,db):
+        self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
 
+    def cache_get(self):
+        return self.dbcache[ (os.getpid(), threading.get_ident()) ]
+
+    def cache_clear(self):
+        try:
+            del self.dbcache[ (os.getpid(), threading.get_ident()) ]
+        except KeyError as e:
+            pass
 
 
 RETRIES = 10
@@ -110,10 +127,17 @@ class DBMySQL(DBSQL):
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
-    CACHED_CONNECTIONS = {}
+    @staticmethod
+    def explain(cmd,vals):
+        def myquote(v):
+            if isinstance(v,str):
+                return "'"+v+"'"
+            return str(v)
+        return cmd % tuple([myquote(v) for v in vals])
+    
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,debug=False,cache=False):
+             get_column_names=None,asDicts=False,debug=False,dry_run=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -123,45 +147,59 @@ class DBMySQL(DBSQL):
         @param get_column_names - an array in which to return the column names.
         @param asDict    - True to return each row as a dictionary
         """
+
+        assert isinstance(auth,DBMySQLAuth)
+        debug = (debug or auth.debug)
+
+
         try:
             import mysql.connector.errors as errors
         except ImportError as e:
             import pymysql.err as errors
         for i in range(1,RETRIES):
             try:
-                if cache and auth in DBMySQL.CACHED_CONNECTIONS:
-                    db = DBMySQL.CACHED_CONNECTIONS[auth]
-                else:
+                try:
+                    db = auth.cache_get()
+                except KeyError:
+                    if i>1:
+                        logging.error(f"Reconnecting. i={i}")
                     db = DBMySQL(auth)
+                    auth.cache_store(db)
                 result = None
-                c = db.cursor()
+                c      = db.cursor()
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
                 try:
-                    if quiet==False:
-                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
-                    if debug:
-                        print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+                    if quiet==False or debug:
+                        logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
+                        logging.warning("EXPLAIN:")
+                        logging.warning(DBMySQL.explain(cmd,vals))
+                        
                     
                     ###
                     ###
+                    if dry_run:
+                        logging.warning("Would execute: %s,%s",cmd,vals)
+                        return None
+
                     c.execute(cmd,vals)
                     ###
                     ###
 
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
-                except errors.ProgrammingError as e:
+                except (errors.ProgrammingError, errors.InternalError) as e:
                     logging.error("cmd: "+str(cmd))
                     logging.error("vals: "+str(vals))
+                    logging.error("explained: "+DBMySQL.explain(cmd,vals))
                     logging.error(str(e))
                     raise e
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     raise e
                 verb = cmd.split()[0].upper()
-                if verb in ['SELECT','DESCRIBE','SHOW']:
+                if verb in ['SELECT','DESCRIBE','SHOW','UPDATE']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
                         get_column_names = []
@@ -170,32 +208,40 @@ class DBMySQL(DBSQL):
                         for (name,type_code,display_size,internal_size,precision,scale,null_ok) in c.description:
                             get_column_names.append(name)
                     if asDicts:
-                        result =[dict(zip(get_column_names, row)) for row in result]
+                        result =[OrderedDict(zip(get_column_names, row)) for row in result]
+                    if debug:
+                        logging.warning("   SELECTED ROWS count=%s  row[0]=%s",len(result), result[0] if len(result)>0 else None)
                 if verb in ['INSERT']:
                     result = c.lastrowid
+                    if debug:
+                        logging.warning("   INSERT c.lastworid=%s",c.lastrowid)
+                if verb in ['UPDATE']:
+                    result = c.rowcount
                 c.close()  # close the cursor
-                if cache:
-                    DBMySQL.CACHED_CONNECTIONS[auth] = db
-                else:
-                    db.close() # close the connection
+                if i>1:
+                    logging.error(f"Success with i={i}")
                 return result
             except errors.InterfaceError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: InterfaceError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                logging.error(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
                 pass
             except errors.OperationalError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
+                pass
+            except errors.InternalError as e:
+                logging.error(e)
+                if "Unknown column" in str(e):
+                    raise e
+                logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
                 pass
             except BlockingIOError as e:
                 logging.error(e)
-                logging.error(f"PID{os.getpid()}: BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                if db in DBMySQL.CACHED_CONNECTIONS:
-                    del DBMySQL.CACHED_CONNECTIONS[auth]
+                logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                auth.cache_clear()
                 pass
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")

@@ -1,4 +1,5 @@
 import json
+import errno
 import os
 import tempfile
 import sys
@@ -58,12 +59,26 @@ def aws_s3api(cmd, debug=False):
         sys.stderr.write("\n")
 
     try:
-        if sys.version[0] == '2':
-            data = subprocess.check_output(fcmd)
+        p = subprocess.Popen(fcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (out,err) = p.communicate()
+        if p.returncode==0:
+            if out==b'':
+                return out
+            try:
+                return json.loads(out.decode('utf-8'))
+            except json.decoder.JSONDecodeError as e:
+                print(e,file=sys.stderr)
+                print("out=",out,file=sys.stderr)
+                raise e
         else:
-            data = subprocess.check_output(fcmd, encoding='utf-8')
+            err = err.decode('utf-8')
+            if 'does not exist' in err:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(cmd))
+            else:
+                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
     except TypeError as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, e))
+
 
     if not data:
         return None
@@ -88,7 +103,7 @@ def put_s3url(url, fname):
 def get_object(bucket, key, fname):
     """Given a bucket and a key, download a file"""
     if os.path.exists(fname):
-        raise Exception("{} exists".format(fname))
+        raise FileExistsError(fname)
     return aws_s3api(['get-object', '--bucket', bucket, '--key', key, fname])
 
 
@@ -458,6 +473,7 @@ def s3rm(path):
     """Remove an S3 object"""
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
+    print("res:",type(res))
     if res['DeleteMarker'] != True:
         raise RuntimeError("Unknown response from delete-object: {}".format(res))
 
