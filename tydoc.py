@@ -1059,10 +1059,10 @@ class tytable(TyTag):
         except Exception as e:
             return cell
 
+        if isinstance(value, xml.etree.ElementTree.Element):
+            value = value.text
+
         try:
-            print("value=",value,type(value))
-            if isinstance(value,xml.etree.ElementTree.Element):
-                value = value.text
             if cell.attrib[ATTR_TYPE] == 'int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
                 return cell
@@ -1070,8 +1070,7 @@ class tytable(TyTag):
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
                 return cell
         except TypeError as e:
-            print(f"TypeError in value: {value} cell: {cell}")
-            raise e
+            pass
         except ValueError as e:
             pass
 
