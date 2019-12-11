@@ -452,7 +452,7 @@ class TyTag(xml.etree.ElementTree.Element):
             if format[0:1] == '.':
                 format = format[1:]
 
-        if isinstance(f_or_fname, io.IOBase):
+        if hasattr(f_or_fname, 'write'):
             self.render(f_or_fname, format=format)
             return
 
@@ -1060,6 +1060,9 @@ class tytable(TyTag):
             return cell
 
         try:
+            print("value=",value,type(value))
+            if isinstance(value,xml.etree.ElementTree.Element):
+                value = value.text
             if cell.attrib[ATTR_TYPE] == 'int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
                 return cell
