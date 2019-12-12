@@ -152,13 +152,15 @@ class HorizontalRule(Row):
         super().__init__(data=[])
 
 
-# Raw is just raw data passed through
+# Raw is just raw data passed through.
+# We must be told how many columns the data are.
 class Raw(Row):
-    def __init__(self, rawdata):
-        self.data = rawdata
+    def __init__(self, rawdata, *, ncols):
+        self.data  = rawdata
+        self.ncols_ = ncols
 
     def ncols(self):
-        raise RuntimeError("Raw does not implement ncols")
+        return self.ncols_
 
 
 def line_end(mode):
@@ -341,7 +343,7 @@ class ttable:
 
     def add_head(self, values, annotations=None):
         """ Append a row of VALUES to the table header. The VALUES should be a list of columsn."""
-        assert isinstance(values, list) or isinstance(values, tuple)
+        assert isinstance(values, list) or isinstance(values, tuple) or values==self.HR
         self.col_headings.append(Head(values, annotations=annotations))
 
     def add_subhead(self, values, annotations=None):
@@ -351,13 +353,13 @@ class ttable:
         """ Append a ROW to the table body. The ROW should be a list of each column."""
         self.data.append(Row(values, annotations=annotations))
 
-    def add_raw(self, val):
-        self.data.append(Raw(val))
+    def add_raw(self, val, *, ncols):
+        self.data.append(Raw(val,ncols=ncols))
 
     def ncols(self):
         """ Return the number of maximum number of cols in the data """
         if self.data:
-            return max([row.ncols() for row in self.data if type(row) == Row])
+            return max([row.ncols() for row in self.data])
         return 0
 
     ################################################################
@@ -630,7 +632,6 @@ class ttable:
         # computes the width of each row if necessary
         #
         for row in self.data:
-
             # See if we should omit this row
             if self.should_omit_row(row):
                 continue

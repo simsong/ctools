@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 # Some tools for manipulating PDF files
 
-#import py.test
-
 import sys
 import os
 import re

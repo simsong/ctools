@@ -452,7 +452,7 @@ class TyTag(xml.etree.ElementTree.Element):
             if format[0:1] == '.':
                 format = format[1:]
 
-        if isinstance(f_or_fname, io.IOBase):
+        if hasattr(f_or_fname, 'write'):
             self.render(f_or_fname, format=format)
             return
 
@@ -508,6 +508,9 @@ class TyTag(xml.etree.ElementTree.Element):
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
+
+        if tag[0]=='<':
+            raise ValueError(f'tag {tag} should not include angle brackets.')
 
         if id is not None:
             if 'id' in attrib:
@@ -1056,6 +1059,9 @@ class tytable(TyTag):
         except Exception as e:
             return cell
 
+        if isinstance(value, xml.etree.ElementTree.Element):
+            value = value.text
+
         try:
             if cell.attrib[ATTR_TYPE] == 'int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
@@ -1064,8 +1070,7 @@ class tytable(TyTag):
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
                 return cell
         except TypeError as e:
-            print(f"TypeError in value: {value} cell: {cell}")
-            raise e
+            pass
         except ValueError as e:
             pass
 
