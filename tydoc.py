@@ -832,8 +832,8 @@ class tytable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -1121,6 +1121,8 @@ class tytable(TyTag):
         """
         assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
 
+        logging.warning("values=%s",values)
+
         if cell_attribs is None:
             cell_attribs = {}
 
@@ -1169,7 +1171,8 @@ class tytable(TyTag):
         Note - if value is a ET.Element that is either a TAG_TD or TAG_TH, it will be copied and used, otherwise
                it will be put inside a newly-created TAG_TD or TAG_TH.
         """
-        if isinstance(value, xml.etree.ElementTree.Element):
+        logging.warning("make_cell(tag=%s,value=%s,attrib=%s) %s",tag,value,attrib,isinstance(value,TyTag))
+        if isinstance(value, TyTag):
             if value.tag.upper() in [TAG_TH,TAG_TD]:
                 cell = copy.copy(value)
                 for (k,v) in attrib:
