@@ -128,6 +128,7 @@ HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
 
 ATTR_VAL  = 'v'               # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
+ATTR_COLSPAN = 'COLSPAN'
 
 ATTRIB_OPTIONS = 'OPTIONS'
 ATTRIB_ALIGN = 'ALIGN'
@@ -1118,7 +1119,7 @@ class tytable(TyTag):
             row.append(cell)
             # If cell has COLSPAN>1, then put in placeholder cells that will not render
             try:
-                for col in range(1, int(cell.attrib['COLSPAN'])):
+                for col in range(1, int(cell.attrib[ATTR_COLSPAN])):
                     row.append( ET.Element(TAG_TIGNORE) )
             except KeyError as e:
                 pass
