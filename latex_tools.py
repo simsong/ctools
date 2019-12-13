@@ -448,7 +448,7 @@ def inspect_pdf(pdf_fname,texinputs=None):
     try:
         return inspect_pdf_pypdf(pdf_fname)
     except ImportError:
-        return inspect_pdf_latex(pdf_fname,textinputs=texinputs)
+        return inspect_pdf_latex(pdf_fname,texinputs=texinputs)
 
 def count_pdf_pages_pypdf(pdf_fname):
     import PyPDF2
