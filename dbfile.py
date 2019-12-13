@@ -269,6 +269,7 @@ class DBMySQL(DBSQL):
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
+
                 try:
                     if quiet==False or debug:
                         logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
@@ -288,15 +289,18 @@ class DBMySQL(DBSQL):
 
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
+
                 except (errors.ProgrammingError, errors.InternalError) as e:
                     logging.error("cmd: "+str(cmd))
                     logging.error("vals: "+str(vals))
                     logging.error("explained: "+DBMySQL.explain(cmd,vals))
                     logging.error(str(e))
                     raise e
+                    
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     raise e
+                    
                 verb = cmd.split()[0].upper()
                 if verb in ['SELECT','DESCRIBE','SHOW','UPDATE']:
                     result = c.fetchall()

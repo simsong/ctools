@@ -522,8 +522,6 @@ class TyTag(ET.Element):
         @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
 
-        if tag[0]=='<':
-            raise ValueError(f'tag {tag} should not include angle brackets.')
 
         if id is not None:
             if 'id' in attrib:
@@ -544,6 +542,8 @@ class TyTag(ET.Element):
         if isinstance(tag, TyTag):
             e = tag
         else:
+            if tag[0] == '<':
+                raise ValueError(f'tag {tag} should not include angle brackets.')
             e = TyTag(tag, attrib=attrib)
         if position == -1:
             self.append(e)
