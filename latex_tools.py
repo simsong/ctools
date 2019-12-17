@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 # Some tools for manipulating PDF files
 
-#import py.test
 import sys
 import os
 import re
@@ -31,6 +30,7 @@ UNITS='units'
 VERSION='VERSION'
 WIDTH='width'
 SHA256='sha256'
+FILENAME='filename'
 
 if sys.platform=='win32':
     LATEX_EXE='pdflatex.exe'
@@ -120,7 +120,7 @@ def latex_escape(msg):
     msg = "".join([LATEX_QUOTE_TRANSFORMS.get(ch,ch) for ch in msg])
     for ch in msg:
         if ord(ch)>127:
-            print("**** Unescaped character: '{}'  dec:{}  hex:{}".format(ch,ord(ch),hex(ord(ch))))
+            logging.warning("**** Unescaped character: '%s'  dec:%s  hex:%s",ch,ord(ch),hex(ord(ch)))
     return msg
 
 def textbf(msg):
@@ -255,8 +255,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
         if r.returncode and not ignore_ret:
-            print("r.returncode=",r.returncode)
-            print("r=",r)
+            print("r=",r,"r.returncode=",r.returncode)
             outlines = r.stdout.split("\n")
             print("***************************")
             if len(outlines)<ERROR_LINES*2:
@@ -370,7 +369,7 @@ def inspect_json_all_pages_have_same_orientation(info):
         return info[PAGES][0][ORIENTATION]
     return None
 
-def inspect_pdf(pdf_fname,texinputs=None):
+def inspect_pdf_latex(pdf_fname,texinputs=None):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and determine each page's orientation and size.
     Returns a dictionary containing the following properties:
     [FILENAME] - filename
@@ -378,16 +377,16 @@ def inspect_pdf(pdf_fname,texinputs=None):
     [PAGES][{pageinfo},pageinfo,...}    - #pages
         {pageinfo}  - Information about each page is stored in its own dictionary.
           ORIENTATION: = PORTRAIT or LANDSCAPE
-          WIDTH: = width (in pt)
-          HEIGHT:  = height (in pt)
-          PAGE:   = page number
+          WIDTH:  = width (in pt)
+          HEIGHT: = height (in pt)
+          PAGE:   = page number (starts at 1)
     """
-    print("*** INSPECT PDF ",pdf_fname)
     assert os.path.exists(pdf_fname)
     assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")
     page_pat = re.compile(r"^Page (\d+), (\w+), ([0-9.]+)pt, ([0-9.]+)pt, depth ([0-9.]+)pt")
     ret = {VERSION:1,
+           FILENAME:pdf_fname,
            UNITS:POINTS,
            SHA256:hashlib.sha256( open(pdf_fname,"rb").read() ).hexdigest(),
            PAGES:[]}
@@ -404,7 +403,7 @@ def inspect_pdf(pdf_fname,texinputs=None):
             m = page_pat.search(line)
             if m:
                 if width==None or height==None:
-                    print("************  CANNOT COUNT PAGES IN '{}' **************".format(pdf_name))
+                    logging.error("************  CANNOT COUNT PAGES IN '%s' **************",pdf_name)
                     exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
@@ -427,13 +426,46 @@ def inspect_pdf(pdf_fname,texinputs=None):
         os.unlink( tmp.name)
     return ret
 
+def inspect_pdf_pypdf(pdf_fname):
+    """As above, but with PyPDF"""
+    import PyPDF2
+    ret = {VERSION:1,
+           FILENAME:pdf_fname,
+           UNITS:POINTS,
+           SHA256:hashlib.sha256( open(pdf_fname,"rb").read() ).hexdigest(),
+           PAGES:[]}
+    pdf = PyPDF2.PdfFileReader(open(pdf_fname,"rb"),strict=False)
+    for pageNumber in range(pdf.getNumPages()):
+        page = pdf.getPage(pageNumber)
+        (x,y,width,height) = page['/MediaBox']
+        ret[PAGES].append({ORIENTATION: PORTRAIT if width < height else LANDSCAPE,
+                           WIDTH:width,
+                           HEIGHT:height,
+                           PAGE:pageNumber+1})
+    return ret
+
+def inspect_pdf(pdf_fname,texinputs=None):
+    try:
+        return inspect_pdf_pypdf(pdf_fname)
+    except ImportError:
+        return inspect_pdf_latex(pdf_fname,texinputs=texinputs)
+
+def count_pdf_pages_pypdf(pdf_fname):
+    import PyPDF2
+    pdf = PyPDF2.PdfFileReader(open(pdf_fname,"rb"),strict=False)
+    return pdf.getNumPages()
+
 def count_pdf_pages(pdf_fname):
     """Use pdfpages.sty to count how many pages in a pdf_fname"""
     if not os.path.exists(pdf_fname):
         raise RuntimeError("count_pdf_pages: {} does not exist".format(pdf_fname))
     if not pdf_fname.endswith(".pdf"):
         raise RuntimeError("count_pdf_pages: {} must end with a .pdf".format(pdf_fname))
-    return len( inspect_pdf( pdf_fname )[PAGES])
+
+    try:
+        return count_pdf_pages_pypdf(pdf_fname)
+    except ImportError:
+        return len( inspect_pdf_latex( pdf_fname )[PAGES])
         
 if __name__=="__main__":
     import sys

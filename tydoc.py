@@ -77,7 +77,6 @@ Things still needed:
 
 __version__ = "0.2.0"
 
-import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
 import copy
 import io
@@ -129,6 +128,7 @@ HTML_NO_NEWLINE_TAGS = set([TAG_B,TAG_I,TAG_TD,TAG_TH,TAG_A])
 
 ATTR_VAL  = 'v'               # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
+ATTR_COLSPAN = 'COLSPAN'
 
 ATTRIB_OPTIONS = 'OPTIONS'
 ATTRIB_ALIGN = 'ALIGN'
@@ -430,7 +430,7 @@ def scalenum(v, minscale=0):
 
 ################################################################
 
-class TyTag(xml.etree.ElementTree.Element):
+class TyTag(ET.Element):
     """ctools HTML tag class, with support for rendering and creation."""
     def __init__(self, tag, attrib={}, text=None, **extra):
         """Create a tag. If text is provided, make that the tag's text"""
@@ -446,19 +446,28 @@ class TyTag(xml.etree.ElementTree.Element):
         """Save to a filename or a file-like object
         @param f_or_fname - a filename or a file-like object.
         @param format     - the format to use. Will learn from fname's extension if None"""
-        if not format:
+        if format is None:
             # Learn format 
             format = os.path.splitext(f_or_fname)[1].lower()
             if format[0:1] == '.':
                 format = format[1:]
 
-        if isinstance(f_or_fname, io.IOBase):
+        if hasattr(f_or_fname, 'write'):
             self.render(f_or_fname, format=format)
             return
 
         with open(f_or_fname, "w") as f:
             self.render(f, format=format)
             return
+
+    def asString(self, format='html'):
+        """Return the tag as a string"""
+        if format is None:
+            raise ValueError("format must be specified")
+        s = io.StringIO()
+        self.save(s, format=format)
+        return s.getvalue()
+        
 
     def prettyprint(self):
         import xml.dom.minidom
@@ -497,6 +506,10 @@ class TyTag(xml.etree.ElementTree.Element):
         self.attrib = {**self.attrib, **newAttribs}
         return self
 
+    def setText(self,text):
+        self.text = text
+        return self
+
     def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None, **kwargs):
         """
         Add an element with option children.
@@ -508,6 +521,7 @@ class TyTag(xml.etree.ElementTree.Element):
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
+
 
         if id is not None:
             if 'id' in attrib:
@@ -528,6 +542,8 @@ class TyTag(xml.etree.ElementTree.Element):
         if isinstance(tag, TyTag):
             e = tag
         else:
+            if tag[0] == '<':
+                raise ValueError(f'tag {tag} should not include angle brackets.')
             e = TyTag(tag, attrib=attrib)
         if position == -1:
             self.append(e)
@@ -580,6 +596,10 @@ class TyTag(xml.etree.ElementTree.Element):
         and can be text or other HTML elements""" 
         return self.body_().add_tag_text(TAG_P, text, **kwargs)
         
+    def a(self, text='', **kwargs):
+        """Add a link"""
+        return self.body_().add_tag_text(TAG_A, text, **kwargs)
+
     def h1(self, text='', **kwargs):
         """Append H1 to the current tag"""
         return self.body_().add_tag_text(TAG_H1, text, **kwargs)
@@ -702,7 +722,7 @@ class tydoc(TyTag):
         for body in self.findall(f"./{TAG_BODY}"):
             for xtoc in body.findall(f"./{TAG_X_TOC}"):
                 body.remove(xtoc)
-        # Now get a list of all appropriate tags and make some matching XML
+        # Render the DOC as HTML and grab all of the H1, H2 and H3 tags to build the TOC
         xml_data = io.StringIO()
         xml_data.write(f"<UL>")
         current_level = 1
@@ -829,8 +849,8 @@ class tytable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -1056,6 +1076,9 @@ class tytable(TyTag):
         except Exception as e:
             return cell
 
+        if isinstance(value, ET.Element):
+            value = value.text
+
         try:
             if cell.attrib[ATTR_TYPE] == 'int':
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
@@ -1064,8 +1087,7 @@ class tytable(TyTag):
                 cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
                 return cell
         except TypeError as e:
-            print(f"TypeError in value: {value} cell: {cell}")
-            raise e
+            pass
         except ValueError as e:
             pass
 
@@ -1097,7 +1119,7 @@ class tytable(TyTag):
             row.append(cell)
             # If cell has COLSPAN>1, then put in placeholder cells that will not render
             try:
-                for col in range(1, int(cell.attrib['COLSPAN'])):
+                for col in range(1, int(cell.attrib[ATTR_COLSPAN])):
                     row.append( ET.Element(TAG_TIGNORE) )
             except KeyError as e:
                 pass
@@ -1115,6 +1137,8 @@ class tytable(TyTag):
                              Cell IDs will be row-col when rendered if row and col auto_id are provied.
         """
         assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
+
+        #logging.warning("values=%s",values)
 
         if cell_attribs is None:
             cell_attribs = {}
@@ -1164,7 +1188,9 @@ class tytable(TyTag):
         Note - if value is a ET.Element that is either a TAG_TD or TAG_TH, it will be copied and used, otherwise
                it will be put inside a newly-created TAG_TD or TAG_TH.
         """
-        if isinstance(value, xml.etree.ElementTree.Element):
+        #logging.warning("make_cell(tag=%s,value=%s,attrib=%s)", tag,value,attrib)
+        #logging.warning("same: %s",isinstance(value, ET.Element))
+        if isinstance(value, ET.Element):
             if value.tag.upper() in [TAG_TH,TAG_TD]:
                 cell = copy.copy(value)
                 for (k,v) in attrib:

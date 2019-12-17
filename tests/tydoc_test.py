@@ -3,6 +3,7 @@
 import sys
 import os
 import os.path
+import tempfile
 
 sys.path.append( os.path.join( os.path.dirname(__file__), "../.."))
 
@@ -117,7 +118,8 @@ def test_tytable_autoid():
     t.add_data([1,2,3], row_auto_id="row1")
     t.add_data([2,3,4], row_auto_id="row2")
     t.add_data([5,6,7], row_auto_id="row3")
-    t.save(os.path.join("/tmp", "autoid.html"), format="html")
+    with tempfile.NamedTemporaryFile(suffix='.autoid.html', mode='w') as tf:
+        t.save( tf, format="html")
     # Should read it and do something with it here.
     
 def test_tytable_colspan():
@@ -145,7 +147,9 @@ def test_tytable_colspan():
     assert t.get_cell(2,2).text == None
     assert t.get_cell(2,3).text == '5'
     
-    t.save(os.path.join("/tmp", "colspan.html"), format="html")
-    t.save(os.path.join("/tmp", "colspan.json"), format="json")
+    with tempfile.NamedTemporaryFile(suffix='.html', mode='w') as tf:
+        t.save( tf, format="html")
+    with tempfile.NamedTemporaryFile(suffix='.json', mode='w') as tf:
+        t.save( tf, format="json")
     # Should read it and do something with it here.
     
