@@ -121,20 +121,29 @@ def get_instance_type(host):
     return run_command_on_host(host,"curl -s http://169.254.169.254/latest/meta-data/instance-type")
 
 # https://docs.aws.amazon.com/general/latest/gr/api-retries.html
-def aws_emr_cmd(cmd):
+def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     """run the command and return the JSON output. implements retries"""
-    for retries in range(MAX_RETRIES):
+    for retries in range(retries):
         try:
             rcmd = ['aws','emr','--output','json'] + cmd
             if debug:
                 print(f"aws_emr_cmd pid{os.getpid()}: {rcmd}")
-            res = check_output(rcmd, encoding='utf-8')
-            return json.loads(res)
+            p = subprocess.Popen(rcmd,encoding='utf-8',stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            (out,err) = p.communicate()
+            if p.poll()!=0:
+                raise subprocess.CalledProcessError(f"p={p.poll()})")
+            if decode:
+                return json.loads(out)
+            else:
+                return p.poll()
         except subprocess.CalledProcessError as e:
             delay = (2**retries * RETRY_MS_DELAY/1000)
             logging.warning(f"aws emr subprocess.CalledProcessError. "
                             f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
+        except (json.decoder.JSONDecodeError) as e:
+            logging.error(f"JSONDecodeError: out: {out}  err: {err}")
+            raise e
     raise e
     
 
