@@ -619,9 +619,17 @@ class TyTag(ET.Element):
         """Add a preformatted"""
         return self.body_().add_tag_text(TAG_PRE, text, **kwargs)
 
-    def hr(self):
+    def a(self, text='', **kwargs):
+        """Add a link"""
+        return self.body_().add_tag_text(TAG_A, text, **kwargs)
+
+    def b(self, text='', **kwargs):
+        """Add bold"""
+        return self.body_().add_tag_text(TAG_B, text, **kwargs)
+
+    def hr(self, **kwargs):
         """Add a horizontal rule"""
-        return self.add_tag_text(TAG_HR)
+        return self.add_tag_text(TAG_HR, **kwargs)
 
     def table(self, **kwargs):
         t = tytable(**kwargs)
@@ -1268,22 +1276,17 @@ def pre(*text, **kwargs):
     return tydoc().pre(*text, **kwargs)
 
 
-def b(text):
+def b(*text, **kwargs):
     """Return a bold run"""
-    e = ET.Element(TAG_B)
-    e.text = text
-    return e
+    return tydoc.b(*text, **kwargs)
 
 
-def a(text, href=None):
+def a(*text, href=None, attrib={}, **kwargs):
     """Return an anchor"""
-    attrib = {}
+    attrib = copy.copy(attrib)
     if href:
         attrib['href'] = href
-    e = ET.Element(TAG_A, attrib)
-    e.text = text
-    return e
-
+    return tydoc.a(*text, attrib=attrib, **kwargs)
 
 def i(text):
     """Return an itallic run """
