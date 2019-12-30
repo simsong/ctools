@@ -129,14 +129,20 @@ class DBMySQL(DBSQL):
     RETRY_DELAY_TIME = 1
     @staticmethod
     def explain(cmd,vals):
+        if (not isinstance(vals,list)) and (not isinstance(vals,tuple)) and (not vals is None):
+            raise ValueError("vals is type %s expected list" % type(vals))
         def myquote(v):
             if isinstance(v,str):
                 return "'"+v+"'"
             return str(v)
-        return cmd % tuple([myquote(v) for v in vals])
+        if vals is not None:
+            return cmd % tuple([myquote(v) for v in vals])
+        else:
+            return cmd
     
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
+             setup=None,
              get_column_names=None,asDicts=False,debug=False,dry_run=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
@@ -183,6 +189,10 @@ class DBMySQL(DBSQL):
                         logging.warning("Would execute: %s,%s",cmd,vals)
                         return None
 
+                    ### If there are multiple queries, execute them all.
+                    ### Hopefully there is no semi-colon in a quoted string.
+                    if setup is not None:
+                        c.execute(setup)
                     c.execute(cmd,vals)
                     ###
                     ###
@@ -190,9 +200,10 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
                 except (errors.ProgrammingError, errors.InternalError) as e:
-                    logging.error("cmd: "+str(cmd))
-                    logging.error("vals: "+str(vals))
-                    logging.error("explained: "+DBMySQL.explain(cmd,vals))
+                    logging.error("setup: %s",setup)
+                    logging.error("cmd: %s",cmd)
+                    logging.error("vals: %s",vals)
+                    logging.error("explained: %s ",DBMySQL.explain(cmd,vals))
                     logging.error(str(e))
                     raise e
                 except TypeError as e:
