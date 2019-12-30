@@ -122,7 +122,7 @@ class Variable:
         """Add a range of legal values for this variable."""
         assert isinstance(newrange,Range)
         if newrange in self.ranges:
-            raise RuntimeError("{}: duplicate range: {}".format(self.name,r))
+            raise RuntimeError("{}: duplicate range: {}".format(self.name,newrange))
         self.ranges.add(newrange)
 
     def add_valid_data_description(self,desc):
