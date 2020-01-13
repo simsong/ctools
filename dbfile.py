@@ -242,11 +242,14 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
              setup=None,
+             setup_vals=(),
              get_column_names=None,asDicts=False,debug=False,dry_run=False):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
         @param vals      - values for SQL parameters
+        @param setup     - An SQL statement that runs before cmd (typcially setting a variable)
+        @param setup_vals - Values for SQL parameters for setup
         @param time_zone - if provided, set the session.time_zone to this value
         @param quiet     - don't print anything
         @param get_column_names - an array in which to return the column names.
@@ -292,7 +295,7 @@ class DBMySQL(DBSQL):
                     ### If there are multiple queries, execute them all.
                     ### Hopefully there is no semi-colon in a quoted string.
                     if setup is not None:
-                        c.execute(setup)
+                        c.execute(setup, setup_vals)
                     c.execute(cmd,vals)
                     ###
                     ###
@@ -302,6 +305,7 @@ class DBMySQL(DBSQL):
 
                 except (errors.ProgrammingError, errors.InternalError) as e:
                     logging.error("setup: %s",setup)
+                    logging.error("setup_vals: %s", setup_vals)
                     logging.error("cmd: %s",cmd)
                     logging.error("vals: %s",vals)
                     logging.error("explained: %s ",DBMySQL.explain(cmd,vals))
