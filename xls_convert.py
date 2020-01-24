@@ -2,7 +2,7 @@ import os
 import os.path
 import sys,os,glob
 
-import win32
+import win32com.client
 #import win32api
 
 # Notes on accessing Excel from Python with COM:
@@ -55,7 +55,7 @@ def excel_convert(infile,out_ext):
     if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
         return False
 
-    excel = win32.client.DispatchEx("Excel.Application")
+    excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = 0
     excel.DisplayAlerts = False
 
