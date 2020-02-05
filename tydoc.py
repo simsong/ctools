@@ -699,7 +699,7 @@ class tydoc(TyTag):
                               + ["\\begin{document}"]))
             return True
         elif format == FORMAT_HTML:
-            f.write('\n'.join(['<!DOCTYPE html>', '<html>'] + self.DEFAULT_META_TAGS))
+            f.write('\n'.join(['<!DOCTYPE html>', '<html lang="en">'] + self.DEFAULT_META_TAGS))
             f.write('\n')
             return True
         else:
