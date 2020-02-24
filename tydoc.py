@@ -88,6 +88,7 @@ import sys
 import uuid
 import json
 import logging
+import urllib
 
 sys.path.append(os.path.dirname(__file__))
 from latex_tools import latex_escape
@@ -698,7 +699,7 @@ class tydoc(TyTag):
                               + ["\\begin{document}"]))
             return True
         elif format == FORMAT_HTML:
-            f.write('\n'.join(['<!DOCTYPE html>', '<html>'] + self.DEFAULT_META_TAGS))
+            f.write('\n'.join(['<!DOCTYPE html>', '<html lang="en">'] + self.DEFAULT_META_TAGS))
             f.write('\n')
             return True
         else:
@@ -1072,7 +1073,7 @@ class tytable(TyTag):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval = cell.attrib[ATTR_VAL]
+            typeval  = urllib.parse.unquote(cell.attrib[ATTR_VAL])
         except KeyError:
             return cell
 
@@ -1208,7 +1209,9 @@ class tytable(TyTag):
                 cell.insert(0, value)
             return cell
 
-        cell = ET.Element(tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
+        cell = ET.Element(tag, {**attrib, 
+                                ATTR_VAL: urllib.parse.quote(str(value)), 
+                                ATTR_TYPE: str(type(value).__name__)})
         self.format_cell(cell)
         return cell
 
