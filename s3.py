@@ -94,9 +94,9 @@ def put_object(bucket, key, fname):
     return aws_s3api(['put-object', '--bucket', bucket, '--key', key, '--body', fname])
 
 
-def put_s3url(url, fname):
+def put_s3url(s3url, fname):
     """Upload a file to a given s3 URL"""
-    (bucket, key) = get_bucket_key(url)
+    (bucket, key) = get_bucket_key(s3url)
     return put_object(bucket, key, fname)
 
 
