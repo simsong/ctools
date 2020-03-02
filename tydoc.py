@@ -89,6 +89,8 @@ import uuid
 import json
 import logging
 
+from pprint import pformat
+
 sys.path.append(os.path.dirname(__file__))
 from latex_tools import latex_escape
 
@@ -1072,7 +1074,7 @@ class tytable(TyTag):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval = cell.attrib[ATTR_VAL]
+            typeval  = cell.attrib[ATTR_VAL]
         except KeyError:
             return cell
 
@@ -1100,28 +1102,37 @@ class tytable(TyTag):
             pass
 
         cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+
         return cell
 
     #################################################################
     ### Table Manipulation Routines
 
     def add_row(self, where, cells, row_attrib={}, row_auto_id=None):
-        """Add a row of cells to the table. 
+        """
+        Add a row of cells to the table. 
         You probably want to call add_head(), add_data() or add_foot().
+
         @param where      - must be TAG_THEAD, TAG_TBODY or TAG_TFOOT
         @param cells      - a list of cells that are added. These are typically Elements made with make_cells()
                             Each will have its id= attribute set if row_auto_id and self.col_auto_ids are set.
         @param row_attrib - the attribute for the row
         """
+        
         # Mutable default value for row_attrib is ok, since we're not changing attrib here or in any subclasses
+        
         assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
+        
         where_node = self.findall(f".//{where}")[0]
+        
         if row_auto_id is not None:
             row_attrib = {**row_attrib, **{'id':row_auto_id}}
             if self.col_auto_ids is not None:
                 for (cell,name) in zip(cells, self.col_auto_ids):
                     cell.attrib['id'] = row_auto_id + "-" + name
+        
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
+        
         for cell in cells:
             assert isinstance(cell,ET.Element)
             row.append(cell)
@@ -1133,20 +1144,20 @@ class tytable(TyTag):
                 pass
         
     def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None, row_auto_id=None):
-        """Create a row of cells and add it to the table. This is called by add_head, add_data, or add_foot.
+        """
+        Create a row of cells and add it to the table. This is called by add_head, add_data, or add_foot.
+        
         @param where  - should be TAG_THEAD/TAG_TBODY/TAG_TFOOT
         @param tags   - a single tag, or a list of tags. If it is a tag, all of the cells are that tag.
         @param values - a list of values, one per column.  Each is automatically formatted. 
                         However, if a value is a TD or a TH element, we just copy that element and use it.
         @param cell_attribs - a single cell attrib, or a list of attribs. 
-                       If a single attrib, it is given to all the cells.
-        @param row_attrib - a single attrib for the row, or a list of attribs
-        @param row_auto_id - the id for the row. 
-                             Cell IDs will be row-col when rendered if row and col auto_id are provied.
+                              If a single attrib, it is given to all the cells.
+        @param row_attrib   - a single attrib for the row, or a list of attribs
+        @param row_auto_id  - the id for the row. 
+                              Cell IDs will be row-col when rendered if row and col auto_id are provied.
         """
         assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
-
-        #logging.warning("values=%s",values)
 
         if cell_attribs is None:
             cell_attribs = {}
@@ -1163,10 +1174,12 @@ class tytable(TyTag):
 
         if not (len(tags) == len(values) == len(cell_attribs)):
             raise ValueError(
-                "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(
-                    len(tags), len(values), len(cell_attribs)))
+                "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(len(tags), len(values), len(cell_attribs)))
+
         cells = [self.make_cell(t, v, a) for (t, v, a) in zip(tags, values, cell_attribs)]
+
         self.add_row(where, cells, row_attrib=row_attrib, row_auto_id=row_auto_id)
+
 
     def add_head(self, values, row_attrib=None, cell_attribs=None, col_auto_ids=None, row_auto_id="head"):
         if col_auto_ids is not None:
@@ -1209,6 +1222,7 @@ class tytable(TyTag):
             return cell
 
         cell = ET.Element(tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
+
         self.format_cell(cell)
         return cell
 
