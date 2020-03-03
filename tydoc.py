@@ -88,6 +88,13 @@ import sys
 import uuid
 import json
 import logging
+import urllib
+import cgi
+
+import random
+import string
+
+from collections import defaultdict
 
 from pprint import pformat
 
@@ -217,6 +224,30 @@ DEFAULT_NUMBER_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 
+def etree_to_dict(t):
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = defaultdict(list)
+        for dc in map(etree_to_dict, children):
+            for k, v in dc.items():
+                dd[k].append(v)
+        d = {t.tag: {k: v[0] if len(v) == 1 else v
+                     for k, v in dd.items()}}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v)
+                        for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if children or t.attrib:
+            if text:
+              d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+
+    return d
+
+
 def is_empty(elem):
     """Return true if tag has no text or children. Used to turn <tag></tag> into <tag/>.
     Note that the script and link tags can never be made empty"""
@@ -271,14 +302,19 @@ class HTMLRenderer(Renderer):
     def write_tag_begin(doc, f):
         if doc.tag==TAG_TIGNORE:
             return True        
+        
         eflag = '/' if is_empty(doc) else ''
+        
         if doc.attrib:
             attribs = (" " + " ".join([f'{key}="{value}"' for (key, value) in doc.attrib.items()]))
         else:
             attribs = ''
+        
         f.write(f'<{doc.tag}{attribs}{eflag}>')
+        
         if doc.tag.upper() in HTML_START_NEWLINE_TAGS:
             f.write("\n")
+        
         return True
 
     @staticmethod
@@ -366,18 +402,19 @@ class JsonRenderer(Renderer):
         return FORMAT_JSON
 
 
-
-RENDERERS = {FORMAT_HTML: HTMLRenderer(),
-             FORMAT_LATEX: LatexRenderer(),
-             FORMAT_TEX: LatexRenderer(),
+RENDERERS = {FORMAT_HTML:     HTMLRenderer(),
+             FORMAT_LATEX:    LatexRenderer(),
+             FORMAT_TEX:      LatexRenderer(),
              FORMAT_MARKDOWN: MarkdownRenderer(),
-             FORMAT_JSON: JsonRenderer() }
+             FORMAT_JSON:     JsonRenderer() }
 
 
 def render(doc, f, format=FORMAT_HTML):
-    """Custom rendering tool. Use the built-in rendering unless the
+    """
+    Custom rendering tool. Use the built-in rendering unless the
     Element has its own render method. Write results to f, which can
-    be a file or an iobuffer"""
+    be a file or an iobuffer.
+    """
 
     if hasattr(doc, CUSTOM_RENDERER) and doc.custom_renderer(f, format=format):
         return True
@@ -390,17 +427,17 @@ def render(doc, f, format=FORMAT_HTML):
     if not (hasattr(doc, "write_tag_begin") and doc.write_tag_begin(f, format)):
         r.write_tag_begin(doc, f)
 
-    if not (hasattr(doc, "write_text") and doc.write_text(f, format)):
+    if not (hasattr(doc, "write_text")      and doc.write_text(f, format)):
         r.write_text(doc, f)
 
     for child in list(doc):
         render(child, f, format)
 
-    if not (hasattr(doc, "write_tag_end") and doc.write_tag_end(f, format)):
+    if not (hasattr(doc, "write_tag_end")   and doc.write_tag_end(f, format)):
         r.write_tag_end(doc, f)
 
     if doc.tail is not None:
-        if not (hasattr(doc, "write_tail") and doc.write_tail(f, format)):
+        if not (hasattr(doc, "write_tail")  and doc.write_tail(f, format)):
             r.write_tail(doc, f)
 
 
@@ -413,10 +450,12 @@ def safenum(v):
         return int(v)
     except (ValueError, TypeError):
         pass
+
     try:
         return float(v)
     except (ValueError, TypeError):
         pass
+
     return v
 
 
@@ -466,6 +505,7 @@ class TyTag(ET.Element):
         """Return the tag as a string"""
         if format is None:
             raise ValueError("format must be specified")
+
         s = io.StringIO()
         self.save(s, format=format)
         return s.getvalue()
@@ -638,6 +678,11 @@ class TyTag(ET.Element):
         self.body_().append(t)
         return t
 
+    def json_table(self, **kwargs):
+        t = jsonTable(**kwargs)
+        self.body_().append(t)
+        return t
+
     def ul(self, text='', **kwargs):
         """Add a UL"""
         return self.body_().add_tag_text(TAG_UL, text, **kwargs)
@@ -677,10 +722,12 @@ class EmbeddedImageTag(TyTag):
             raise RuntimeError("unknown format: {}".format(format))
 
 class tydoc(TyTag):
-    """Python class for building HTML documents and rendering them into
+    """
+    Python class for building HTML documents and rendering them into
     HTML, LaTeX or Markdown. Contains two sub-elements: head and body.
     Note that you don't want to append to tydoc you want to append to the head or body.
-"""
+    """
+    
     # We have a custom begin and end text for latex
 
     DEFAULT_LATEX_PACKAGES = ['graphicx', 'tabularx', 'longtable']
@@ -732,11 +779,13 @@ class tydoc(TyTag):
         for body in self.findall(f"./{TAG_BODY}"):
             for xtoc in body.findall(f"./{TAG_X_TOC}"):
                 body.remove(xtoc)
+
         # Render the DOC as HTML and grab all of the H1, H2 and H3 tags to build the TOC
         xml_data = io.StringIO()
         xml_data.write(f"<UL>")
         current_level = 1
         body = self.find("./BODY")
+
         for elem in list(body):
             if elem.tag == TAG_H1 and level >= 1:
                 new_level = 1
@@ -746,16 +795,20 @@ class tydoc(TyTag):
                 new_level = 3
             else:
                 continue
+
             while new_level > current_level:
                 xml_data.write("<UL>")
                 current_level += 1
+
             while new_level < current_level:
                 xml_data.write("</UL>")
                 current_level -= 1
+
             xml_data.write(f"<LI><A HREF='#{id(elem)}'>{elem.text}</A></LI>")
 
             # add the <a name=> anchor tag if none is present
             a_tag = elem.find("{}[@NAME='{}']".format(TAG_A, id(elem)))
+
             if a_tag is None:
                 a_tag = ET.SubElement(elem, TAG_A, {'NAME': str(id(elem))})
                 # Move the text to after the a_tag
@@ -765,11 +818,14 @@ class tydoc(TyTag):
         while current_level > 1:
             xml_data.write("</UL>")
             current_level -= 1
+
         xml_data.write(f"</UL>")
+
         # Parse it and add to an X_TOC tag.
         xml_data.seek(0)
         xtoc = X_TOC()
         xtoc.insert(0, ET.XML(xml_data.read()))
+
         # And add it to the body
         body.insert(0,xtoc)
         
@@ -819,35 +875,33 @@ def tag_ignore():
     return ET.Element(TAG_TIGNORE)
 
 
+
+
 ################################################################
-### Improved tytable with the new API.
-### Class name has changed from ttable to tytable.
-### It now uses the XML ETree to represent the table.
-### Tables can then be rendered into HTML or another form.
+### Tables can then be rendered into JSON or another form.
 ################################################################
-class tytable(TyTag):
-    """Python class for representing a table that can be rendered into
-    HTML or LaTeX or text.  Based on Simson Garfinkel's legacy
-    ttable() class, which was a hack that evolved. This class has a
-    similar API, but it is a complete rewrite. Most of the old API is 
-    preserved, but it's not identical, so the original ttable is available 
-    in the tytable.ttable() module. We apologize for the name confusion between
-    tytable.ttable() (the ttable class in the typeset-table module) and the 
-    tydoc.tytable() class (the typeset table class in the typset document module.)
 
-    Note:
+LOAD_TABLE_FUNCTION="""
+$(document).ready(function() {
+    $.each(table_data, function(id, htm) {
+        $('#'+id).html(unescape(htm));
+    });
+    
+    $('.toggle_workers').click(function(event) {
+        $('.' + this.id + '-worker').toggle('show');
+        
+        if ($(this).text() == 'show' ) {
+            $(this).text('hide');
+            $(this).attr('title', $(this).attr('title').replace('Show','Hide'));
+        } else {
+            $(this).text('show');
+            $(this).attr('title', $(this).attr('title').replace('Hide','Show'));
+        }
+    });
+});
+"""
 
-    1. Format for table cells must be specified in advance, and formatting is done
-       when data is put into the table.  If format is changed, table
-       is reformatted.
-
-    2. Orignal numeric data and type are kept as HTML attribs.
-
-    3. Creating a <table> HTML tag automatically creates child <thead>, <tbody> and <tfoot> nodes.
-       Most people don't know that these tags even exist, but the browsers do.
-
-    4. autoid mode adds a ids to rows and columns automatically
-    """
+class jsonTable(TyTag):
 
     VALID_ALIGNS = {ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT}
 
@@ -865,188 +919,53 @@ class tytable(TyTag):
 
         # Create the layout of the generic table and create easy methods for accessing
         self.caption = self.add_tag(TAG_CAPTION)
-        self.thead = self.add_tag(TAG_THEAD)
-        self.tbody = self.add_tag(TAG_TBODY)
-        self.tfoot = self.add_tag(TAG_TFOOT)
+        self.thead   = self.add_tag(TAG_THEAD)
+        self.tbody   = self.add_tag(TAG_TBODY)
+        self.tfoot   = self.add_tag(TAG_TFOOT)
 
-        # Autoid support
+        # Auto id support
         self.col_auto_ids = None
 
+
     def custom_renderer(self, f, format=FORMAT_HTML):
-        if format in (FORMAT_LATEX, FORMAT_TEX):
-            return self.custom_renderer_latex(f)
-        elif format in (FORMAT_MARKDOWN):
-            return self.custom_renderer_md(f)
-        elif format in (FORMAT_CSV):
-            return self.custom_renderer_csv(f)
-        elif format in (FORMAT_JSON):
-            return self.custom_renderer_json(f)
-        else:
-            return False
 
-    def custom_renderer_latex(self, f):
-        self.render_latex_table_head(f)
-        f.write("\\hline\n")
-        self.render_latex_table_body(f)
-        f.write("\\hline\n")
-        self.render_latex_table_foot(f)
-        return True
+        r = HTMLRenderer()
 
-    def custom_renderer_csv(self, f):
-        for section in ["./THEAD/TR", "./TBODY/TR", "./TFOOT/TR"]:
-            for tr in self.findall(section):
-                f.write(",".join([cell.text for cell in tr]))
-                f.write("\n")
-        return True
+        if not (hasattr(self, "write_tag_begin") and self.write_tag_begin(f, format)):
+            r.write_tag_begin(self, f)
 
-    def custom_renderer_md(self, f):
-        """Output the table as markdown. Note:
-        1. Assumes the first row is the header.
-        2. Applies 'strip' to all text columns.
-        """
-        # Calculate the maxim width of each column
-        all_cols = [self.col(n) for n in range(self.max_cols())]
-        col_maxwidths = [max([len(str(cell.text).strip()) for cell in col])
-                         for col in all_cols]
-        for (rownumber, tr) in enumerate(self.findall(".//TR"), 0):
-            # Get the cells for this row
-            row_cells = self.cells_in_row(tr)
+        if not (hasattr(self, "write_text")      and self.write_text(f, format)):
+            r.write_text(self, f)
 
-            # Pad this row out if it needs padding
-            # Markdown tables don't support col span
-            if len(row_cells) < len(all_cols):
-                row_cells.extend([TyTag(TAG_TD)] * (cols - len(row)))  # TODO: cols and row are undefined
+        for child in list(self):
+            render(child, f, format)
 
-            # Make up the format string for this row based on the cell attributes
+        if not (hasattr(self, "write_tag_end")   and self.write_tag_end(f, format)):
+            r.write_tag_end(self, f)
 
-            fmts = []
-            for (cell, maxwidth) in zip(row_cells, col_maxwidths):
-                if cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_LEFT:
-                    align = '<'
-                elif cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_CENTER:
-                    align = '^'
-                elif cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_RIGHT:
-                    align = '>'
-                else:
-                    align = ''
-                fmts.append("{:" + align + str(maxwidth) + "}")
-            fmt = "|" + "|".join(fmts) + "|\n"
+        if self.tail is not None:
+            if not (hasattr(self, "write_tail")  and self.write_tail(f, format)):
+                r.write_tail(self, f)
 
-            # Get the text we will format
-            row_texts = [cell.text.strip() for cell in row_cells]
+        return self.custom_renderer_json(f)
 
-            # Write it out, formatted
-            f.write(fmt.format(*row_texts))
-
-            # Add a line between the first row and the rest.
-            if rownumber == 0:
-                lines = ['-' * width for width in col_maxwidths]
-                f.write(fmt.format(*lines))
-
-        return True  # we rendered!
-
+  
     def custom_renderer_json(self, f):
-        """Output the data in the body of the table as a JSON object."""
-        data = dict()
-        for tr in self.findall("./TBODY/TR"):
-            for cell in tr:
-                if cell.tag==TAG_TIGNORE:
-                    continue
-                if ATTR_VAL in cell.attrib:
-                    if cell.attrib[ATTR_TYPE]=='int':
-                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                    elif cell.attrib[ATTR_TYPE]=='float':
-                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
-                    else:
-                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
-                else:
-                    data[cell.attrib['id']] = cell.text
-        f.write( json.dumps( data ) )
+        """
+        Output the data in the body of the table as a JSON object.
+        """
+
+        f.write('\n\n<script>\n'
+              + '   var table_data = ' + json.dumps(etree_to_dict(self), indent=4) + ';\n\n'
+#             + LOAD_TABLE_FUNCTION
+              + '</script>\n\n')
+
         return True
-
-    #################################################################
-    ### LaTeX support routines
-    def latex_cell_text(self, cell):
-        if self.option(OPTION_NO_ESCAPE):
-            return cell.text
-        else:
-            return latex_escape(cell.text)
-
-    def render_latex_table_row(self, f, tr):
-        """Render the first set of rows that were added with the add_head() command"""
-        f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
-        f.write('\\\\\n')
-
-    def render_latex_table_head(self, f):
-        if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
-            raise RuntimeError("options TABLE and LONGTABLE conflict")
-        if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
-            raise RuntimeError("options TABULARX and LONGTABLE conflict")
-        if self.option(OPTION_TABLE):
-            # LaTeX table - a kind of float
-            f.write('\\begin{table}\n')
-            caption = self.get_caption()
-            if caption is not None:
-                f.write("\\caption{%s}" % caption)
-            try:
-                f.write(r"\label{%s}" % id(self))  # always put in ID
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])  # put in label if provided
-            except KeyError:
-                pass  # no caption
-            f.write("\n")
-            if self.option(OPTION_CENTER):
-                f.write('\\begin{center}\n')
-        if self.option(OPTION_LONGTABLE):
-            f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
-            caption = self.get_caption()
-            if caption is not None:
-                f.write("\\caption{%s}\n" % caption)
-            try:
-                f.write("\\label{%s}" % id(self))  # always output myid
-                f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
-            except KeyError:
-                pass  # no caption
-            f.write("\n")
-            for tr in self.findall(f"./{TAG_THEAD}/{TAG_TR}"):
-                self.render_latex_table_row(f, tr)
-            f.write('\\hline\\endfirsthead\n')
-            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), id(self)))
-            f.write('\\hline\\endhead\n')
-            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (self.max_cols()))
-            f.write('\\hline\\endfoot\n')
-            f.write('\\hline\\hline\n\\endlastfoot\n')
-        else:
-            # Not longtable, so regular table
-            if self.option(OPTION_TABULARX):
-                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
-            else:
-                f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
-            for tr in self.findall("./THEAD/TR"):
-                self.render_latex_table_row(f, tr)
-
-    def render_latex_table_body(self, f):
-        """Render the rows that were not added with add_head() command"""
-        for tr in self.findall("./TBODY/TR"):
-            self.render_latex_table_row(f, tr)
-
-    def render_latex_table_foot(self, f):
-        for tr in self.findall("./TFOOT/TR"):
-            self.render_latex_table_row(f, tr)
-        if self.option(OPTION_LONGTABLE):
-            f.write('\\end{longtable}\n')
-        else:
-            if self.option(OPTION_TABULARX):
-                f.write('\\end{tabularx}\n')
-            else:
-                f.write('\\end{tabular}\n')
-        if self.option(OPTION_CENTER):
-            f.write('\\end{center}\n')
-        if self.option(OPTION_TABLE):
-            f.write('\\end{table}\n')
 
     def set_caption(self, caption):
         #  TODO: Validate that this is first
-        """The <caption> tag must be inserted immediately after the <table> tag.
+        """
+        The <caption> tag must be inserted immediately after the <table> tag.
         https://www.w3schools.com/tags/tag_caption.asp
         """
         self.add_tag_text(TAG_CAPTION, caption, position=0)
@@ -1054,27 +973,16 @@ class tytable(TyTag):
     def set_fontsize(self, size):
         self.attrib[ATTRIB_FONT_SIZE] = str(size)
 
-    def set_latex_colspec(self, latex_colspec):
-        """LaTeX colspec is just used when typesetting with latex. If one is
-        not set, it auto-generated"""
-
-        self.attrib[ATTRIB_LATEX_COLSPEC] = latex_colspec
-
-    def latex_colspec(self):
-        """Use the user-supplied LATEX COLSPEC; otherwise figure one out"""
-        try:
-            return self.attrib[ATTRIB_LATEX_COLSPEC]
-        except KeyError as c:
-            return "l" * self.max_cols()
 
     #################################################################
     ### Cell Formatting Routines
 
     def format_cell(self, cell):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
+        
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval  = cell.attrib[ATTR_VAL]
+            typeval  = urllib.parse.unquote(cell.attrib[ATTR_VAL])
         except KeyError:
             return cell
 
@@ -1105,6 +1013,7 @@ class tytable(TyTag):
 
         return cell
 
+
     #################################################################
     ### Table Manipulation Routines
 
@@ -1130,19 +1039,23 @@ class tytable(TyTag):
             if self.col_auto_ids is not None:
                 for (cell,name) in zip(cells, self.col_auto_ids):
                     cell.attrib['id'] = row_auto_id + "-" + name
-        
+            else:
+                for (cell,i) in zip(cells, range(len(cells))):
+                    cell.attrib['id'] = row_auto_id + '_' + str(i)
+
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
         
         for cell in cells:
             assert isinstance(cell,ET.Element)
             row.append(cell)
+            
             # If cell has COLSPAN>1, then put in placeholder cells that will not render
             try:
                 for col in range(1, int(cell.attrib[ATTR_COLSPAN])):
                     row.append( ET.Element(TAG_TIGNORE) )
             except KeyError as e:
                 pass
-        
+
     def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None, row_auto_id=None):
         """
         Create a row of cells and add it to the table. This is called by add_head, add_data, or add_foot.
@@ -1203,12 +1116,481 @@ class tytable(TyTag):
             self.add_data(row)
 
     def make_cell(self, tag, value, attrib):
+        """
+        Given a tag, value and attributes, return a cell formatted with the default format. 
+        If value is a scalar, make and format it. If it is an element, then just make it the children.
+        This is called by add_row.
+        
+        Note - if value is a ET.Element that is either a TAG_TD or TAG_TH, it will be copied and used, otherwise
+               it will be put inside a newly-created TAG_TD or TAG_TH.
+        """
+
+        # logging.warning("make_cell(tag=%s,value=%s,attrib=%s)", tag,value,attrib)
+        # logging.warning("same: %s",isinstance(value, ET.Element))
+
+        if isinstance(value, ET.Element):
+            if value.tag.upper() in [TAG_TH, TAG_TD]:
+                cell = copy.copy(value)
+                for (k,v) in attrib:
+                    cell.attrib[k] = v
+            else:
+                cell = ET.Element(tag, attrib)
+                cell.insert(0, value)
+
+            return cell
+
+        cell = ET.Element(tag, { **attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__) } )
+        
+        self.format_cell(cell)
+        return cell
+
+    ################################################################
+    ### Table get information routines
+
+    def get_caption(self):
+        """Return the <caption> tag text"""
+        try:
+            c = self.findall(".//CAPTION")
+            return c[0].text
+        except (KeyError, IndexError) as e:
+            return None
+
+    def rows(self):
+        """Return the rows"""
+        return self.findall(".//TR")
+
+    def row(self, n):
+        """Return the nth row; n starts at 0"""
+        return self.rows()[n]
+
+    def max_cols(self):
+        """Return the number of maximum number of cols in the data. Expensive to calculate"""
+        return max(len(row.findall("*")) for row in self.rows())
+
+    def get_cell(self, row, col):
+        """Return the cell at row, col; both start at 0"""
+        return self.cells_in_row(self.row(row))[col]
+
+    def col(self, n):
+        """Returns all the cells in column n"""
+        return [row[n] for row in self.rows()]
+
+################################################################
+### Improved tytable with the new API.
+### Class name has changed from ttable to tytable.
+### It now uses the XML ETree to represent the table.
+### Tables can then be rendered into HTML or another form.
+################################################################
+class tytable(TyTag):
+    """
+    Python class for representing a table that can be rendered into
+    HTML or LaTeX or text.  Based on Simson Garfinkel's legacy
+    ttable() class, which was a hack that evolved. This class has a
+    similar API, but it is a complete rewrite. Most of the old API is 
+    preserved, but it's not identical, so the original ttable is available 
+    in the tytable.ttable() module. We apologize for the name confusion between
+    tytable.ttable() (the ttable class in the typeset-table module) and the 
+    tydoc.tytable() class (the typeset table class in the typset document module.)
+
+    Note:
+
+    1. Format for table cells must be specified in advance, and formatting is done
+       when data is put into the table.  If format is changed, table
+       is reformatted.
+
+    2. Orignal numeric data and type are kept as HTML attribs.
+
+    3. Creating a <table> HTML tag automatically creates child <thead>, <tbody> and <tfoot> nodes.
+       Most people don't know that these tags even exist, but the browsers do.
+
+    4. autoid mode adds a ids to rows and columns automatically
+    """
+
+    VALID_ALIGNS = {ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT}
+
+    @staticmethod
+    def cells_in_row(tr):
+        return list(filter(lambda t: t.tag in (TAG_TH, TAG_TD, TAG_TIGNORE), tr))
+
+    def __init__(self, attrib={}, **extra):
+        # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
+        super().__init__(TAG_TABLE, attrib=attrib, **extra)
+
+        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
+
+        # Create the layout of the generic table and create easy methods for accessing
+        self.caption = self.add_tag(TAG_CAPTION)
+        self.thead   = self.add_tag(TAG_THEAD)
+        self.tbody   = self.add_tag(TAG_TBODY)
+        self.tfoot   = self.add_tag(TAG_TFOOT)
+
+        # Autoid support
+        self.col_auto_ids = None
+
+    def custom_renderer(self, f, format=FORMAT_HTML):
+        if   format in (FORMAT_LATEX, FORMAT_TEX):
+            return self.custom_renderer_latex(f)
+        elif format in (FORMAT_MARKDOWN):
+            return self.custom_renderer_md(f)
+        elif format in (FORMAT_CSV):
+            return self.custom_renderer_csv(f)
+        elif format in (FORMAT_JSON):
+            return self.custom_renderer_json(f)
+        else:
+            return False
+
+    def custom_renderer_latex(self, f):
+        self.render_latex_table_head(f)
+        f.write("\\hline\n")
+        self.render_latex_table_body(f)
+        f.write("\\hline\n")
+        self.render_latex_table_foot(f)
+        return True
+
+    def custom_renderer_csv(self, f):
+        for section in ["./THEAD/TR", "./TBODY/TR", "./TFOOT/TR"]:
+            for tr in self.findall(section):
+                f.write(",".join([cell.text for cell in tr]))
+                f.write("\n")
+        
+        return True
+
+    def custom_renderer_md(self, f):
+        """
+        Output the table as markdown. Note:
+        1. Assumes the first row is the header.
+        2. Applies 'strip' to all text columns.
+        """
+        
+        # Calculate the maxim width of each column
+        all_cols = [self.col(n) for n in range(self.max_cols())]
+        col_maxwidths = [max([len(str(cell.text).strip()) for cell in col])
+                         for col in all_cols]
+        
+        for (rownumber, tr) in enumerate(self.findall(".//TR"), 0):
+            # Get the cells for this row
+            row_cells = self.cells_in_row(tr)
+
+            # Pad this row out if it needs padding
+            # Markdown tables don't support col span
+            if len(row_cells) < len(all_cols):
+                row_cells.extend([TyTag(TAG_TD)] * (cols - len(row)))  # TODO: cols and row are undefined
+
+            # Make up the format string for this row based on the cell attributes
+
+            fmts = []
+            for (cell, maxwidth) in zip(row_cells, col_maxwidths):
+                if cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_LEFT:
+                    align = '<'
+                elif cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_CENTER:
+                    align = '^'
+                elif cell.attrib.get(ATTRIB_ALIGN, "") == ALIGN_RIGHT:
+                    align = '>'
+                else:
+                    align = ''
+
+                fmts.append("{:" + align + str(maxwidth) + "}")
+
+            fmt = "|" + "|".join(fmts) + "|\n"
+
+            # Get the text we will format
+            row_texts = [cell.text.strip() for cell in row_cells]
+
+            # Write it out, formatted
+            f.write(fmt.format(*row_texts))
+
+            # Add a line between the first row and the rest.
+            if rownumber == 0:
+                lines = ['-' * width for width in col_maxwidths]
+                f.write(fmt.format(*lines))
+
+        return True  # we rendered!
+
+    def custom_renderer_json(self, f):
+        """Output the data in the body of the table as a JSON object."""
+        data = dict()
+        for tr in self.findall("./TBODY/TR"):
+            for cell in tr:
+                if cell.tag==TAG_TIGNORE:
+                    continue
+                if ATTR_VAL in cell.attrib:
+                    if cell.attrib[ATTR_TYPE]=='int':
+                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                    elif cell.attrib[ATTR_TYPE]=='float':
+                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                    else:
+                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
+                else:
+                    data[cell.attrib['id']] = cell.text
+
+        f.write( json.dumps( data ) )
+        return True
+
+    #################################################################
+    ### LaTeX support routines
+    def latex_cell_text(self, cell):
+        if self.option(OPTION_NO_ESCAPE):
+            return cell.text
+        else:
+            return latex_escape(cell.text)
+
+    def render_latex_table_row(self, f, tr):
+        """Render the first set of rows that were added with the add_head() command"""
+        f.write(' & '.join([self.latex_cell_text(cell) for cell in tr]))
+        f.write('\\\\\n')
+
+    def render_latex_table_head(self, f):
+        if self.option(OPTION_TABLE) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABLE and LONGTABLE conflict")
+
+        if self.option(OPTION_TABULARX) and self.option(OPTION_LONGTABLE):
+            raise RuntimeError("options TABULARX and LONGTABLE conflict")
+
+        if self.option(OPTION_TABLE):
+            # LaTeX table - a kind of float
+            f.write('\\begin{table}\n')
+            caption = self.get_caption()
+
+            if caption is not None:
+                f.write("\\caption{%s}" % caption)
+            try:
+                f.write(r"\label{%s}" % id(self))  # always put in ID
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])  # put in label if provided
+
+            except KeyError:
+                pass  # no caption
+
+            f.write("\n")
+            if self.option(OPTION_CENTER):
+                f.write('\\begin{center}\n')
+
+        if self.option(OPTION_LONGTABLE):
+            f.write('\\begin{longtable}{%s}\n' % self.latex_colspec())
+            caption = self.get_caption()
+
+            if caption is not None:
+                f.write("\\caption{%s}\n" % caption)
+            try:
+                f.write("\\label{%s}" % id(self))  # always output myid
+                f.write("\\label{%s}" % self.attrib[ATTRIB_LABEL])
+            except KeyError:
+                pass  # no caption
+
+            f.write("\n")
+
+            for tr in self.findall(f"./{TAG_THEAD}/{TAG_TR}"):
+                self.render_latex_table_row(f, tr)
+
+            f.write('\\hline\\endfirsthead\n')
+            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), id(self)))
+            f.write('\\hline\\endhead\n')
+            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (self.max_cols()))
+            f.write('\\hline\\endfoot\n')
+            f.write('\\hline\\hline\n\\endlastfoot\n')
+
+        else:
+            # Not longtable, so regular table
+            if self.option(OPTION_TABULARX):
+                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
+            else:
+                f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
+            for tr in self.findall("./THEAD/TR"):
+                self.render_latex_table_row(f, tr)
+
+    def render_latex_table_body(self, f):
+        """Render the rows that were not added with add_head() command"""
+        for tr in self.findall("./TBODY/TR"):
+            self.render_latex_table_row(f, tr)
+
+    def render_latex_table_foot(self, f):
+        for tr in self.findall("./TFOOT/TR"):
+            self.render_latex_table_row(f, tr)
+        if self.option(OPTION_LONGTABLE):
+            f.write('\\end{longtable}\n')
+        else:
+            if self.option(OPTION_TABULARX):
+                f.write('\\end{tabularx}\n')
+            else:
+                f.write('\\end{tabular}\n')
+        if self.option(OPTION_CENTER):
+            f.write('\\end{center}\n')
+        if self.option(OPTION_TABLE):
+            f.write('\\end{table}\n')
+
+    def set_caption(self, caption):
+        #  TODO: Validate that this is first
+        """The <caption> tag must be inserted immediately after the <table> tag.
+        https://www.w3schools.com/tags/tag_caption.asp
+        """
+        self.add_tag_text(TAG_CAPTION, caption, position=0)
+
+    def set_fontsize(self, size):
+        self.attrib[ATTRIB_FONT_SIZE] = str(size)
+
+    def set_latex_colspec(self, latex_colspec):
+        """LaTeX colspec is just used when typesetting with latex. If one is
+        not set, it auto-generated"""
+
+        self.attrib[ATTRIB_LATEX_COLSPEC] = latex_colspec
+
+    def latex_colspec(self):
+        """Use the user-supplied LATEX COLSPEC; otherwise figure one out"""
+        try:
+            return self.attrib[ATTRIB_LATEX_COLSPEC]
+        except KeyError as c:
+            return "l" * self.max_cols()
+
+    #################################################################
+    ### Cell Formatting Routines
+
+    def format_cell(self, cell):
+        """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
+        try:
+            typename = cell.attrib[ATTR_TYPE]
+            typeval  = urllib.parse.unquote(cell.attrib[ATTR_VAL])
+        except KeyError:
+            return cell
+
+        if typename is None:
+            return cell
+
+        try:
+            value = eval(typename)(typeval)
+        except Exception as e:
+            return cell
+
+        if isinstance(value, ET.Element):
+            value = value.text
+
+        try:
+            if cell.attrib[ATTR_TYPE] == 'int':
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+                return cell
+            elif cell.attrib[ATTR_TYPE] != 'str':
+                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+                return cell
+        except TypeError as e:
+            pass
+        except ValueError as e:
+            pass
+
+        cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+
+        return cell
+
+    #################################################################
+    ### Table Manipulation Routines
+
+    def add_row(self, where, cells, row_attrib={}, row_auto_id=None):
+        """
+        Add a row of cells to the table. 
+        You probably want to call add_head(), add_data() or add_foot().
+
+        @param where      - must be TAG_THEAD, TAG_TBODY or TAG_TFOOT
+        @param cells      - a list of cells that are added. These are typically Elements made with make_cells()
+                            Each will have its id= attribute set if row_auto_id and self.col_auto_ids are set.
+        @param row_attrib - the attribute for the row
+        """
+        
+        # Mutable default value for row_attrib is ok, since we're not changing attrib here or in any subclasses
+        
+        assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
+        
+        where_node = self.findall(f".//{where}")[0]
+        
+        if row_auto_id is not None:
+            row_attrib = {**row_attrib, **{'id':row_auto_id}}
+            
+            if self.col_auto_ids is not None:
+                for (cell,name) in zip(cells, self.col_auto_ids):
+                    cell.attrib['id'] = row_auto_id + "-" + name
+            else:
+                for (cell, i) in zip(cells, range(len(cells))):
+                    cell.attrib['id'] = row_auto_id + "-" + str(i)
+        
+        row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
+        
+        for cell in cells:
+            assert isinstance(cell,ET.Element)
+            row.append(cell)
+            # If cell has COLSPAN>1, then put in placeholder cells that will not render
+            try:
+                for col in range(1, int(cell.attrib[ATTR_COLSPAN])):
+                    row.append( ET.Element(TAG_TIGNORE) )
+            except KeyError as e:
+                pass
+        
+    def add_row_values(self, where, tags, values, *, cell_attribs=None, row_attrib=None, row_auto_id=None):
+        """
+        Create a row of cells and add it to the table. This is called by add_head, add_data, or add_foot.
+        
+        @param where  - should be TAG_THEAD/TAG_TBODY/TAG_TFOOT
+        @param tags   - a single tag, or a list of tags. If it is a tag, all of the cells are that tag.
+        @param values - a list of values, one per column.  Each is automatically formatted. 
+                        However, if a value is a TD or a TH element, we just copy that element and use it.
+        @param cell_attribs - a single cell attrib, or a list of attribs. 
+                              If a single attrib, it is given to all the cells.
+        @param row_attrib   - a single attrib for the row, or a list of attribs
+        @param row_auto_id  - the id for the row. 
+                              Cell IDs will be row-col when rendered if row and col auto_id are provied.
+        """
+
+        assert where in (TAG_THEAD, TAG_TBODY, TAG_TFOOT)
+
+        if cell_attribs is None:
+            cell_attribs = {}
+
+        if row_attrib is None:
+            row_attrib = {}
+
+        # If tags is not a list, make it a list
+        if not isinstance(tags, list):
+            tags = [tags] * len(values)
+
+        if not isinstance(cell_attribs, list):
+            cell_attribs = [cell_attribs] * len(values)
+
+        if not (len(tags) == len(values) == len(cell_attribs)):
+            raise ValueError(
+                "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(len(tags), len(values), len(cell_attribs)))
+
+        cells = [self.make_cell(t, v, a) for (t, v, a) in zip(tags, values, cell_attribs)]
+
+        self.add_row(where, cells, row_attrib=row_attrib, row_auto_id=row_auto_id)
+
+
+    def add_head(self, values, row_attrib=None, cell_attribs=None, col_auto_ids=None, row_auto_id="head"):
+        if col_auto_ids is not None:
+            if self.col_auto_ids is None:
+                self.col_auto_ids = col_auto_ids
+            else:
+                raise RuntimeError("auto_ids may only be specified once")
+
+        self.add_row_values(TAG_THEAD, 'TH', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                           row_auto_id=row_auto_id)
+
+    def add_data(self, values, row_attrib=None, cell_attribs=None, row_auto_id=None):
+        self.add_row_values(TAG_TBODY, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                            row_auto_id=row_auto_id)
+
+    def add_foot(self, values, row_attrib=None, cell_attribs=None):
+        self.add_row_values(TAG_TFOOT, 'TD', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
+                            row_auto_id="foot")
+
+    def add_data_array(self, rows):
+        for row in rows:
+            self.add_data(row)
+        
+    def make_cell(self, tag, value, attrib):
         """Given a tag, value and attributes, return a cell formatted with the default format. 
         If value is a scalar, make and format it. If it is an element, then just make it the children.
         This is called by add_row.
         Note - if value is a ET.Element that is either a TAG_TD or TAG_TH, it will be copied and used, otherwise
                it will be put inside a newly-created TAG_TD or TAG_TH.
         """
+
         #logging.warning("make_cell(tag=%s,value=%s,attrib=%s)", tag,value,attrib)
         #logging.warning("same: %s",isinstance(value, ET.Element))
         if isinstance(value, ET.Element):
@@ -1221,8 +1603,9 @@ class tytable(TyTag):
                 cell.insert(0, value)
             return cell
 
-        cell = ET.Element(tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
-
+        cell = ET.Element(tag, {**attrib, 
+                                ATTR_VAL: urllib.parse.quote(str(value)), 
+                                ATTR_TYPE: str(type(value).__name__)})
         self.format_cell(cell)
         return cell
 
