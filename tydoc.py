@@ -226,19 +226,24 @@ DEFAULT_INTEGER_FORMAT = '{:,}'
 
 def etree_to_dict(t):
     d = {t.tag: {} if t.attrib else None}
+    
     children = list(t)
+    
     if children:
         dd = defaultdict(list)
+        
         for dc in map(etree_to_dict, children):
             for k, v in dc.items():
                 dd[k].append(v)
-        d = {t.tag: {k: v[0] if len(v) == 1 else v
-                     for k, v in dd.items()}}
+        
+        d = {t.tag: {k: v[0] if len(v) == 1 else v for k, v in dd.items()}}
+        
     if t.attrib:
-        d[t.tag].update(('@' + k, v)
-                        for k, v in t.attrib.items())
+        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
+        
     if t.text:
         text = t.text.strip()
+        
         if children or t.attrib:
             if text:
               d[t.tag]['#text'] = text
@@ -484,9 +489,12 @@ class TyTag(ET.Element):
         return render(self, f, format=format)
 
     def save(self, f_or_fname, format=None):
-        """Save to a filename or a file-like object
+        """
+        Save to a filename or a file-like object
         @param f_or_fname - a filename or a file-like object.
-        @param format     - the format to use. Will learn from fname's extension if None"""
+        @param format     - the format to use. Will learn from fname's extension if None
+        """
+        
         if format is None:
             # Learn format 
             format = os.path.splitext(f_or_fname)[1].lower()
@@ -507,7 +515,7 @@ class TyTag(ET.Element):
             raise ValueError("format must be specified")
 
         s = io.StringIO()
-        self.save(s, format=format)
+        self.render(s, format=format)
         return s.getvalue()
         
 
@@ -563,7 +571,6 @@ class TyTag(ET.Element):
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
         Returns the tag that is added."""
-
 
         if id is not None:
             if 'id' in attrib:
@@ -881,26 +888,6 @@ def tag_ignore():
 ### Tables can then be rendered into JSON or another form.
 ################################################################
 
-LOAD_TABLE_FUNCTION="""
-$(document).ready(function() {
-    $.each(table_data, function(id, htm) {
-        $('#'+id).html(unescape(htm));
-    });
-    
-    $('.toggle_workers').click(function(event) {
-        $('.' + this.id + '-worker').toggle('show');
-        
-        if ($(this).text() == 'show' ) {
-            $(this).text('hide');
-            $(this).attr('title', $(this).attr('title').replace('Show','Hide'));
-        } else {
-            $(this).text('show');
-            $(this).attr('title', $(this).attr('title').replace('Hide','Show'));
-        }
-    });
-});
-"""
-
 class jsonTable(TyTag):
 
     VALID_ALIGNS = {ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT}
@@ -928,38 +915,29 @@ class jsonTable(TyTag):
 
 
     def custom_renderer(self, f, format=FORMAT_HTML):
-
-        r = HTMLRenderer()
-
-        if not (hasattr(self, "write_tag_begin") and self.write_tag_begin(f, format)):
-            r.write_tag_begin(self, f)
-
-        if not (hasattr(self, "write_text")      and self.write_text(f, format)):
-            r.write_text(self, f)
-
-        for child in list(self):
-            render(child, f, format)
-
-        if not (hasattr(self, "write_tag_end")   and self.write_tag_end(f, format)):
-            r.write_tag_end(self, f)
-
-        if self.tail is not None:
-            if not (hasattr(self, "write_tail")  and self.write_tail(f, format)):
-                r.write_tail(self, f)
-
         return self.custom_renderer_json(f)
-
   
     def custom_renderer_json(self, f):
         """
         Output the data in the body of the table as a JSON object.
         """
+        data = dict()
+        for tr in self.findall("./TBODY/TR"):
+            for cell in tr:
+                if cell.tag==TAG_TIGNORE:
+                    continue
+                if ATTR_VAL in cell.attrib:
+                    if cell.attrib[ATTR_TYPE]=='int':
+                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                    elif cell.attrib[ATTR_TYPE]=='float':
+                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                    else:
+                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
+                else:
+                    data[cell.attrib['id']] = cell.text
 
-        f.write('\n\n<script>\n'
-              + '   var table_data = ' + json.dumps(etree_to_dict(self), indent=4) + ';\n\n'
-#             + LOAD_TABLE_FUNCTION
-              + '</script>\n\n')
-
+        f.write(json.dumps(data, indent=4))
+        
         return True
 
     def set_caption(self, caption):
@@ -1038,10 +1016,10 @@ class jsonTable(TyTag):
             row_attrib = {**row_attrib, **{'id':row_auto_id}}
             if self.col_auto_ids is not None:
                 for (cell,name) in zip(cells, self.col_auto_ids):
-                    cell.attrib['id'] = row_auto_id + "-" + name
+                    cell.attrib['id'] = row_auto_id + "_" + name
             else:
                 for (cell,i) in zip(cells, range(len(cells))):
-                    cell.attrib['id'] = row_auto_id + '_' + str(i)
+                    cell.attrib['id'] = row_auto_id + "_" + str(i)
 
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
         
@@ -1100,6 +1078,7 @@ class jsonTable(TyTag):
                 self.col_auto_ids = col_auto_ids
             else:
                 raise RuntimeError("auto_ids may only be specified once")
+
         self.add_row_values(TAG_THEAD, 'TH', values, row_attrib=row_attrib, cell_attribs=cell_attribs,
                             row_auto_id=row_auto_id)
 
@@ -1505,10 +1484,10 @@ class tytable(TyTag):
             
             if self.col_auto_ids is not None:
                 for (cell,name) in zip(cells, self.col_auto_ids):
-                    cell.attrib['id'] = row_auto_id + "-" + name
+                    cell.attrib['id'] = row_auto_id + "_" + name
             else:
                 for (cell, i) in zip(cells, range(len(cells))):
-                    cell.attrib['id'] = row_auto_id + "-" + str(i)
+                    cell.attrib['id'] = row_auto_id + "_" + str(i)
         
         row = ET.SubElement(where_node, TAG_TR, attrib=row_attrib)
         
@@ -1593,6 +1572,7 @@ class tytable(TyTag):
 
         #logging.warning("make_cell(tag=%s,value=%s,attrib=%s)", tag,value,attrib)
         #logging.warning("same: %s",isinstance(value, ET.Element))
+
         if isinstance(value, ET.Element):
             if value.tag.upper() in [TAG_TH,TAG_TD]:
                 cell = copy.copy(value)
