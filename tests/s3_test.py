@@ -72,7 +72,7 @@ def test_s3open_write_fsync():
         return
 
 
-    path = os.path.join( DAS_S3ROOT, f"tmp/tmp.{os.getpid()}")
+    path = os.path.join( TEST_S3ROOT, f"tmp/tmp.{os.getpid()}")
     with s3.s3open(path,"w", fsync=True) as f:
         f.write( TEST_STRING)
     with s3.s3open(path,"r") as f:
@@ -100,7 +100,7 @@ def test_s3open_iter():
 
 
 
-    path = os.path.join(DAS_S3ROOT, f"tmp/tmp.{os.getpid()}")
+    path = os.path.join(TEST_S3ROOT, f"tmp/tmp.{os.getpid()}")
     with s3.s3open(path,"w", fsync=True) as f:
         for i in range(10):
             f.write( TEST_STRING[:-1] + str(i) + "\n")
