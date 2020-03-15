@@ -95,6 +95,10 @@ def hostname():
     return socket.gethostname().partition('.')[0]
 
 class DBSQL:
+    def __init__(self,dicts=True,debug=False):
+        self.dicts = dicts
+        self.debug = debug
+
     def __enter__(self):
         return self
 
@@ -102,9 +106,19 @@ class DBSQL:
         self.conn.close()
 
     def execute(self, cmd, *args, debug=False, **kwargs):
-        if debug:
-            print("execute: ",cmd,file=sys.stderr)
-        return self.conn.cursor().execute(cmd, *args, **kwargs)
+        if self.debug or debug:
+            print(f"execute: {cmd}",file=sys.stderr)
+            t0 = time.time()
+        try:
+            res = self.conn.cursor().execute(cmd, *args, **kwargs)
+        except Exception as e:
+            print(cmd,*args,file=sys.stderr)
+            print(e,file=sys.stderr)
+            exit(1)
+        if self.debug or debug:
+            t1 = time.time()
+            print(f"time: {t1-t0}",file=sys.stderr)
+        return res
 
     def cursor(self):
         return self.conn.cursor()
@@ -118,7 +132,7 @@ class DBSQL:
         for line in schema.split(";"):
             line = line.strip()
             if len(line)>0:
-                if debug:
+                if self.debug or debug:
                     print(line,file=sys.stderr)
                 try:
                     c.execute(line)
@@ -137,14 +151,19 @@ class DBSQL:
         self.conn.close()
 
 class DBSqlite3(DBSQL):
-    def __init__(self,fname=None):
+    def __init__(self,fname=None,*args,**kwargs):
+        super().__init__(*args, **kwargs)
         try:
             import sqlite3
             self.conn = sqlite3.connect(fname)
+            if self.dicts:
+                self.conn.row_factory = sqlite3.Row    # user wants dicts
         except sqlite3.OperationalError as e:
             print(f"Cannot open database file: {fname}")
             exit(1)
         
+    def set_cache_bytes(self,b):
+        self.execute(f"PRAGMA cache_size = {-b/1024}") # negative numbers are multiples of 1024
 
 
 class DBMySQLAuth:
@@ -152,12 +171,12 @@ class DBMySQLAuth:
 connection. If run under bottle, the bottle object can be passed in,
 and cached_db is stored in the request-local storage."""
 
-    def __init__(self,*,host,database,user,password,bottle=None):
+    def __init__(self,*,host,database,user,password,bottle=None,debug=False):
         self.host     = host
         self.database = database
         self.user     =user
         self.password = password
-        self.debug    = False   # enable debugging
+        self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
         self.bottle   = bottle
 
