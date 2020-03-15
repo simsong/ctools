@@ -148,7 +148,9 @@ class DBSqlite3(DBSQL):
 
 
 class DBMySQLAuth:
-    """Class that represents MySQL credentials. Will cache the connection. If run under bottle, the bottle object can be passed in, and cached_db is stored in the request-local storage."""
+    """Class that represents MySQL credentials. Will cache the
+connection. If run under bottle, the bottle object can be passed in,
+and cached_db is stored in the request-local storage."""
 
     def __init__(self,*,host,database,user,password,bottle=None):
         self.host     = host
