@@ -101,20 +101,10 @@ class DBSQL:
     def __exit__(self,a,b,c):
         self.conn.close()
 
-    def create_schema(self,schema):
-        """Create the schema if it doesn't exist."""
-        c = self.conn.cursor()
-        for line in schema.split(";"):
-            line = line.strip()
-            if len(line)>0:
-                print(line)
-                c.execute(line)
-
-    def execselect(self, sql, vals=()):
-        """Execute a SQL query and return the first line"""
-        c = self.conn.cursor()
-        c.execute(sql, vals)
-        return c.fetchone()
+    def execute(self, cmd, *args, debug=False, **kwargs):
+        if debug:
+            print("execute: ",cmd,file=sys.stderr)
+        return self.conn.cursor().execute(cmd, *args, **kwargs)
 
     def cursor(self):
         return self.conn.cursor()
@@ -122,11 +112,32 @@ class DBSQL:
     def commit(self):
         self.conn.commit()
 
+    def create_schema(self,schema,*,debug=False):
+        """Create the schema if it doesn't exist."""
+        c = self.conn.cursor()
+        for line in schema.split(";"):
+            line = line.strip()
+            if len(line)>0:
+                if debug:
+                    print(line,file=sys.stderr)
+                try:
+                    c.execute(line)
+                except Exception as e:
+                    print("SQL:",line,file=sys.stderr)
+                    print(e)
+                    exit(1)
+
+    def execselect(self, sql, vals=()):
+        """Execute a SQL query and return the first line"""
+        c = self.conn.cursor()
+        c.execute(sql, vals)
+        return c.fetchone()
+
     def close(self):
         self.conn.close()
 
 class DBSqlite3(DBSQL):
-    def __init__(self,*,fname=None):
+    def __init__(self,fname=None):
         try:
             import sqlite3
             self.conn = sqlite3.connect(fname)
@@ -134,6 +145,8 @@ class DBSqlite3(DBSQL):
             print(f"Cannot open database file: {fname}")
             exit(1)
         
+
+
 class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the connection. If run under bottle, the bottle object can be passed in, and cached_db is stored in the request-local storage."""
 
