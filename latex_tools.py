@@ -428,11 +428,16 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
 
 def inspect_pdf_pypdf(pdf_fname):
     """As above, but with PyPDF"""
+    if os.path.getsize(pdf_fname)==0:
+        raise RuntimeError(f"{pdf_fname} is a zero-length file")
+
     import PyPDF2
+    with open(pdf_fname,"rb") as f:
+        sha256 = hashlib.sha256(f.read()).hexdigest()
     ret = {VERSION:1,
            FILENAME:pdf_fname,
            UNITS:POINTS,
-           SHA256:hashlib.sha256( open(pdf_fname,"rb").read() ).hexdigest(),
+           SHA256:sha256,
            PAGES:[]}
     pdf = PyPDF2.PdfFileReader(open(pdf_fname,"rb"),strict=False)
     for pageNumber in range(pdf.getNumPages()):
@@ -447,7 +452,7 @@ def inspect_pdf_pypdf(pdf_fname):
 def inspect_pdf(pdf_fname,texinputs=None):
     try:
         return inspect_pdf_pypdf(pdf_fname)
-    except ImportError:
+    except (ImportError,ModuleNotFoundError):
         return inspect_pdf_latex(pdf_fname,texinputs=texinputs)
 
 def count_pdf_pages_pypdf(pdf_fname):
