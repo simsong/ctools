@@ -140,6 +140,7 @@ FORMAT_TEX      = 'tex'
 FORMAT_JSON     = 'json'
 FORMAT_MARKDOWN = 'md'
 FORMAT_CSV      = 'csv'
+FORMAT_OPENPYXL = 'openpyxl'
 
 CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
