@@ -141,6 +141,8 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 HTML_START_NEWLINE_TAGS = {TAG_HEAD, TAG_HTML, TAG_BODY, TAG_TABLE, TAG_CAPTION, TAG_THEAD, TAG_TBODY, TAG_TFOOT}
 HTML_END_NO_NEWLINE_TAGS = {TAG_B, TAG_I, TAG_TD, TAG_TH, TAG_A}
+FLOAT_TYPES = set(['float','float32','float64'])
+INTEGER_TYPES = set(['int','int32','int64'])
 
 
 LATEX_TAGS = {TAG_P: ('\n', '\n\n'),
@@ -187,7 +189,7 @@ OPTION_DATATABLES = 'datatables' #
 
 ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
-ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
+ATTRIB_FLOAT_FORMAT = 'FLOAT_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
 ATTRIB_FONT_SIZE = 'FONTSIZE'
 ATTRIB_TITLE = 'TITLE'
@@ -204,8 +206,8 @@ ALIGN_RIGHT = "RIGHT"
 DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
 DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
 
-DEFAULT_TEXT_FORMAT = '{}'
-DEFAULT_NUMBER_FORMAT = '{:,}'
+DEFAULT_TEXT_FORMAT    = '{}'
+DEFAULT_FLOAT_FORMAT   = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 
@@ -789,8 +791,8 @@ class tytable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT] = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT]   = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -979,33 +981,40 @@ not set, it auto-generated"""
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval = cell.attrib[ATTR_VAL]
+            typeval  = cell.attrib[ATTR_VAL]
         except KeyError:
             return cell
 
-        if typename is None:
-            return cell
+        TYPECONV = {'float':float,
+                    'float32':float,
+                    'float64':float,
+                    'int':int,
+                    'int32':int,
+                    'int64':int,
+                    'str':str}
 
         try:
-            value = eval(typename)(typeval)
+            value = TYPECONV[typename](typeval)
         except Exception as e:
-            return cell
+            return str(typeval)
 
         try:
-            if cell.attrib[ATTR_TYPE] == 'int':
-                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+            if cell.attrib[ATTR_TYPE] in INTEGER_TYPES:
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format( int(value) )
                 return cell
-            elif cell.attrib[ATTR_TYPE] != 'str':
-                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+            elif cell.attrib[ATTR_TYPE] in FLOAT_TYPES:
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format( float(value) )
                 return cell
+            elif cell.attrib[ATTR_TYPE] == 'str':
+                cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+                return cell
+            else:
+                raise ValueError("Unknown cell type: {}".format(cell.attrib[ATTR_TYPE]))
         except TypeError as e:
-            print(f"TypeError in value: {value} cell: {cell}")
+            raise TypeError(f"TypeError in value: {value} cell: {cell}")
+        except AttributeError as e:
+            print("cell:",cell)
             raise e
-        except ValueError as e:
-            pass
-
-        cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
-        return cell
 
     #################################################################
     ### Table Manipulation Routines
@@ -1256,6 +1265,30 @@ def demo_toc():
     doc.p("blah blah blah")
     doc.insert_toc()
     return doc
+
+
+#
+# Useful for jupyter
+#
+def jupyter_display_table(val,float_format="{:.5f}"):
+    import io
+    from IPython.core.display import HTML
+    doc = tytable()
+    doc.attrib[ATTRIB_FLOAT_FORMAT] = float_format
+    if isinstance(val,dict):
+        doc.add_head(val.keys())
+        for row in zip(*val.values()):
+            doc.add_data(row)
+    elif isinstance(val,list):
+        for row in val:
+            doc.add_data(row)
+    else:
+        raise ValueError(f"not sure how to render '{val}'")
+
+    buf = io.StringIO()
+    doc.render(buf,'html')
+    buf.seek(0)
+    display(HTML(buf.read()))
 
 
 if __name__ == "__main__":
