@@ -132,7 +132,7 @@ class Range:
                 if self.a == schema.RANGE_NULL:
                     return "x.strip()=='' "
                 return "leftpad(x,{})==leftpad('{}',{})".format(width, self.a, width)
-            return "between('{}',x,'{}',{}".format(self.a, self.b, width)
+            return "between('{}',x,'{}',{})".format(self.a, self.b, width)
 
         logging.error("Cannot make python range expression for type %s",str(python_type))
         raise ValueError("Don't know how to create python range expression for type "+str(python_type))

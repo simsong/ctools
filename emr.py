@@ -34,7 +34,7 @@ import aws
 DEFAULT_WORKERS=4
 
 # We also now implement exponential backoff 
-MAX_RETRIES = 8
+MAX_RETRIES = 7
 RETRY_MS_DELAY = 50
 
 
@@ -70,13 +70,35 @@ def get_url(url):
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
 
-def user_data():
-    """user_data is only available on EMR nodes. Otherwise we get an error, which we turn into a FileNotFound error"""
+def decode_user_data(user_data_raw):
+    """Decode the raw user data provided by the Amazon API. Previously this was a JSON value; now it is a base64-encoded GZIP file inside a YAML value."""
     try:
-        return json.loads(get_url("http://169.254.169.254/2016-09-02/user-data/"))
+        return json.loads(user_data_raw)
     except json.decoder.JSONDecodeError as e:
         pass
-    raise FileNotFoundError("user-data is only available on EMR")
+    try:
+        import yaml,gzip,base64
+        # In later EMR version Amazon moved to distributing this as a YAML file
+        y = yaml.load(user_data_raw)
+        return json.loads(gzip.decompress(base64.b64decode(y['write_files'][0]['content'])))
+    except RuntimeError as e:
+        print(str(e),file=sys.stderr)
+        raise RuntimeError("Cannot find user_data in YAML file")
+
+def user_data():
+    """user_data is only available on EMR nodes. Otherwise we get an
+    error, which we turn into a FileNotFound error"""
+    try:
+        user_data_raw = get_url("http://169.254.169.254/2016-09-02/user-data/")
+        if user_data_raw.startswith("#!"):
+            raise FileNotFoundError("user-data is only available in EMR")
+    except urllib.error.URLError as e:
+        raise FileNotFoundError("user-data is only available in EMR")
+    return decode_user_data(user_data_raw)
+
+
+def releaseLabel():
+    return json.loads(open("/emr/instance-controller/lib/info/extraInstanceData.json","r").read())['releaseLabel']
 
 def encryptionEnabled():
     return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
@@ -99,21 +121,30 @@ def get_instance_type(host):
     return run_command_on_host(host,"curl -s http://169.254.169.254/latest/meta-data/instance-type")
 
 # https://docs.aws.amazon.com/general/latest/gr/api-retries.html
-def aws_emr_cmd(cmd):
+def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     """run the command and return the JSON output. implements retries"""
-    for retries in range(MAX_RETRIES):
+    for retries in range(retries):
         try:
             rcmd = ['aws','emr','--output','json'] + cmd
             if debug:
                 print(f"aws_emr_cmd pid{os.getpid()}: {rcmd}")
-            res = check_output(rcmd, encoding='utf-8')
-            return json.loads(res)
+            p = subprocess.Popen(rcmd,encoding='utf-8',stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            (out,err) = p.communicate()
+            if p.poll()!=0:
+                raise subprocess.CalledProcessError(f"p={p.poll()})")
+            if decode:
+                return json.loads(out)
+            else:
+                return p.poll()
         except subprocess.CalledProcessError as e:
-            delay = (2**retries * (RETRY_MS_DELAY/1000))
+            delay = (2**retries * RETRY_MS_DELAY/1000)
             logging.warning(f"aws emr subprocess.CalledProcessError. "
                             f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
-    raise RuntimeError("MAX_RETRIES {} reached".format(MAX_RETRIES))
+        except (json.decoder.JSONDecodeError) as e:
+            logging.error(f"JSONDecodeError: out: {out}  err: {err}")
+            raise e
+    raise e
     
 
 def list_clusters(*,state=None):
@@ -136,52 +167,36 @@ def list_instances(clusterId = None):
 
 def add_cluster_info(cluster):
     clusterId = cluster['Id']
-    debug = cluster['debug']
-    if debug:
-        print("Getting info for cluster",clusterId)
     cluster['describe-cluster'] = describe_cluster(clusterId)
     cluster['instances']        = list_instances(clusterId)
     cluster['terminated']       = 'EndDateTime' in cluster['Status']['Timeline']
     # Get the id of the master
-    if debug:
-        print("Cluster",clusterId,"has ",len(cluster['instances']),"instances")
     try:
         masterPublicDnsName = cluster['describe-cluster']['MasterPublicDnsName']
-        masterInstance      = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
-        masterInstanceId    = masterInstance['Ec2InstanceId']
+        masterInstance = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
+        masterInstanceId = masterInstance['Ec2InstanceId']
         # Get the master tags
         cluster['MasterInstanceTags'] = {}
         for tag in ec2.describe_tags(resourceId=masterInstanceId):
             cluster['MasterInstanceTags'][tag['Key']] = tag['Value']
-        if debug:
-            print("Cluster",clusterId,"got tags")
     except KeyError as e:
         pass
     return cluster
 
-
-def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False,debug=False):
+def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
     """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
     information about the terminated clusters as well.
     """
-    if debug:
-        print("Getting cluster list...")
     clusters = list_clusters()
-    for cluster in clusters:
-        cluster['debug'] = debug
-    if debug:
-        print("Cluster list: {} clusters".format(len(clusters)))
-    if terminated==False:
-        for cluster in list(clusters):
-            if cluster['Status']['State'] in ('TERMINATED','TERMINATED_WITH_ERRORS'):
-                clusters.remove(cluster)
-        if debug:
-            print("Cluster list reduced to {} clusters".format(len(clusters)))
-    if debug:
-        print(clusters)
+    for cluster in list(clusters):
+        if terminated==False and cluster['Status']['State']=='TERMINATED':
+            clusters.remove(cluster)
     with multiprocessing.Pool(workers) as p:
         clusters = p.map(add_cluster_info,clusters)
 
     return clusters
 
+
+if __name__=="__main__":
+    print("user data test: ",user_data())

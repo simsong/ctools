@@ -44,13 +44,13 @@ class Proxy:
         proxy_off()
 
 
-def get_url(url, context=None, ignore_cert=False):
+def get_url(url, context=None, ignore_cert=False, timeout=None):
     if ignore_cert:
         import ssl
         context = ssl._create_unverified_context()
 
     import urllib.request
-    with urllib.request.urlopen(url, context=context) as response:
+    with urllib.request.urlopen(url, context=context, timeout=timeout) as response:
         return response.read().decode('utf-8')
 
 def get_url_json(url, **kwargs):

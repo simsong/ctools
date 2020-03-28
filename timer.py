@@ -1,8 +1,12 @@
+import sys
 import time
 
+def print_stderr(s):
+    print(s,file=sys.stderr)
 
 class Timer:    
-    def __init__(self,message='Elapsed time: '):
+    def __init__(self,message='Elapsed time:',notifier=print_stderr):
+        self.notifier = notifier
         if '%' in message:
             self.message = message
         else:
@@ -16,4 +20,5 @@ class Timer:
         self.end = time.time()
         self.interval = self.end - self.start
         if self.message:
-            print(self.message % self.interval)
+            self.notifier(self.message % self.interval)
+            
