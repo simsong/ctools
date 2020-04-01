@@ -21,14 +21,15 @@ class Variable:
     attrib   = a dictionary of user-specified attributes
     """
 
-    __slots__ = ('name','python_type','vtype','desc','field','column','width','ranges','default','format','prefix','attrib')
+    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib')
 
-    def __init__(self,*,name=None,vtype=None,python_type=None,desc="",field=None,column=None,width=None,default=None,
+    def __init__(self,*,name=None,vtype=None,python_type=None,desc="",position=None,column=None,width=None,default=None,
                  format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix=""):
         self.width       = None       # initial value
         self.set_name(name)
         self.set_vtype(vtype=vtype, python_type=python_type)            
-        self.field       = field         # field number
+        #self.field       = field         # field number
+        self.position    = position
         self.desc        = desc          # description
         self.column      = column        # Starting column in the line if this is a column-specified file 0
 
@@ -47,12 +48,12 @@ class Variable:
         return "{}({} column:{} width:{})".format(self.name,self.python_type.__name__,self.column,self.width)
 
     def __repr__(self):
-        return "Variable(field:{} name:{} desc:{} vtype:{})".format(self.field,self.name,self.desc,self.vtype)
+        return "Variable(position:{} name:{} desc:{} vtype:{})".format(self.position,self.name,self.desc,self.vtype)
 
     def json_dict(self):
         return {"name":self.name,
                 "vtype":self.vtype,
-                "field":self.field,
+                "position":self.position,
                 "desc":self.desc,
                 "column":self.column,
                 "width":self.width,
@@ -323,7 +324,7 @@ class Variable:
 
     def dump(self,func=print):
         out = "".join([ "  ",
-                        f" #{self.field}" if self.field is not None else "",
+                        f" #{self.position}" if self.position is not None else "",
                         f"[{self.column}:{self.width}] ",
                         f"{self.name} ",
                         f"({self.desc}) " if self.desc else "",

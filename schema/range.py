@@ -36,15 +36,21 @@ class Range:
             logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
             return None
         for regex in Range.RANGE_RE_LIST:
-            m = regex.search(possible_legal_value)
+            if ("-" in possible_legal_value and "=" in possible_legal_value):
+                m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+            else:
+                m = regex.search(possible_legal_value)
             if m:
                 a = m.group('a')
+                desc = m.group('desc')
+                if "Numeric values" in desc:  # for catching OIDTB
+                    return Range("length", python_type(a), desc)
                 try:
                     b = m.group('b')
                 except IndexError:
                     b = a
-                desc = m.group('desc')
                 return Range( python_type(a), python_type(b), desc)
+
         if hardfail:
             raise ValueError("Cannot recognize range in: "+possible_legal_value)
         return None
@@ -119,7 +125,10 @@ class Range:
     def python_expr(self,python_type, width):
         """Return the range as a python expression in x"""
         if self.a == schema.RANGE_ANY or self.b == schema.RANGE_ANY:
-            return "True "      # anything work
+            return "True "      # anything works
+
+        if self.a == "length":  # Handle OIDTB or other vals that require specific length
+            return "len(str(x).strip()) == {}".format(self.b)
 
         if python_type==int or python_type==float:
             if self.a==self.b:
