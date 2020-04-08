@@ -21,17 +21,19 @@ class Variable:
     attrib   = a dictionary of user-specified attributes
     """
 
-    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib')
+    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib','allowWhitespace','start','end')
 
     def __init__(self,*,name=None,vtype=None,python_type=None,desc="",position=None,column=None,width=None,default=None,
-                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix=""):
+                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix="",allowWhitespace=False,start=None,end=None):
         self.width       = None       # initial value
         self.set_name(name)
-        self.set_vtype(vtype=vtype, python_type=python_type)            
+        self.set_vtype(vtype=vtype, python_type=python_type)
         #self.field       = field         # field number
         self.position    = position
         self.desc        = desc          # description
         self.column      = column        # Starting column in the line if this is a column-specified file 0
+        self.start = start
+        self.end = end
 
 
         # If width was specified, use it
@@ -43,6 +45,7 @@ class Variable:
         self.format      = format
         self.prefix      = prefix
         self.attrib      = attrib
+        self.allowWhitespace = allowWhitespace
 
     def __str__(self):
         return "{}({} column:{} width:{})".format(self.name,self.python_type.__name__,self.column,self.width)
@@ -289,7 +292,15 @@ class Variable:
         ret.append("    @classmethod")
         ret.append("    def {}(self,x):".format(self.python_validator_name()))
         ret.append('        """{}"""'.format(self.desc))
-        if self.python_type == int or self.python_type==float:
+
+        if self.allowWhitespace:
+            size = ""
+            for x in range(self.width):
+                size += " "
+            ret.append("        if x == '{}':".format(size))
+            ret.append("            return True")
+
+        if (self.python_type == int or self.python_type == float) and "Tabulation" not in self.desc: # Tabulation is to check if its an OIDTB val
             ret.append('        x = str(x).strip()')
             ret.append('        try:')
             if self.python_type==int:

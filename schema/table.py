@@ -225,7 +225,16 @@ class Table:
                                python_type=var.python_type.__name__,
                                name=var.name))
         ret.append('        )')
-        ret.append('')
+        ret.append('\n')
+
+        ret.append("    @staticmethod")
+        ret.append("    def parse_line(line):")
+        ret.append("        # Read a line and return it as a dictionary.")
+        ret.append("        inst: CEF20_UNIT = CEF20_UNIT()")
+        ret.append("        inst.parse_column_specified(line)")
+        ret.append("        assert inst.validate(), f'A line is invalid!! line: {line}, validate_reason: {inst.validate_reason()}'")
+        ret.append("        row = inst.SparkSQLRow()")
+        ret.append("        return row\n")
         return "\n".join(ret) + "\n"
 
     def sql_schema(self, extra={}):
@@ -310,7 +319,12 @@ class Table:
         if delimiter is not None:
             fields = line.split(delimiter)
             return [v.python_type( fields[v.field] ) for v in self.vars() ]
-        return [ v.python_type(line[ v.column: v.column+v.width]) for v in self.vars() if (v.column is not None)]
+        for v in self.vars:
+            if v.start is not None and v.end is not None and v.width is not None:
+                if v.width - 1 + v.start != v.end:
+                    raise RuntimeError("Specified width did not line up with specified start and end of var {}".format(v.name))
+
+        return [ v.python_type(line[ v.start -1: v.end]) for v in self.vars() if (v.start is not None and v.end is not None)]
 
     def parse_line_to_dict(self, line, delimiter=None):
         """Parse a line (that was probably read from a text file) 

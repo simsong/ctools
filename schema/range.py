@@ -30,7 +30,7 @@ class Range:
     ]
 
     @staticmethod
-    def extract_range_and_desc(possible_legal_value,python_type=str,hardfail=False):
+    def extract_range_and_desc(possible_legal_value,python_type=str,hardfail=False,width=None):
         possible_legal_value = possible_legal_value.strip()
         if possible_legal_value.count("=")>1:
             logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
@@ -44,12 +44,13 @@ class Range:
                 a = m.group('a')
                 desc = m.group('desc')
                 if "Numeric values" in desc:  # for catching OIDTB
-                    return Range("length", python_type(a), desc)
+                    desc = desc + " Needs specific Length"
+                    return Range(python_type(a), python_type(a), desc)
                 try:
                     b = m.group('b')
                 except IndexError:
                     b = a
-                return Range( python_type(a), python_type(b), desc)
+                return Range(python_type(a), python_type(b), desc)
 
         if hardfail:
             raise ValueError("Cannot recognize range in: "+possible_legal_value)
@@ -123,12 +124,18 @@ class Range:
         return {'a':self.a,'b':self.b}
 
     def python_expr(self,python_type, width):
+        if "Length" in self.desc:  # Handle OIDTB or other vals that require specific length
+            return "len(str(x).strip()) == {}".format(self.b)
+
         """Return the range as a python expression in x"""
         if self.a == schema.RANGE_ANY or self.b == schema.RANGE_ANY:
             return "True "      # anything works
 
-        if self.a == "length":  # Handle OIDTB or other vals that require specific length
-            return "len(str(x).strip()) == {}".format(self.b)
+        if int(self.a) < 0:
+            whitespace = ""
+            for i in range(len(str(self.a))-2):
+                whitespace = whitespace + " "
+            return "x=='{}'".format(whitespace)
 
         if python_type==int or python_type==float:
             if self.a==self.b:
