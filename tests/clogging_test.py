@@ -31,12 +31,16 @@ def test_logging_to_syslog():
     time.sleep(.01)
     # Look for the nonce
     count = 0
-    for line in open("/var/log/local1.log"):
-        if nonce in line:
-            sys.stdout.write(line)
-            count += 1
-    if count==0:
+    try:
+        for line in open("/var/log/local1.log"):
+            if nonce in line:
+                sys.stdout.write(line)
+                count += 1
+    except:
+        pass
+    if count == 0:
         warnings.warn("local1 is not logging to /var/log/local1.log")
+
     assert count in [0,1,2]
     clogging.shutdown()
 

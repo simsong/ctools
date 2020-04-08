@@ -11,7 +11,7 @@ import logging
 
 sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
 
-import latex_tools 
+import ctools.latex_tools as latex_tools
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")

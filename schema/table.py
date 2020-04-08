@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 
 from ctools.schema import valid_sql_name,SCHEMA_SUPPORT_FUNCTIONS,SQL_SCHEMA, MYSQL, SQLITE3, SQL_TYPE_MAP, sql_type_for_python_value
 from ctools.schema.variable import Variable
@@ -140,6 +141,7 @@ class Table:
     def python_class(self,ignore_vars=[]):
         """Generate a Python validator and class for a table element. Ignore any variables specified in ignore_vars"""
         ret  = []
+        ret.append("# Automatically generated on {} by {}".format(time.asctime(),os.path.abspath(__file__)))
         ret.append(SCHEMA_SUPPORT_FUNCTIONS)
         ret.append("")
         ret.append("class {}_validator:".format(self.python_name()))
@@ -240,11 +242,11 @@ class Table:
     def sql_schema(self, extra={}):
         """Generate CREATE TABLE statement for this schema"""
         ret = []
+        ret.append("-- SQLite3/MySQL compatiable schema generated {} by {}".format(time.asctime(),os.path.abspath(__file__)))
         for line in self.comments:
             ret.append("-- {}".format(line))
         ret.append("CREATE TABLE {} (".format(self.name))
         names = list(self.varnames()) + list(extra.keys())
-        print("names:",names)
         descs = [v.desc for v in self.vars()] + [''] * len(extra)
         types = [v.sql_type() for v in self.vars()] + [sql_type_for_python_value(v) for v in extra.values()]
         for (n,d,t) in zip(names,descs,types):
