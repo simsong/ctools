@@ -25,8 +25,10 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
-        re.compile(r"(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
-        re.compile(r"(?P<a>\d+)\s*=?\s*(?P<desc>.*)")
+        re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=\s*(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>\d+)\s*=\s*(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)")
     ]
 
     @staticmethod
@@ -37,15 +39,17 @@ class Range:
             return None
         for regex in Range.RANGE_RE_LIST:
             if ("-" in possible_legal_value and "=" in possible_legal_value):
-                m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+                equal_index = possible_legal_value.index("=")
+                hyphen_index = possible_legal_value.index("-")
+                if equal_index < hyphen_index:
+                    m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+                else:
+                    m = Range.RANGE_RE_LIST[0].search(possible_legal_value)
             else:
                 m = regex.search(possible_legal_value)
             if m:
                 a = m.group('a')
                 desc = m.group('desc')
-                if "Numeric values" in desc:  # for catching OIDTB
-                    desc = desc + " Needs specific Length"
-                    return Range(python_type(a), python_type(a), desc)
                 try:
                     b = m.group('b')
                 except IndexError:
