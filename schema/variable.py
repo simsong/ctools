@@ -300,7 +300,7 @@ class Variable:
             ret.append("        if x == '{}':".format(size))
             ret.append("            return True")
 
-        if (self.python_type == int or self.python_type == float) and "Tabulation" not in self.desc: # Tabulation is to check if its an OIDTB val
+        if self.python_type == int or self.python_type == float:
             ret.append('        x = str(x).strip()')
             ret.append('        try:')
             if self.python_type==int:
