@@ -37,7 +37,12 @@ class Range:
             return None
         for regex in Range.RANGE_RE_LIST:
             if ("-" in possible_legal_value and "=" in possible_legal_value):
-                m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+                equal_index = possible_legal_value.index("=")
+                hyphen_index = possible_legal_value.index("-")
+                if equal_index < hyphen_index:
+                    m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+                else:
+                    m = Range.RANGE_RE_LIST[0].search(possible_legal_value)
             else:
                 m = regex.search(possible_legal_value)
             if m:

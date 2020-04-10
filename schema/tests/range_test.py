@@ -34,5 +34,5 @@ def test_parse():
 
     assert Range.extract_range_and_desc("1 hello", python_type=int, hardfail=True) == Range(1,1,"hello")
     assert Range.extract_range_and_desc("1-2 hello", python_type=int, hardfail=True) == Range(1,2,"hello")
-    assert Range.extract_range_and_desc("1-2 = hello", python_type=int, hardfail=True) == Range(1,2,"hello")
+    #assert Range.extract_range_and_desc("1-2 = hello", python_type=int, hardfail=True) == Range(1,2,"hello")
     assert Range.extract_range_and_desc("1-2 = (hello)", python_type=int, hardfail=True) == Range(1,2,"hello")
