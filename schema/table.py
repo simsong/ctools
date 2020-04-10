@@ -321,7 +321,7 @@ class Table:
         if delimiter is not None:
             fields = line.split(delimiter)
             return [v.python_type( fields[v.field] ) for v in self.vars() ]
-        for v in self.vars:
+        for v in self.vars():
             if v.start is not None and v.end is not None and v.width is not None:
                 if v.width - 1 + v.start != v.end:
                     raise RuntimeError("Specified width did not line up with specified start and end of var {}".format(v.name))
