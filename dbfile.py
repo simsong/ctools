@@ -158,12 +158,37 @@ class DBSqlite3(DBSQL):
             self.conn = sqlite3.connect(fname)
             if self.dicts:
                 self.conn.row_factory = sqlite3.Row    # user wants dicts
+
         except sqlite3.OperationalError as e:
             print(f"Cannot open database file: {fname}")
             exit(1)
         
     def set_cache_bytes(self,b):
         self.execute(f"PRAGMA cache_size = {-b/1024}") # negative numbers are multiples of 1024
+
+    # For sqlite3, csfr doesn't need to be a static method, because we don't disconnect from the database
+    # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
+    def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
+             get_column_names=None, asDicts=False, debug=False, cache=True):
+        assert get_column_names is None # not implemented yet
+        cmd = cmd.replace("%s","?")
+        cmd = cmd.replace("INSERT IGNORE","INSERT OR IGNORE")
+
+        if quiet==False:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+        if debug:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+
+        c = self.conn.execute(cmd, vals)
+        verb = cmd.split()[0].upper()
+        if verb in ['SELECT','DESCRIBE','SHOW']:
+            r = list(c.fetchall())
+            print("cmd=",cmd)
+            print("vals=",vals)
+            print("r=",r)
+            return r
+
+
 
 
 class DBMySQLAuth:
@@ -274,10 +299,9 @@ class DBMySQL(DBSQL):
             return cmd
     
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             setup=None,
-             setup_vals=(),
-             get_column_names=None,asDicts=False,debug=False,dry_run=False):
+    def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
+             setup=None, setup_vals=(),
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
