@@ -49,6 +49,8 @@ The main DBMySQL class method that we use is:
 
   DBMySQL.csfr(auth, cmd, vals, quiet, rowcount, time_zone, get_column_names, asDicts, debug)
   
+  "Connect, Select, FetchAll, Retry"
+
 When running as a server, credentials can be managed by storing them in a bash script.
 
 For example, let's say you have a WSGI script that needs to know read-only MySQL credentails for a web application. You create a MySQL username called "dbreader" with the password "magic-password-1234" on your MySQL server at mysql.company.com. You give this user SELECT access to the database "database1". You might then create a script called 'dbreader.bash' and put it at /home/www/dbreader.bash:
@@ -265,8 +267,6 @@ and cached_db is stored in the request-local storage."""
         except KeyError as e:
             pass
 
-
-
 RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
@@ -284,7 +284,7 @@ class DBMySQL(DBSQL):
             except ImportError as e:
                 print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector")
                 raise ImportError()
-                
+            
         self.conn = mysql.connect(host=auth.host,
                                   database=auth.database,
                                   user=auth.user,
@@ -310,7 +310,7 @@ class DBMySQL(DBSQL):
             return cmd % tuple([myquote(v) for v in vals])
         else:
             return cmd
-    
+        
     @staticmethod
     def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
              setup=None, setup_vals=(),
@@ -327,7 +327,8 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
-        assert isinstance(auth,DBMySQLAuth)
+        if not isinstance(auth, DBMySQLAuth):
+            raise ValueError(f"auth is type {type(auth)} expecting type {DBMySQLAuth}")
         debug = (debug or auth.debug)
 
 
