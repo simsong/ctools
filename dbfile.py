@@ -54,11 +54,36 @@ class DBSqlite3(DBSQL):
     def __init__(self,*,fname=None):
         try:
             import sqlite3
-            self.conn = sqlite3.connect(fname)
+            self.conn            = sqlite3.connect(fname)
+            self.conn.row_factory = sqlite3.Row # this should be the default...
+
         except sqlite3.OperationalError as e:
             print(f"Cannot open database file: {fname}")
             exit(1)
         
+    # For sqlite3, csfr doesn't need to be a static method, because we don't disconnect from the database
+    # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
+    def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
+             get_column_names=None, asDicts=False, debug=False, cache=True):
+        assert get_column_names is None # not implemented yet
+        cmd = cmd.replace("%s","?")
+        cmd = cmd.replace("INSERT IGNORE","INSERT OR IGNORE")
+
+        if quiet==False:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+        if debug:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+
+        c = self.conn.execute(cmd, vals)
+        verb = cmd.split()[0].upper()
+        if verb in ['SELECT','DESCRIBE','SHOW']:
+            r = list(c.fetchall())
+            print("cmd=",cmd)
+            print("vals=",vals)
+            print("r=",r)
+            return r
+
+
 
 class DBMySQLAuth:
     def __init__(self,*,host,database,user,password):
@@ -106,8 +131,8 @@ class DBMySQL(DBSQL):
     RETRY_DELAY_TIME = 1
     CACHED_CONNECTIONS = {}
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             get_column_names=None,asDicts=False,debug=False,cache=True):
+    def csfr(auth,cmd,vals=[],quiet=True,rowcount=None,time_zone=None,
+             get_column_names=None, asDicts=False, debug=False,cache=True):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
