@@ -126,7 +126,7 @@ class DBSQL:
     def commit(self):
         self.conn.commit()
 
-    def create_schema(self,schema,*,debug=False):
+    def create_schema(self, schema, *, debug=False):
         """Create the schema if it doesn't exist."""
         c = self.conn.cursor()
         for line in schema.split(";"):
@@ -199,7 +199,7 @@ and cached_db is stored in the request-local storage."""
     def __init__(self,*,host,database,user,password,bottle=None,debug=False):
         self.host     = host
         self.database = database
-        self.user     =user
+        self.user     = user
         self.password = password
         self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
@@ -241,6 +241,18 @@ and cached_db is stored in the request-local storage."""
                            password = env[MYSQL_PASSWORD],
                            database = env[MYSQL_DATABASE])
 
+    @staticmethod
+    def FromConfig(section):
+        """Returns from the section of a config file"""
+        try:
+            return DBMySQLAuth(host = section[MYSQL_HOST], 
+                               user = section[MYSQL_USER],
+                               password = section[MYSQL_PASSWORD],
+                               database = section[MYSQL_DATABASE])
+        except KeyError as e:
+            pass
+        raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} sections")
+
     def cache_store(self,db):
         self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
 
@@ -260,6 +272,7 @@ RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
     def __init__(self,auth):
+        super().__init__()
         try:
             import mysql.connector as mysql
             internalError = RuntimeError
