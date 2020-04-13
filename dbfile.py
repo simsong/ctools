@@ -6,6 +6,8 @@ import os
 import logging
 import sys
 import threading
+import sqlite3
+
 from collections import OrderedDict
 
 """
@@ -156,7 +158,6 @@ class DBSqlite3(DBSQL):
     def __init__(self,fname=None,*args,**kwargs):
         super().__init__(*args, **kwargs)
         try:
-            import sqlite3
             self.conn = sqlite3.connect(fname)
             if self.dicts:
                 self.conn.row_factory = sqlite3.Row    # user wants dicts
@@ -181,16 +182,21 @@ class DBSqlite3(DBSQL):
         if debug:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
 
-        c = self.conn.execute(cmd, vals)
+        try:
+            c = self.conn.execute(cmd, vals)
+        except sqlite3.OperationalError as e:
+            print(f"cmd: {cmd}",file=sys.stderr)
+            print(f"vals: {vals}",file=sys.stderr)
+            print(str(e),file=sys.stderr)
+            raise RuntimeError("Invalid SQL")
+
         verb = cmd.split()[0].upper()
-        if verb in ['SELECT','DESCRIBE','SHOW']:
-            r = list(c.fetchall())
-            print("cmd=",cmd)
-            print("vals=",vals)
-            print("r=",r)
-            return r
-
-
+        if verb in ['INSERT','DELETE']:
+            return
+        elif verb in ['SELECT','DESCRIBE','SHOW']:
+            return c.fetchall()
+        else:
+            raise RuntimeError(f"Unknown verb '{verb}'")
 
 
 class DBMySQLAuth:
