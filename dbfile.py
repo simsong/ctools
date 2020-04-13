@@ -176,6 +176,7 @@ class DBSqlite3(DBSQL):
     # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
     def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
              get_column_names=None, asDicts=False, debug=False, cache=True):
+        assert auth is None
         assert get_column_names is None # not implemented yet
         cmd = cmd.replace("%s","?")
         cmd = cmd.replace("INSERT IGNORE","INSERT OR IGNORE")
