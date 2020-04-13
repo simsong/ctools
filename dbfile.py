@@ -53,6 +53,9 @@ The main DBMySQL class method that we use is:
   
   "Connect, Select, FetchAll, Retry"
 
+cmd - Statements should use "%s" for substituted arguments; this is turned to ? for SQLite3
+    - Use INSERT IGNORE; this is turned to "INSERT OR IGNORE" for MySQL
+
 When running as a server, credentials can be managed by storing them in a bash script.
 
 For example, let's say you have a WSGI script that needs to know read-only MySQL credentails for a web application. You create a MySQL username called "dbreader" with the password "magic-password-1234" on your MySQL server at mysql.company.com. You give this user SELECT access to the database "database1". You might then create a script called 'dbreader.bash' and put it at /home/www/dbreader.bash:
