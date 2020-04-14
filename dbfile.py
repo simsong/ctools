@@ -101,7 +101,8 @@ def hostname():
     """Hostname without domain"""
     return socket.gethostname().partition('.')[0]
 
-class DBSQL:
+from abc import ABC, abstractmethod
+class DBSQL(ABC):
     def __init__(self,dicts=True,debug=False):
         self.dicts = dicts
         self.debug = debug
@@ -140,12 +141,12 @@ class DBSQL:
             line = line.strip()
             if len(line)>0:
                 if self.debug or debug:
-                    print(line,file=sys.stderr)
+                    print(f"{line};",file=sys.stderr)
                 try:
                     c.execute(line)
                 except Exception as e:
                     print("SQL:",line,file=sys.stderr)
-                    print(e)
+                    print("Error:",e,file=sys.stderr)
                     exit(1)
 
     def execselect(self, sql, vals=()):
@@ -188,19 +189,19 @@ class DBSqlite3(DBSQL):
 
         try:
             c = self.conn.execute(cmd, vals)
-        except sqlite3.OperationalError as e:
+        except (sqlite3.OperationalError,sqlite3.InterfaceError) as e:
             print(f"cmd: {cmd}",file=sys.stderr)
             print(f"vals: {vals}",file=sys.stderr)
             print(str(e),file=sys.stderr)
             raise RuntimeError("Invalid SQL")
 
         verb = cmd.split()[0].upper()
-        if verb in ['INSERT','DELETE']:
+        if verb in ['INSERT','DELETE','UPDATE']:
             return
         elif verb in ['SELECT','DESCRIBE','SHOW']:
             return c.fetchall()
         else:
-            raise RuntimeError(f"Unknown verb '{verb}'")
+            raise RuntimeError(f"Unknown SQLite3 verb '{verb}'")
 
 
 class DBMySQLAuth:
@@ -399,7 +400,7 @@ class DBMySQL(DBSQL):
                     raise e
                     
                 verb = cmd.split()[0].upper()
-                if verb in ['SELECT','DESCRIBE','SHOW','UPDATE']:
+                if verb in ['SELECT','DESCRIBE','SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
                         get_column_names = []
