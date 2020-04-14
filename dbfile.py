@@ -255,13 +255,14 @@ and cached_db is stored in the request-local storage."""
                            database = env[MYSQL_DATABASE])
 
     @staticmethod
-    def FromConfig(section):
+    def FromConfig(section,debug=None):
         """Returns from the section of a config file"""
         try:
             return DBMySQLAuth(host = section[MYSQL_HOST], 
                                user = section[MYSQL_USER],
                                password = section[MYSQL_PASSWORD],
-                               database = section[MYSQL_DATABASE])
+                               database = section[MYSQL_DATABASE],
+                               debug    = debug )
         except KeyError as e:
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} sections")
@@ -282,8 +283,8 @@ RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
-    def __init__(self,auth):
-        super().__init__()
+    def __init__(self, auth, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         try:
             import mysql.connector as mysql
             internalError = RuntimeError
@@ -300,6 +301,8 @@ class DBMySQL(DBSQL):
                                   database=auth.database,
                                   user=auth.user,
                                   password=auth.password)
+        if self.debug:
+            print(f"Successfully connected to {auth}",file=sys.stderr)
         # Census standard TZ is America/New_York
         try:
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
