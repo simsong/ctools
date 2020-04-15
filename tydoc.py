@@ -927,15 +927,20 @@ class jsonTable(TyTag):
             for cell in tr:
                 if cell.tag==TAG_TIGNORE:
                     continue
-                if ATTR_VAL in cell.attrib:
-                    if cell.attrib[ATTR_TYPE]=='int':
-                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                    elif cell.attrib[ATTR_TYPE]=='float':
-                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                if 'id' not in cell.attrib: # no tag!
+                    continue
+                try:
+                    if ATTR_VAL in cell.attrib:
+                        if cell.attrib[ATTR_TYPE]=='int':
+                            data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                        elif cell.attrib[ATTR_TYPE]=='float':
+                            data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                        else:
+                            data[cell.attrib['id']] = cell.attrib[ATTR_VAL]  # 936
                     else:
-                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
-                else:
-                    data[cell.attrib['id']] = cell.text
+                        data[cell.attrib['id']] = cell.text
+                except KeyError as e:
+                    pass
 
         f.write(json.dumps(data, indent=4))
         
@@ -1303,7 +1308,7 @@ class tytable(TyTag):
                     else:
                         data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
                 else:
-                    data[cell.attrib['id']] = cell.text
+                    data[cell.attrib['id']] = cell.text # 1306
 
         f.write( json.dumps( data ) )
         return True
