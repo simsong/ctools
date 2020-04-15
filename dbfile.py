@@ -169,7 +169,7 @@ class DBSqlite3(DBSQL):
         except sqlite3.OperationalError as e:
             print(f"Cannot open database file: {fname}")
             exit(1)
-        
+
     def set_cache_bytes(self,b):
         self.execute(f"PRAGMA cache_size = {-b/1024}") # negative numbers are multiples of 1024
 
@@ -184,7 +184,7 @@ class DBSqlite3(DBSQL):
 
         if quiet==False:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
-        if debug:
+        if debug or self.debug:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
 
         try:
