@@ -28,6 +28,22 @@ if it has been.
 
 This code has been tested on both Apple MAC OSX and on Amazon Linux.
 
+
+Here is sample code for integrating this into Argparse:
+    from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser( formatter_class = ArgumentDefaultsHelpFormatter,
+                             description="A demo")
+    ... existing setup ...
+    clogging.add_argument(parser)
+    ...
+    args = parser.parse_args()
+    ...
+    clogging.setup(args.loglevel,
+                   syslog=True,
+                   filename=args.logfilename,
+                   log_format=clogging.LOG_FORMAT,
+                   syslog_format=clogging.YEAR + " " + clogging.SYSLOG_FORMAT)
+
 """
 
 import logging
@@ -101,6 +117,10 @@ def shutdown():
     logging.shutdown()
     added_syslog = False
     called_basicConfig = False
+
+################################################################
+### Support for ArgumentParser
+
 
 def add_argument(parser):
     """Add the --loglevel argument to the ArgumentParser"""
