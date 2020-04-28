@@ -32,7 +32,12 @@ def proxy_off():
         del os.environ[HTTPS_PROXY]
 
 class Proxy:    
-    def __init__(self,http=True,https=True):
+    """Context manager that enables the Census proxy. By default http is not proxied and https is proxied.
+    This allows AWS IAM Roles to operate (since they seem to be enabled by http) but we can reach the
+    endpoint through the HTTPS proxy (since it's IP address is otherwise blocked). 
+
+    This took a long time to figure out."""
+    def __init__(self,http=False,https=True):
         self.http = http
         self.https = https
 
