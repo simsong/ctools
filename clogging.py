@@ -52,6 +52,7 @@ import os
 import os.path
 import datetime
 import sys
+import argparse
 
 
 __author__ = "Simson L. Garfinkel"
@@ -126,6 +127,10 @@ def add_argument(parser):
     """Add the --loglevel argument to the ArgumentParser"""
     parser.add_argument("--loglevel", help="Set logging level",
                         choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
+    try:
+        parser.add_argument("--logfilename", help="output filename for logfile")
+    except argparse.ArgumentError as e:
+        pass
 
 def syslog_default_address():
     if os.path.exists(DEVLOG):
