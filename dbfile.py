@@ -304,7 +304,7 @@ class DBMySQL(DBSQL):
                     db = auth.cache_get()
                 except KeyError:
                     if i>1:
-                        logging.error(f"Reconnecting. i={i}")
+                        logging.warning(f"Reconnecting. i={i}")
                     db = DBMySQL(auth)
                     auth.cache_store(db)
                 result = None
@@ -371,32 +371,33 @@ class DBMySQL(DBSQL):
                     result = c.rowcount
                 c.close()  # close the cursor
                 if i>1:
-                    logging.error(f"Success with i={i}")
+                    logging.warning(f"Success with i={i}")
                 return result
             except errors.InterfaceError as e:
                 if i>1:
-                    logging.error(e)
-                    logging.error(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                    logging.warning(e)
+                    logging.warning(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except errors.OperationalError as e:
                 if i>1:
-                    logging.error(e)
-                    logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                    logging.warning(e)
+                    logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except errors.InternalError as e:
-                logging.error(e)
                 if "Unknown column" in str(e):
+                    logging.error(e)
                     raise e
                 if i>1:
-                    logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                    logging.warning(e)
+                    logging.warning(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except BlockingIOError as e:
                 if i>1:
-                    logging.error(e)
-                    logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                    logging.warning(e)
+                    logging.warning(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             time.sleep(RETRY_DELAY_TIME)
