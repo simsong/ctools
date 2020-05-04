@@ -374,25 +374,29 @@ class DBMySQL(DBSQL):
                     logging.error(f"Success with i={i}")
                 return result
             except errors.InterfaceError as e:
-                logging.error(e)
-                logging.error(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if i>1:
+                    logging.error(e)
+                    logging.error(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except errors.OperationalError as e:
-                logging.error(e)
-                logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if i>1:
+                    logging.error(e)
+                    logging.error(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except errors.InternalError as e:
                 logging.error(e)
                 if "Unknown column" in str(e):
                     raise e
-                logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if i>1:
+                    logging.error(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except BlockingIOError as e:
-                logging.error(e)
-                logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                if i>1:
+                    logging.error(e)
+                    logging.error(f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             time.sleep(RETRY_DELAY_TIME)
