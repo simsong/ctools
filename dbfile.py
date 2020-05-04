@@ -303,7 +303,7 @@ class DBMySQL(DBSQL):
                 try:
                     db = auth.cache_get()
                 except KeyError:
-                    if i>1:
+                    if i>2:
                         logging.warning(f"Reconnecting. i={i}")
                     db = DBMySQL(auth)
                     auth.cache_store(db)
@@ -370,7 +370,7 @@ class DBMySQL(DBSQL):
                 if verb in ['UPDATE']:
                     result = c.rowcount
                 c.close()  # close the cursor
-                if i>1:
+                if i>2:
                     logging.warning(f"Success with i={i}")
                 return result
             except errors.InterfaceError as e:
