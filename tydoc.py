@@ -561,7 +561,7 @@ class TyTag(ET.Element):
         self.text = text
         return self
 
-    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None, **kwargs):
+    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None):
         """
         Add an element with option children.
         @param tag   - if text, create a new tag with tag tag.
@@ -571,7 +571,10 @@ class TyTag(ET.Element):
                      - If elems[-1] is text, make it the tail.
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
-        Returns the tag that is added."""
+        Returns the tag that is added.
+
+        note: no **kwargs because we want args that are improperly provided to raise an error.
+        """
 
         if id is not None:
             if 'id' in attrib:
