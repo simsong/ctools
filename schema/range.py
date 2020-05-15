@@ -76,6 +76,8 @@ class Range:
     def combine_ranges(ranges):
         """Examine a list of ranges and combine adjacent ranges"""
         # Make a new list with the ranges in sorted order
+        if None in ranges:
+            ranges.remove(None)
 
         # I should remove the all int ranges, do the combining, and the re-added the non-int tranges
         if not all_ints(ranges):
@@ -128,7 +130,7 @@ class Range:
         return {'a':self.a,'b':self.b}
 
     def python_expr(self,python_type, width):
-        if "Length" in self.desc:  # Handle OIDTB or other vals that require specific length
+        if self.desc is not None and "Length" in self.desc:  # Handle OIDTB or other vals that require specific length
             return "len(str(x).strip()) == {}".format(self.b)
 
         """Return the range as a python expression in x"""

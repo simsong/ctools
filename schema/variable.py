@@ -1,7 +1,7 @@
 import logging
-
+#from ctools.schema import *
 import ctools.schema as schema
-from ctools.schema.range import Range
+from ctools.schema.range import Range, convertRange
 from ctools.schema import valid_sql_name,decode_vtype,SQL_TYPE_MAP
 
 
@@ -132,9 +132,10 @@ class Variable:
     def add_valid_data_description(self,desc):
         """Parse the variable descriptions typical of US Census Bureau data
         files that are used to describe valid values."""
-
+        r = Range.extract_range_and_desc(desc)
+        self.ranges.add(r)
         # TODO: Rework this to use the range parser in the Range function
-
+        """
         # If there are multiple lines, process each separately
         if "\n" in desc:
             for line in desc.split("\n"):
@@ -181,7 +182,9 @@ class Variable:
             if valDesc=="":
                 valDesc = "Allowable Values"
             # Now loop for each comma item
+            #print(self.name)
             for val in lhs.split(","):
+            #    print(val)
 
                 val = unquote(val.strip())
                 if "EMPTY-STRING" in val:
@@ -239,6 +242,7 @@ class Variable:
         # Give up
         #
         raise RuntimeError("{} Unknown range description: '{}'".format(self.name,desc))
+        """
         
 
     def random_value(self):
@@ -309,7 +313,6 @@ class Variable:
                 ret.append('            x = float(x)')
             ret.append('        except ValueError:')
             ret.append('            return False')
-
         ranges = Range.combine_ranges(self.ranges)
         try:
             expr = " or ".join(["({})".format(r.python_expr(self.python_type, self.width)) for r in ranges])

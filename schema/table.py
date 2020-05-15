@@ -232,7 +232,7 @@ class Table:
         ret.append("    @staticmethod")
         ret.append("    def parse_line(line):")
         ret.append("        # Read a line and return it as a dictionary.")
-        ret.append("        inst: CEF20_UNIT = CEF20_UNIT()")
+        ret.append(f"        inst: {self.python_name()} = {self.python_name()}()")
         ret.append("        inst.parse_column_specified(line)")
         ret.append("        assert inst.validate(), f'A line is invalid!! line: {line}, validate_reason: {inst.validate_reason()}'")
         ret.append("        row = inst.SparkSQLRow()")
