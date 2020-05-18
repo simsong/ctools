@@ -6,6 +6,8 @@ import os
 import logging
 import sys
 import threading
+import sqlite3
+
 from collections import OrderedDict
 
 """
@@ -49,6 +51,11 @@ The main DBMySQL class method that we use is:
 
   DBMySQL.csfr(auth, cmd, vals, quiet, rowcount, time_zone, get_column_names, asDicts, debug)
   
+  "Connect, Select, FetchAll, Retry"
+
+cmd - Statements should use "%s" for substituted arguments; this is turned to ? for SQLite3
+    - Use INSERT IGNORE; this is turned to "INSERT OR IGNORE" for MySQL
+
 When running as a server, credentials can be managed by storing them in a bash script.
 
 For example, let's say you have a WSGI script that needs to know read-only MySQL credentails for a web application. You create a MySQL username called "dbreader" with the password "magic-password-1234" on your MySQL server at mysql.company.com. You give this user SELECT access to the database "database1". You might then create a script called 'dbreader.bash' and put it at /home/www/dbreader.bash:
@@ -94,27 +101,32 @@ def hostname():
     """Hostname without domain"""
     return socket.gethostname().partition('.')[0]
 
-class DBSQL:
+from abc import ABC, abstractmethod
+class DBSQL(ABC):
+    def __init__(self,dicts=True,debug=False):
+        self.dicts = dicts
+        self.debug = debug
+
     def __enter__(self):
         return self
 
     def __exit__(self,a,b,c):
         self.conn.close()
 
-    def create_schema(self,schema):
-        """Create the schema if it doesn't exist."""
-        c = self.conn.cursor()
-        for line in schema.split(";"):
-            line = line.strip()
-            if len(line)>0:
-                print(line)
-                c.execute(line)
-
-    def execselect(self, sql, vals=()):
-        """Execute a SQL query and return the first line"""
-        c = self.conn.cursor()
-        c.execute(sql, vals)
-        return c.fetchone()
+    def execute(self, cmd, *args, debug=False, **kwargs):
+        if self.debug or debug:
+            print(f"execute: {cmd}",file=sys.stderr)
+            t0 = time.time()
+        try:
+            res = self.conn.cursor().execute(cmd, *args, **kwargs)
+        except Exception as e:
+            print(cmd,*args,file=sys.stderr)
+            print(e,file=sys.stderr)
+            exit(1)
+        if self.debug or debug:
+            t1 = time.time()
+            print(f"time: {t1-t0}",file=sys.stderr)
+        return res
 
     def cursor(self):
         return self.conn.cursor()
@@ -122,27 +134,87 @@ class DBSQL:
     def commit(self):
         self.conn.commit()
 
+    def create_schema(self, schema, *, debug=False):
+        """Create the schema if it doesn't exist."""
+        c = self.conn.cursor()
+        for line in schema.split(";"):
+            line = line.strip()
+            if len(line)>0:
+                if self.debug or debug:
+                    print(f"{line};",file=sys.stderr)
+                try:
+                    c.execute(line)
+                except Exception as e:
+                    print("SQL:",line,file=sys.stderr)
+                    print("Error:",e,file=sys.stderr)
+                    exit(1)
+
+    def execselect(self, sql, vals=()):
+        """Execute a SQL query and return the first line"""
+        c = self.conn.cursor()
+        c.execute(sql, vals)
+        return c.fetchone()
+
     def close(self):
         self.conn.close()
 
 class DBSqlite3(DBSQL):
-    def __init__(self,*,fname=None):
+    def __init__(self,fname=None,*args,**kwargs):
+        super().__init__(*args, **kwargs)
         try:
-            import sqlite3
             self.conn = sqlite3.connect(fname)
+            if self.dicts:
+                self.conn.row_factory = sqlite3.Row    # user wants dicts
+
         except sqlite3.OperationalError as e:
             print(f"Cannot open database file: {fname}")
             exit(1)
-        
-class DBMySQLAuth:
-    """Class that represents MySQL credentials. Will cache the connection. If run under bottle, the bottle object can be passed in, and cached_db is stored in the request-local storage."""
 
-    def __init__(self,*,host,database,user,password,bottle=None):
+    def set_cache_bytes(self,b):
+        self.execute(f"PRAGMA cache_size = {-b/1024}") # negative numbers are multiples of 1024
+
+    # For sqlite3, csfr doesn't need to be a static method, because we don't disconnect from the database
+    # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
+    def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
+             get_column_names=None, asDicts=False, debug=False, cache=True):
+        assert auth is None
+        assert get_column_names is None # not implemented yet
+        cmd = cmd.replace("%s","?")
+        cmd = cmd.replace("INSERT IGNORE","INSERT OR IGNORE")
+
+        if quiet==False:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
+        if debug or self.debug:
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+
+        try:
+            c = self.conn.execute(cmd, vals)
+        except (sqlite3.OperationalError,sqlite3.InterfaceError) as e:
+            print(f"cmd: {cmd}",file=sys.stderr)
+            print(f"vals: {vals}",file=sys.stderr)
+            print(str(e),file=sys.stderr)
+            raise RuntimeError("Invalid SQL")
+
+        verb = cmd.split()[0].upper()
+        if verb in ['INSERT','DELETE','UPDATE']:
+            return
+        elif verb in ['SELECT','DESCRIBE','SHOW']:
+            return c.fetchall()
+        else:
+            raise RuntimeError(f"Unknown SQLite3 verb '{verb}'")
+
+
+class DBMySQLAuth:
+    """Class that represents MySQL credentials. Will cache the
+connection. If run under bottle, the bottle object can be passed in,
+and cached_db is stored in the request-local storage."""
+
+    def __init__(self,*,host,database,user,password,bottle=None,debug=False):
         self.host     = host
         self.database = database
-        self.user     =user
+        self.user     = user
         self.password = password
-        self.debug    = False   # enable debugging
+        self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
         self.bottle   = bottle
 
@@ -182,6 +254,19 @@ class DBMySQLAuth:
                            password = env[MYSQL_PASSWORD],
                            database = env[MYSQL_DATABASE])
 
+    @staticmethod
+    def FromConfig(section,debug=None):
+        """Returns from the section of a config file"""
+        try:
+            return DBMySQLAuth(host = section[MYSQL_HOST], 
+                               user = section[MYSQL_USER],
+                               password = section[MYSQL_PASSWORD],
+                               database = section[MYSQL_DATABASE],
+                               debug    = debug )
+        except KeyError as e:
+            pass
+        raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} sections")
+
     def cache_store(self,db):
         self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
 
@@ -194,13 +279,12 @@ class DBMySQLAuth:
         except KeyError as e:
             pass
 
-
-
 RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
-    def __init__(self,auth):
+    def __init__(self, auth, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         try:
             import mysql.connector as mysql
             internalError = RuntimeError
@@ -212,11 +296,13 @@ class DBMySQL(DBSQL):
             except ImportError as e:
                 print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector")
                 raise ImportError()
-                
+            
         self.conn = mysql.connect(host=auth.host,
                                   database=auth.database,
                                   user=auth.user,
                                   password=auth.password)
+        if self.debug:
+            print(f"Successfully connected to {auth}",file=sys.stderr)
         # Census standard TZ is America/New_York
         try:
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
@@ -238,12 +324,11 @@ class DBMySQL(DBSQL):
             return cmd % tuple([myquote(v) for v in vals])
         else:
             return cmd
-    
+        
     @staticmethod
-    def csfr(auth,cmd,vals=None,quiet=True,rowcount=None,time_zone=None,
-             setup=None,
-             setup_vals=(),
-             get_column_names=None,asDicts=False,debug=False,dry_run=False):
+    def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
+             setup=None, setup_vals=(),
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
         @param cmd       - SQL query
@@ -256,7 +341,8 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
-        assert isinstance(auth,DBMySQLAuth)
+        if not isinstance(auth, DBMySQLAuth):
+            raise ValueError(f"auth is type {type(auth)} expecting type {DBMySQLAuth}")
         debug = (debug or auth.debug)
 
 
@@ -317,7 +403,7 @@ class DBMySQL(DBSQL):
                     raise e
                     
                 verb = cmd.split()[0].upper()
-                if verb in ['SELECT','DESCRIBE','SHOW','UPDATE']:
+                if verb in ['SELECT','DESCRIBE','SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
                         get_column_names = []
