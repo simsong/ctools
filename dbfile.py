@@ -175,7 +175,7 @@ class DBMySQLAuth:
 
     @staticmethod
     def FromEnv(filename):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemtn variables from a bash script"""
+        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
         env = DBMySQLAuth.GetBashEnv(filename)
         return DBMySQLAuth(host = env[MYSQL_HOST], 
                            user = env[MYSQL_USER],
