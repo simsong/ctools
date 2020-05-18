@@ -572,7 +572,7 @@ class TyTag(ET.Element):
         self.text = text
         return self
 
-    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None, **kwargs):
+    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None):
         """
         Add an element with option children.
         @param tag   - if text, create a new tag with tag tag.
@@ -582,7 +582,10 @@ class TyTag(ET.Element):
                      - If elems[-1] is text, make it the tail.
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
-        Returns the tag that is added."""
+        Returns the tag that is added.
+
+        note: no **kwargs because we want args that are improperly provided to raise an error.
+        """
 
         if id is not None:
             if 'id' in attrib:
@@ -938,15 +941,20 @@ class jsonTable(TyTag):
             for cell in tr:
                 if cell.tag==TAG_TIGNORE:
                     continue
-                if ATTR_VAL in cell.attrib:
-                    if cell.attrib[ATTR_TYPE]=='int':
-                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                    elif cell.attrib[ATTR_TYPE]=='float':
-                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                if 'id' not in cell.attrib: # no tag!
+                    continue
+                try:
+                    if ATTR_VAL in cell.attrib:
+                        if cell.attrib[ATTR_TYPE]=='int':
+                            data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                        elif cell.attrib[ATTR_TYPE]=='float':
+                            data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                        else:
+                            data[cell.attrib['id']] = cell.attrib[ATTR_VAL]  # 936
                     else:
-                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
-                else:
-                    data[cell.attrib['id']] = cell.text
+                        data[cell.attrib['id']] = cell.text
+                except KeyError as e:
+                    pass
 
         f.write(json.dumps(data, indent=4))
         
@@ -1314,7 +1322,7 @@ class tytable(TyTag):
                     else:
                         data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
                 else:
-                    data[cell.attrib['id']] = cell.text
+                    data[cell.attrib['id']] = cell.text # 1306
 
         f.write( json.dumps( data ) )
         return True
