@@ -38,6 +38,9 @@ class Proxy:
 
     This took a long time to figure out.
 
+    Additionally, the IAM role of the server or cluster this code is running on must be able to access the
+    proxy. Otherwise, it will give a botocore.exceptions.NoCredentialsError: Unable to locate credentials exception.
+
     Example -
     .. highlight: python
     import boto3
