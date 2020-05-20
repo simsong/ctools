@@ -34,6 +34,7 @@ class Range:
     @staticmethod
     def extract_range_and_desc(possible_legal_value,python_type=str,hardfail=False,width=None):
         possible_legal_value = possible_legal_value.strip()
+        possible_legal_value = possible_legal_value.strip('and')
         if possible_legal_value.count("=")>1:
             logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
             return None

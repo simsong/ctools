@@ -222,10 +222,15 @@ class Table:
         for var in self.vars():
             if var.name in ignore_vars:
                 continue
-            ret.append("            {name_lower}=safe_{python_type}(self.{name}),"
-                       .format(name_lower=var.name.lower(),
-                               python_type=var.python_type.__name__,
-                               name=var.name))
+            if var.allow_whitespace and var.python_type == int:
+                ret.append("            {name_lower}=safe_str(self.{name}),"
+                           .format(name_lower=var.name.lower(),
+                                   name=var.name))
+            else:
+                ret.append("            {name_lower}=safe_{python_type}(self.{name}),"
+                           .format(name_lower=var.name.lower(),
+                                   python_type=var.python_type.__name__,
+                                   name=var.name))
         ret.append('        )')
         ret.append('\n')
 
