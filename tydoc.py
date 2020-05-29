@@ -39,7 +39,16 @@ Markdown - Generally we follow:
   * https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet#links
 
 
-Rendering System:
+V2 Rendierng System:
+
+The V2 rendering system will separate the three activities of:
+- Representing documents
+- Building documents
+- Rendering documents
+
+
+
+V1 Rendering System:
 
 top-level rendering is done with a function called render(doc,f, format)
 The TyTag has a convenience method .render(self, f, format) that simply calls render().
@@ -148,6 +157,7 @@ FORMAT_TEX      = 'tex'
 FORMAT_JSON     = 'json'
 FORMAT_MARKDOWN = 'md'
 FORMAT_CSV      = 'csv'
+FORMAT_OPENPYXL = 'openpyxl'
 
 CUSTOM_RENDERER = 'custom_renderer'
 CUSTOM_WRITE_TEXT = 'custom_write_text'
@@ -156,6 +166,8 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 HTML_START_NEWLINE_TAGS = {TAG_HEAD, TAG_HTML, TAG_BODY, TAG_TABLE, TAG_CAPTION, TAG_THEAD, TAG_TBODY, TAG_TFOOT}
 HTML_END_NO_NEWLINE_TAGS = {TAG_B, TAG_I, TAG_TD, TAG_TH, TAG_A}
+FLOAT_TYPES = set(['float','float32','float64'])
+INTEGER_TYPES = set(['int','int32','int64'])
 
 
 LATEX_TAGS = {TAG_P: ('\n', '\n\n'),
@@ -202,7 +214,7 @@ OPTION_DATATABLES = 'datatables' #
 
 ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
-ATTRIB_NUMBER_FORMAT = 'NUMBER_FORMAT'
+ATTRIB_FLOAT_FORMAT = 'FLOAT_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
 ATTRIB_FONT_SIZE = 'FONTSIZE'
 ATTRIB_TITLE = 'TITLE'
@@ -219,8 +231,8 @@ ALIGN_RIGHT = "RIGHT"
 DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
 DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
 
-DEFAULT_TEXT_FORMAT = '{}'
-DEFAULT_NUMBER_FORMAT = '{:,}'
+DEFAULT_TEXT_FORMAT    = '{}'
+DEFAULT_FLOAT_FORMAT   = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 
@@ -560,7 +572,7 @@ class TyTag(ET.Element):
         self.text = text
         return self
 
-    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None, **kwargs):
+    def add_tag_elems(self, tag, elems=[], attrib={}, position=-1, id=None, className=None):
         """
         Add an element with option children.
         @param tag   - if text, create a new tag with tag tag.
@@ -570,7 +582,10 @@ class TyTag(ET.Element):
                      - If elems[-1] is text, make it the tail.
         @param id    - convenience method to specify attrib['id']
         @param className - convenience method to specify attrib['class']
-        Returns the tag that is added."""
+        Returns the tag that is added.
+
+        note: no **kwargs because we want args that are improperly provided to raise an error.
+        """
 
         if id is not None:
             if 'id' in attrib:
@@ -926,15 +941,20 @@ class jsonTable(TyTag):
             for cell in tr:
                 if cell.tag==TAG_TIGNORE:
                     continue
-                if ATTR_VAL in cell.attrib:
-                    if cell.attrib[ATTR_TYPE]=='int':
-                        data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                    elif cell.attrib[ATTR_TYPE]=='float':
-                        data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                if 'id' not in cell.attrib: # no tag!
+                    continue
+                try:
+                    if ATTR_VAL in cell.attrib:
+                        if cell.attrib[ATTR_TYPE]=='int':
+                            data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
+                        elif cell.attrib[ATTR_TYPE]=='float':
+                            data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                        else:
+                            data[cell.attrib['id']] = cell.attrib[ATTR_VAL]  # 936
                     else:
-                        data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
-                else:
-                    data[cell.attrib['id']] = cell.text
+                        data[cell.attrib['id']] = cell.text
+                except KeyError as e:
+                    pass
 
         f.write(json.dumps(data, indent=4))
         
@@ -1196,7 +1216,7 @@ class tytable(TyTag):
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
         self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT]   = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -1302,7 +1322,7 @@ class tytable(TyTag):
                     else:
                         data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
                 else:
-                    data[cell.attrib['id']] = cell.text
+                    data[cell.attrib['id']] = cell.text # 1306
 
         f.write( json.dumps( data ) )
         return True
@@ -1432,32 +1452,45 @@ class tytable(TyTag):
         except KeyError:
             return cell
 
-        if typename is None:
-            return cell
+        TYPECONV = {'float':float,
+                    'float32':float,
+                    'float64':float,
+                    'int':int,
+                    'int32':int,
+                    'int64':int,
+                    'str':str}
 
         try:
-            value = eval(typename)(typeval)
+            value = TYPECONV[typename](typeval)
         except Exception as e:
-            return cell
+            return str(typeval)
 
         if isinstance(value, ET.Element):
             value = value.text
 
         try:
-            if cell.attrib[ATTR_TYPE] == 'int':
-                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+            if cell.attrib[ATTR_TYPE] in INTEGER_TYPES:
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format( int(value) )
                 return cell
-            elif cell.attrib[ATTR_TYPE] != 'str':
-                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+            elif cell.attrib[ATTR_TYPE] in FLOAT_TYPES:
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format( float(value) )
                 return cell
+            elif cell.attrib[ATTR_TYPE] == 'str':
+                cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
+                return cell
+            else:
+                raise ValueError("Unknown cell type: {}".format(cell.attrib[ATTR_TYPE]))
         except TypeError as e:
-            pass
+            raise TypeError(f"TypeError in value: {value} cell: {cell}")
+        except AttributeError as e:
+            print("cell:",cell)
+            raise e
         except ValueError as e:
             pass
 
         cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
-
         return cell
+
 
     #################################################################
     ### Table Manipulation Routines
@@ -1777,6 +1810,30 @@ def demo_toc():
     doc.p("blah blah blah")
     doc.insert_toc()
     return doc
+
+
+#
+# Useful for jupyter
+#
+def jupyter_display_table(val,float_format="{:.5f}"):
+    import io
+    from IPython.core.display import HTML
+    doc = tytable()
+    doc.attrib[ATTRIB_FLOAT_FORMAT] = float_format
+    if isinstance(val,dict):
+        doc.add_head(val.keys())
+        for row in zip(*val.values()):
+            doc.add_data(row)
+    elif isinstance(val,list):
+        for row in val:
+            doc.add_data(row)
+    else:
+        raise ValueError(f"not sure how to render '{val}'")
+
+    buf = io.StringIO()
+    doc.render(buf,'html')
+    buf.seek(0)
+    display(HTML(buf.read()))
 
 
 if __name__ == "__main__":

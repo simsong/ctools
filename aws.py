@@ -32,7 +32,40 @@ def proxy_off():
         del os.environ[HTTPS_PROXY]
 
 class Proxy:    
-    def __init__(self,http=True,https=True):
+    """Context manager that enables the Census proxy. By default http is not proxied and https is proxied.
+    This allows AWS IAM Roles to operate (since they seem to be enabled by http) but we can reach the
+    endpoint through the HTTPS proxy (since it's IP address is otherwise blocked). 
+
+    This took a long time to figure out.
+
+    Additionally, the IAM role of the server or cluster this code is running on must be able to access the
+    proxy. Otherwise, it will give a botocore.exceptions.NoCredentialsError: Unable to locate credentials exception.
+
+    Example -
+    .. highlight: python
+    import boto3
+    from ctools.aws import Proxy
+
+    url = "[INSERT VALID AWS URL HERE]"
+
+    if __name__ == "__main__":
+
+        with Proxy() as p:
+            client = boto3.client('sqs')
+            response = client.receive_message(
+                QueueUrl=url,
+                AttributeNames=[
+                    'All',
+                ],
+                MaxNumberOfMessages=10,
+                MessageAttributeNames=[
+                    'All'
+                ],
+                VisibilityTimeout=1,
+                WaitTimeSeconds=1
+            )
+    """
+    def __init__(self,http=False,https=True):
         self.http = http
         self.https = https
 
