@@ -99,8 +99,6 @@ def put_s3url(s3url, fname):
     (bucket, key) = get_bucket_key(s3url)
     return put_object(bucket, key, fname)
 
- 
-
 def get_object(bucket, key, fname):
     """Given a bucket and a key, download a file"""
     if os.path.exists(fname):
@@ -117,6 +115,9 @@ def delete_object(bucket, key):
     """Wrap the delete-object api"""
     return aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
 
+def delete_s3url(s3url):
+    (bucket, key) = get_bucket_key(s3url)
+    return delete_object( bucket, key )
 
 PAGE_SIZE = 1000
 MAX_ITEMS = 1000
