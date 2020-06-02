@@ -10,7 +10,7 @@ class Timer:
         if '%' in message:
             self.message = message
         else:
-            self.message = message + " %f secondspy"
+            self.message = message + " %f seconds"
 
     def __enter__(self):
         self.start = time.time()

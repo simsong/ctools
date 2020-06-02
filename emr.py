@@ -79,7 +79,7 @@ def decode_user_data(user_data_raw):
     try:
         import yaml,gzip,base64
         # In later EMR version Amazon moved to distributing this as a YAML file
-        y = yaml.load(user_data_raw)
+        y = yaml.load(user_data_raw, Loader=yaml.SafeLoader)
         return json.loads(gzip.decompress(base64.b64decode(y['write_files'][0]['content'])))
     except RuntimeError as e:
         print(str(e),file=sys.stderr)
