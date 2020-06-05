@@ -5,7 +5,10 @@ import os
 import sys
 import warnings
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "../..") )
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 import ctools.s3 as s3
 
