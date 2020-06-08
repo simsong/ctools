@@ -4,9 +4,6 @@
 
 import sys
 import os
-import os.path
-
-
 import socket
 import logging
 import json
@@ -14,7 +11,10 @@ import json
 # Because this is a demo, it's not really part of the ctools package.
 # So we need to manually add the parent directory to the path, so we can use it.
 
-sys.path.append( os.path.join(os.path.dirname(__file__), ".."))
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(abs_path(__file__))))
 
 from ctools import cspark
 from ctools import clogging

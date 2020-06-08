@@ -6,9 +6,11 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__),"../../.."))
+from os.path import abspath
+from os.path import dirname
 
-import ctools
+sys.path.append(dirname(dirname(dirname(dirname(abspath(__file__))))))
+
 import ctools.schema as schema
 
 from ctools.schema import valid_sql_name,unquote,sql_parse_create,decode_vtype

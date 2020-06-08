@@ -6,7 +6,10 @@
 import os
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__),"../../.."))
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(dirname(dirname(abspath(__file__))))))
 
 import ctools
 import ctools.schema as schema
