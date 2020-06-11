@@ -36,6 +36,9 @@ TYPE_VARCHAR   = "VARCHAR"
 TYPE_CHAR      = "CHAR"
 TYPE_DECIMAL   = "DECIMAL"
 TYPE_FLOAT     = "FLOAT"
+TYPE_DATE      = "DATE"
+TYPE_SDO_GEOMETRY = "SDO_GEOMETRY"
+TYPE_STRING = "STRING"
 # map SQL names to Python types
 PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_INTEGER:int,
@@ -43,6 +46,9 @@ PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_VARCHAR:str,
                   TYPE_CHAR:str,
                   TYPE_FLOAT:float,
+                  TYPE_DATE:str,
+                  TYPE_SDO_GEOMETRY:str,
+                  TYPE_STRING:str,
                   TYPE_DECIMAL:decimal.Decimal }
 # Python types to SQL names
 SQL_TYPE_MAP = { int: {'type': TYPE_INTEGER,'width':8},
@@ -76,7 +82,10 @@ def leftpad(x,width):
     return ' '*(width-len(str(x)))+str(x)
 
 def between(a,b,c,width):
+    if '.' in a or '.' in b or '.' in c:
+        return float(leftpad(a,width)) <= float(leftpad(b,width)) <= float(leftpad(c,width))
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
+
 
 def safe_int(i):
     try:
@@ -113,6 +122,7 @@ def decode_vtype(t):
         vtype = m.group(1)
         width = int(m.group(2))
     else:
+        print("M NOT FOUND")
         vtype = t
         width = DEFAULT_VARIABLE_WIDTH
     if vtype not in PYTHON_TYPE_MAP:

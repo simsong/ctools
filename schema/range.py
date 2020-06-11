@@ -25,29 +25,39 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
+        re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"),
+        re.compile(r"^(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=\s*(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*=\s*(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)")
+        re.compile(r"^\s*(?P<a>\d+)\s*–\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),  # Different hyphen from previous line
+        re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>[A-Z]+\d*)*-(?P<b>[A-Z]+\d*)(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>[A-Z]+\d*)(?P<desc>.*)"),
     ]
 
     @staticmethod
     def extract_range_and_desc(possible_legal_value,python_type=str,hardfail=False,width=None):
         possible_legal_value = possible_legal_value.strip()
         possible_legal_value = possible_legal_value.strip('and')
+        #possible_legal_value = possible_legal_value.lower()
+        #print(possible_legal_value)
+
         if possible_legal_value.count("=")>1:
             logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
             return None
         for regex in Range.RANGE_RE_LIST:
+            """
             if ("-" in possible_legal_value and "=" in possible_legal_value):
                 equal_index = possible_legal_value.index("=")
                 hyphen_index = possible_legal_value.index("-")
                 if equal_index < hyphen_index:
-                    m = Range.RANGE_RE_LIST[1].search(possible_legal_value)
+                    m = Range.RANGE_RE_LIST[1].fullmatch(possible_legal_value)
                 else:
-                    m = Range.RANGE_RE_LIST[0].search(possible_legal_value)
-            else:
-                m = regex.search(possible_legal_value)
+                    m = Range.RANGE_RE_LIST[0].fullmatch(possible_legal_value)
+            """
+            m = regex.fullmatch(possible_legal_value)
             if m:
                 a = m.group('a')
                 desc = m.group('desc')
@@ -138,11 +148,11 @@ class Range:
         if self.a == schema.RANGE_ANY or self.b == schema.RANGE_ANY:
             return "True "      # anything works
 
-        if int(self.a) < 0:
-            whitespace = ""
-            for i in range(len(str(self.a))-2):
-                whitespace = whitespace + " "
-            return "x=='{}'".format(whitespace)
+        #if int(self.a) < 0:
+        #    whitespace = ""
+        #    for i in range(len(str(self.a))-2):
+        #        whitespace = whitespace + " "
+        #    return "x=='{}'".format(whitespace)
 
         if python_type==int or python_type==float:
             if self.a==self.b:

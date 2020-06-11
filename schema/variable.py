@@ -132,6 +132,15 @@ class Variable:
     def add_valid_data_description(self,desc):
         """Parse the variable descriptions typical of US Census Bureau data
         files that are used to describe valid values."""
+        if "\n" in desc:
+            print(desc)
+            for line in desc.split("\n"):
+                self.add_valid_data_description(line)
+            return
+        if "," in desc:
+            for line in desc.split(","):
+                self.add_valid_data_description(line)
+            return
         r = Range.extract_range_and_desc(desc)
         self.ranges.add(r)
         # TODO: Rework this to use the range parser in the Range function
