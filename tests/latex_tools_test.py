@@ -61,7 +61,7 @@ def no_latex():
 
 def test_run_latex():
     if no_latex():
-        warnings.warn("No "+LATEX_EXE+": Tests involving running LaTeX will not be return")
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
 
     # Make sure the input file exists; if not, create it
@@ -91,7 +91,7 @@ def test_run_latex():
 
 def test_count_pdf_pages_pypdf():
     if no_latex():
-        warnings.warn("No "+LATEX_EXE+": Tests involving running LaTeX will not be return")
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     try:
         assert os.path.exists(ONEPAGE_PDF)   # we need this file
@@ -103,7 +103,7 @@ def test_count_pdf_pages_pypdf():
 
 def test_count_pdf_pages():
     if no_latex():
-        warnings.warn("No "+LATEX_EXE+": Tests involving running LaTeX will not be return")
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     assert os.path.exists(FIVEPAGES_PDF) # we need this file
     assert not os.path.exists(FIVEPAGES_AUX) # we do not want this
@@ -118,13 +118,13 @@ def test_count_pdf_pages():
 
 def test_inspect_pdf():
     if no_latex():
-        warnings.warn("No "+LATEX_EXE+": Tests involving running LaTeX will not be return")
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     assert latex_tools.count_pdf_pages(FIVEPAGES_PDF) == 5
 
 def test_extract_pdf_pages():
     if no_latex():
-        warnings.warn("No "+LATEX_EXE+": Tests involving running LaTeX will not be return")
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     if os.path.exists(EXTRACT_PDF):
         os.unlink(EXTRACT_PDF)
