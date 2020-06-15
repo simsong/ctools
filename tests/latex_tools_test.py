@@ -9,7 +9,6 @@ import os.path
 import sys
 import logging
 import warnings
-import distutils.spawn
 
 from os.path import abspath
 from os.path import dirname
@@ -17,8 +16,7 @@ from os.path import dirname
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 import ctools.latex_tools as latex_tools
 
-
-
+from latex_tools import no_latex
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")
@@ -55,9 +53,6 @@ def test_label_parser():
     
 ################################################################
 ## These tools require running LaTeX
-
-def no_latex():
-    return distutils.spawn.find_executable(latex_tools.LATEX_EXE) is None
 
 def test_run_latex():
     if no_latex():
