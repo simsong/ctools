@@ -217,7 +217,7 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
                      num_executors=num_executors,
                      conf=conf, configdict=configdict, properties_file=properties_file,
                      argv=sys.argv)
-        return                  # spark_submit() will return if we are running under PYTEST
+        return None # spark_submit() will return if we are running under PYTEST
 
     # Running inside spark
     from pyspark.sql import SparkSession
