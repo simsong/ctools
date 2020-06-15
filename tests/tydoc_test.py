@@ -4,6 +4,7 @@ import sys
 import os
 import os.path
 import tempfile
+import warnings
 
 from os.path import abspath
 from os.path import dirname
