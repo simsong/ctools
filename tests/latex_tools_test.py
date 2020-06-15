@@ -8,13 +8,15 @@ import os
 import os.path
 import sys
 import logging
+import warnings
 
 from os.path import abspath
 from os.path import dirname
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
+import ctools.latex_tools as latex_tools
 
-import ctools.latex_tools as latex_tools 
+from latex_tools import no_latex
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")
@@ -35,12 +37,28 @@ FIVEPAGES_AUX=os.path.join(TEST_FILES_DIR,"five_pages.aux")
 FIVEPAGES_OUT=os.path.join(TEST_FILES_DIR,"five_pages.out")
 EXTRACT_PDF=os.path.join(TEST_FILES_DIR,"extract.pdf")
 
+
 def test_latex_escape():
     assert latex_tools.latex_escape(r"foo")=="foo"
     assert latex_tools.latex_escape(r"foo/bar")==r"foo/bar"
     assert latex_tools.latex_escape(r"foo\bar")==r"foo\textbackslash{}bar"
 
+def parse_nested_braces_test():
+    res = list(latex_tools.parse_nested_braces(LINE1))
+    assert res == LINE1_PARSED
+
+def test_label_parser():
+    assert latex_tools.label_parser(LINE1)==("","1 Cover Sheet","1",6)
+    assert latex_tools.label_parser(LINE2)==("EOF","1 Cover Sheet","1",99)
+    
+################################################################
+## These tools require running LaTeX
+
 def test_run_latex():
+    if no_latex():
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
+        return
+
     # Make sure the input file exists; if not, create it
     if not os.path.exists(HELLO_TEX):
         with open(HELLO_TEX,"w") as f:
@@ -67,6 +85,9 @@ def test_run_latex():
     os.unlink(HELLO_PDF)
 
 def test_count_pdf_pages_pypdf():
+    if no_latex():
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
+        return
     try:
         assert os.path.exists(ONEPAGE_PDF)   # we need this file
         assert latex_tools.count_pdf_pages_pypdf(ONEPAGE_PDF)==1
@@ -76,6 +97,9 @@ def test_count_pdf_pages_pypdf():
         logging.warning("PyPDF2 is not available")
 
 def test_count_pdf_pages():
+    if no_latex():
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
+        return
     assert os.path.exists(FIVEPAGES_PDF) # we need this file
     assert not os.path.exists(FIVEPAGES_AUX) # we do not want this
     assert not os.path.exists(FIVEPAGES_OUT) # we do not want this
@@ -88,9 +112,15 @@ def test_count_pdf_pages():
     assert not os.path.exists(FIVEPAGES_OUT) # we do not want this
 
 def test_inspect_pdf():
+    if no_latex():
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
+        return
     assert latex_tools.count_pdf_pages(FIVEPAGES_PDF) == 5
 
 def test_extract_pdf_pages():
+    if no_latex():
+        warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
+        return
     if os.path.exists(EXTRACT_PDF):
         os.unlink(EXTRACT_PDF)
     assert not os.path.exists(EXTRACT_PDF)
@@ -114,14 +144,6 @@ LINE1=r'\newlabel{"1 Cover Sheet"}{{1}{6}{2017 Food File}{chapter.1}{}}'
 LINE2=r'\newlabel{EOF-"1 Cover Sheet"}{{1}{99}{2017 Food File}{chapter.1}{}}'
 LINE1_PARSED=[(0, '"1 Cover Sheet"'), (1, '1'), (1, '6'), (1, '2017 Food File'), (1, 'chapter.1'), (1, ''), (0, '{1}{6}{2017 Food File}{chapter.1}{}')]
 
-def parse_nested_braces_test():
-    res = list(latex_tools.parse_nested_braces(LINE1))
-    assert res == LINE1_PARSED
-
-def test_label_parser():
-    assert latex_tools.label_parser(LINE1)==("","1 Cover Sheet","1",6)
-    assert latex_tools.label_parser(LINE2)==("EOF","1 Cover Sheet","1",99)
-    
 
 if __name__=="__main__":
     parse_nested_braces_test()
