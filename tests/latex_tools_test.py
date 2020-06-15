@@ -14,9 +14,9 @@ import distutils.spawn
 from os.path import abspath
 from os.path import dirname
 
-#sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
-#import ctools.latex_tools as latex_tools
-import ..ctools.latex_tools as latex_tools
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
+import ctools.latex_tools as latex_tools
+
 
 
 
