@@ -25,6 +25,7 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
+        re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"),
         re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\binteger\b[s]?)(?P<desc>.*)"),
         re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"),
@@ -70,6 +71,12 @@ class Range:
                     return Range(a, b)
                 elif a == 'null':
                     return None
+                elif a == 'alphanumeric':
+                    a = ""
+                    a = a.rjust(width, '-')
+                    b = ""
+                    b = b.rjust(width, '^')
+                    return Range(a, b)
                 try:
                     b = m.group('b')
                 except IndexError:
