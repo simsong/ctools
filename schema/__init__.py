@@ -82,6 +82,8 @@ def leftpad(x,width):
     return ' '*(width-len(str(x)))+str(x)
 
 def between(a,b,c,width):
+    if len(b) > width:
+        return False
     if '.' in a or '.' in b or '.' in c:
         return float(leftpad(a,width)) <= float(leftpad(b,width)) <= float(leftpad(c,width))
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
@@ -122,7 +124,6 @@ def decode_vtype(t):
         vtype = m.group(1)
         width = int(m.group(2))
     else:
-        print("M NOT FOUND")
         vtype = t
         width = DEFAULT_VARIABLE_WIDTH
     if vtype not in PYTHON_TYPE_MAP:

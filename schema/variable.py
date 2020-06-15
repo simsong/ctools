@@ -38,7 +38,10 @@ class Variable:
 
         # If width was specified, use it
         if width:
-            self.width   = width         # number of characters wide
+            try:
+                self.width   = int(width)         # number of characters wide
+            except ValueError:
+                print("No width passed to ", self.name, ", using default")
 
         self.ranges      = set()
         self.default     = default
@@ -141,7 +144,7 @@ class Variable:
             for line in desc.split(","):
                 self.add_valid_data_description(line)
             return
-        r = Range.extract_range_and_desc(desc)
+        r = Range.extract_range_and_desc(desc, width=self.width)
         self.ranges.add(r)
         # TODO: Rework this to use the range parser in the Range function
         """

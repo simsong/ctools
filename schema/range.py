@@ -25,6 +25,8 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
+        re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>\binteger\b[s]?)(?P<desc>.*)"),
         re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"),
         re.compile(r"^(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
@@ -42,11 +44,10 @@ class Range:
         possible_legal_value = possible_legal_value.strip()
         possible_legal_value = possible_legal_value.strip('and')
         #possible_legal_value = possible_legal_value.lower()
-        #print(possible_legal_value)
 
-        if possible_legal_value.count("=")>1:
-            logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
-            return None
+        #if possible_legal_value.count("=")>1:
+        #    logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
+        #    return None
         for regex in Range.RANGE_RE_LIST:
             """
             if ("-" in possible_legal_value and "=" in possible_legal_value):
@@ -61,6 +62,14 @@ class Range:
             if m:
                 a = m.group('a')
                 desc = m.group('desc')
+                if a == "integer":
+                    a = ""
+                    a = a.rjust(width, '0')
+                    b = ""
+                    b = b.rjust(width, '9')
+                    return Range(a, b)
+                elif a == 'null':
+                    return None
                 try:
                     b = m.group('b')
                 except IndexError:
