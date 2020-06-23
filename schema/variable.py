@@ -21,10 +21,10 @@ class Variable:
     attrib   = a dictionary of user-specified attributes
     """
 
-    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib','allow_whitespace','start','end')
+    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib','allow_whitespace','start','end','allow_null')
 
     def __init__(self,*,name=None,vtype=None,python_type=None,desc="",position=None,column=None,width=None,default=None,
-                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix="",allow_whitespace=False,start=None,end=None):
+                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix="",allow_whitespace=False,start=None,end=None, allow_null=False):
         self.width       = None       # initial value
         self.set_name(name)
         self.set_vtype(vtype=vtype, python_type=python_type)
@@ -34,6 +34,7 @@ class Variable:
         self.column      = column        # Starting column in the line if this is a column-specified file 0
         self.start = start
         self.end = end
+        self.allow_null = allow_null
 
 
         # If width was specified, use it
@@ -308,7 +309,12 @@ class Variable:
         ret.append("    @classmethod")
         ret.append("    def {}(self,x):".format(self.python_validator_name()))
         ret.append('        """{}"""'.format(self.desc))
-
+        if self.allow_null:
+            ret.append("        if x is None or x == \"None\":")
+            ret.append("            return True")
+        else:
+            ret.append("        if x is None or x == \"None\":")
+            ret.append("            return False")
         if self.allow_whitespace:
             size = ""
             for x in range(self.width):

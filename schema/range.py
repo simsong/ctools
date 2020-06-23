@@ -25,15 +25,17 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
+        re.compile(r"^(?P<a>!+)(?P<desc>.*)"),
         re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"),
+        re.compile(r"^.*(?P<a>hitespace)(?P<desc>.*)"),  # not a typo
         re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\binteger\b[s]?)(?P<desc>.*)"),
+        re.compile(r"^.*(?P<a>integers?)(?P<desc>.*)"),
         re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"),
         re.compile(r"^(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=\s*(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*=\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
+        re.compile(r"^\s?[a-zA-Z:]*\s?(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+)\s*–\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),  # Different hyphen from previous line
         re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>[A-Z]+\d*)*-(?P<b>[A-Z]+\d*)(?P<desc>.*)"),
@@ -60,10 +62,11 @@ class Range:
                     m = Range.RANGE_RE_LIST[0].fullmatch(possible_legal_value)
             """
             m = regex.fullmatch(possible_legal_value)
+
             if m:
                 a = m.group('a')
                 desc = m.group('desc')
-                if a == "integer":
+                if a in "integers":
                     a = ""
                     a = a.rjust(width, '0')
                     b = ""
@@ -73,10 +76,14 @@ class Range:
                     return None
                 elif a == 'alphanumeric':
                     a = ""
-                    a = a.rjust(width, '-')
+                    a = a.rjust(width, ' ')
                     b = ""
-                    b = b.rjust(width, '^')
+                    b = b.rjust(width, 'z')
                     return Range(a, b)
+                elif '!' in a:
+                    return Range(a, a)
+                elif a in 'whitespace':
+                    return None
                 try:
                     b = m.group('b')
                 except IndexError:
