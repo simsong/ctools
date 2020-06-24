@@ -5,6 +5,7 @@ import tempfile
 import sys
 import subprocess
 import time
+import re
 
 from urllib.parse import urlparse
 
@@ -479,6 +480,22 @@ def s3rm(path):
     if res['DeleteMarker'] != True:
         raise RuntimeError("Unknown response from delete-object: {}".format(res))
 
+def print_du(root):
+    """Print a DU output using aws cli to generate the usage"""
+    cmd = ['aws','s3','ls','--recursive',root]
+    print(" ".join(cmd))
+    p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
+    part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
+    usage = 0
+    MiB = 1024*1024
+    for (ct,line) in enumerate(p.stdout):
+        parts = part_re.search(line)
+        usage += int(parts.group(3))
+        if ct%1000==0:
+            print(f"lines: {ct}  MiB: {int(usage/MiB):,}  {parts.group(4)}")
+    print(f"Total lines: {ct}  MiB: {int(usage/MiB):,},")
+
+
 
 if __name__ == "__main__":
     t0 = time.time()
@@ -488,6 +505,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
                             description="Combine multiple files on Amazon S3 to the same file.")
     parser.add_argument("--ls", action='store_true', help="list a s3 prefix")
+    parser.add_argument("--du", action='store_true', help='List usage under an s3 prefix')
     parser.add_argument("--delimiter", help="specify a delimiter for ls")
     parser.add_argument("--debug", action='store_true')
     parser.add_argument("--search", help="Search for something")
@@ -506,6 +524,8 @@ if __name__ == "__main__":
             for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
+        if args.du:
+            print_du(root)
     t1 = time.time()
     print("Total files:  {}".format(count), file=sys.stderr)
     print("Elapsed time: {}".format(t1 - t0), file=sys.stderr)
