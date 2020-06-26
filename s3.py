@@ -5,6 +5,8 @@ import tempfile
 import sys
 import subprocess
 import time
+import re
+from collections import defaultdict
 
 from urllib.parse import urlparse
 
@@ -27,7 +29,18 @@ debug = False
 
 READTHROUGH_CACHE_DIR = '/mnt/tmp/s3cache'
 
-AWS_LIST = ['/usr/bin/aws', '/usr/local/bin/aws', '/usr/local/aws/bin/aws']
+AWS_CLI_LIST = ['/usr/bin/aws', '/usr/local/bin/aws', '/usr/local/aws/bin/aws']
+AWS_CLI  = None
+
+def awscli():
+    global AWS_CLI
+    if AWS_CLI is None:
+        for path in AWS_CLI_LIST:
+            if os.path.exists(path):
+                AWS_CLI = path
+                return AWS_CLI
+        raise RuntimeError("Cannot find aws executable in "+str(AWS_CLI_LIST))
+    return AWS_CLI
 
 
 def get_bucket_key(loc):
@@ -44,15 +57,8 @@ def get_bucket_key(loc):
     assert ValueError("{} is not an s3 location".format(loc))
 
 
-def get_aws():
-    for aws in AWS_LIST:
-        if os.path.exists(aws):
-            return aws
-    raise RuntimeError("Cannot find aws executable")
-
-
 def aws_s3api(cmd, debug=False):
-    aws = get_aws()
+    aws = awscli()
     fcmd = [aws, 's3api', '--output=json'] + cmd
     if debug:
         sys.stderr.write(" ".join(fcmd))
@@ -279,7 +285,7 @@ class S3File:
         self.key = self.url.path[1:]
         self.fpos = 0
         self.tf = tempfile.NamedTemporaryFile()
-        cmd = ['aws', 's3api', 'list-objects', '--bucket', self.bucket, '--prefix', self.key, '--output', 'json']
+        cmd = [awscli(), 's3api', 'list-objects', '--bucket', self.bucket, '--prefix', self.key, '--output', 'json']
         data = json.loads(subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0])
         file_info = data['Contents'][0]
         self.length = file_info['Size']
@@ -300,7 +306,7 @@ class S3File:
         # This is gross; we copy everything to the named temporary file, rather than a pipe
         # because the pipes weren't showing up in /dev/fd/?
         # We probably want to cache also... That's coming
-        cmd = ['aws', 's3api', 'get-object', '--bucket', self.bucket, '--key', self.key, '--output', 'json',
+        cmd = [awscli(), 's3api', 'get-object', '--bucket', self.bucket, '--key', self.key, '--output', 'json',
                '--range', 'bytes={}-{}'.format(start, start + length - 1), self.tf.name]
         if debug:
             print(cmd)
@@ -420,16 +426,16 @@ class s3open:
 
         if "r" in mode:
             if cache:
-                subprocess.check_call(['aws', 's3', 'cp', '--quiet', path, cache_name])
+                subprocess.check_call([awscli(), 's3', 'cp', '--quiet', path, cache_name])
                 open(cache_name, mode=mode, encoding=encoding)
-            self.p = subprocess.Popen(['aws', 's3', 'cp', '--quiet', path, '-'],
+            self.p = subprocess.Popen([awscli(), 's3', 'cp', '--quiet', path, '-'],
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
                                       encoding=encoding)
             self.file_obj = self.p.stdout
 
         elif "w" in mode:
-            self.p = subprocess.Popen(['aws', 's3', 'cp', '--quiet', '-', path],
+            self.p = subprocess.Popen([awscli(), 's3', 'cp', '--quiet', '-', path],
                                       stdin=subprocess.PIPE, encoding=encoding)
             self.file_obj = self.p.stdin
         else:
@@ -466,7 +472,7 @@ class s3open:
 
 def s3exists(path):
     """Return True if the S3 file exists. Should be replaced with an s3api function"""
-    out = subprocess.Popen(['aws', 's3', 'ls', '--page-size', '10', path],
+    out = subprocess.Popen([awscli(), 's3', 'ls', '--page-size', '10', path],
                            stdout=subprocess.PIPE, encoding='utf-8').communicate()[0]
     return len(out) > 0
 
@@ -479,6 +485,54 @@ def s3rm(path):
     if res['DeleteMarker'] != True:
         raise RuntimeError("Unknown response from delete-object: {}".format(res))
 
+class DuCounter:
+    def __init__(self):
+        self.total_bytes = 0
+        self.total_files = 0
+    def count(self, bytes_):
+        self.total_bytes += bytes_
+        self.total_files += 1
+        
+
+def print_du(root):
+    """Print a DU output using aws cli to generate the usage"""
+    prefixes = defaultdict(DuCounter)
+
+    cmd = [awscli(),'s3','ls','--recursive',root]
+    print(" ".join(cmd))
+    p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
+    part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
+    total_bytes = 0
+    MiB = 1024*1024
+    for (ct,line) in enumerate(p.stdout):
+        parts       = part_re.search(line)
+        bytes_      = int(parts.group(3))
+        path        = parts.group(4)
+        total_bytes += bytes_
+        prefixes[ os.path.dirname(path) ].count(bytes_)
+
+        if ct%1000==0:
+            print(f"lines: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}")
+
+    print(f"Total lines: {ct}  MiB: {int(total_bytes/MiB):,},")
+    fmt1 = "{:>10}{:>20}  {}"
+    fmt2 = "{:>10}{:>20,}  {}"
+    print()
+    print("Usage by prefix:")
+    print(fmt1.format('files','bytes','path'))
+    for path in sorted(prefixes):
+        print(fmt2.format(prefixes[path].total_files,
+                         prefixes[path].total_bytes,
+                         path))
+    print("")
+    print("Top 10 by size:")
+    print(fmt1.format('files','bytes','path'))
+    for path in sorted(prefixes, key=lambda path:prefixes[path].total_bytes, reverse=True):
+        print(fmt2.format(prefixes[path].total_files,
+                          prefixes[path].total_bytes,
+                          path))
+        
+
 
 if __name__ == "__main__":
     t0 = time.time()
@@ -488,6 +542,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
                             description="Combine multiple files on Amazon S3 to the same file.")
     parser.add_argument("--ls", action='store_true', help="list a s3 prefix")
+    parser.add_argument("--du", action='store_true', help='List usage under an s3 prefix')
     parser.add_argument("--delimiter", help="specify a delimiter for ls")
     parser.add_argument("--debug", action='store_true')
     parser.add_argument("--search", help="Search for something")
@@ -506,6 +561,9 @@ if __name__ == "__main__":
             for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
+        if args.du:
+            print_du(root)
     t1 = time.time()
-    print("Total files:  {}".format(count), file=sys.stderr)
-    print("Elapsed time: {}".format(t1 - t0), file=sys.stderr)
+    if args.ls or args.search:
+        print("Total files:  {}".format(count), file=sys.stderr)
+        print("Elapsed time: {}".format(t1 - t0), file=sys.stderr)

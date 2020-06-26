@@ -20,8 +20,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 import ctools.clogging as clogging
 
 
+LOCAL1_LOG = '/var/log/local1.log'
+
 def test_logging_to_syslog():
     if platform.system()=='Windows' or platform.system()=='Darwin':
+        return
+
+    if not os.path.exists(LOCAL1_LOG):
+        warnings.warn(f"{LOCAL1_LOG} does not exist; cannot test logging to local1")
         return
 
     clogging.setup(level=logging.INFO, syslog=True)
@@ -31,14 +37,11 @@ def test_logging_to_syslog():
     time.sleep(.01)
     # Look for the nonce
     count = 0
-    try:
-        for line in open("/var/log/local1.log"):
-            if nonce in line:
-                sys.stdout.write(line)
-                count += 1
-    except:
-        pass
-    if count == 0:
+    for line in open(LOCAL1_LOG):
+        if nonce in line:
+            sys.stdout.write(line)
+            count += 1
+    if count==0:
         warnings.warn("local1 is not logging to /var/log/local1.log")
 
     assert count in [0,1,2]

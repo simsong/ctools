@@ -5,8 +5,10 @@
 
 import os
 import sys
+from os.path import dirname
+from os.path import abspath
 
-sys.path.append(os.path.join(os.path.dirname(__file__),"../../.."))
+sys.path.append(dirname(dirname(dirname(dirname(abspath(__file__))))))
 
 from ctools.schema.range import Range
 

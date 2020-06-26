@@ -8,9 +8,10 @@ import os.path
 import tempfile
 import sys
 
-#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 from ctools.s3 import S3File
 
