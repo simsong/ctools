@@ -28,7 +28,7 @@ class Variable:
         self.width       = None       # initial value
         self.set_name(name)
         self.set_vtype(vtype=vtype, python_type=python_type)
-        #self.field       = field         # field number
+        #self.field      = field         # field number
         self.position    = position
         self.desc        = desc          # description
         self.column      = column        # Starting column in the line if this is a column-specified file 0
@@ -42,7 +42,7 @@ class Variable:
             try:
                 self.width   = int(width)         # number of characters wide
             except ValueError:
-                print("No width passed to ", self.name, ", using default")
+                print(f"No width passed to {self.name}, using default")
 
         self.ranges      = set()
         self.default     = default
