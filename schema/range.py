@@ -5,6 +5,11 @@ import random
 import ctools.schema  as schema
 from ctools.schema import clean_int
 
+IN_INTEGER = "integer"
+IN_NULL = "null"
+IN_ALPHANUMERIC = "alphanumeric"
+IN_WHITESPACE = "whitespace"
+
 def all_ints(ranges):
     for r in ranges:
         if r.is_int()==False:
@@ -25,64 +30,47 @@ class Range:
     This is type-free, but we should have kept the type of the variable for which the range was made. 
     """
     RANGE_RE_LIST = [
-        re.compile(r"^(?P<a>!+)(?P<desc>.*)"),
-        re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"),
-        re.compile(r"^.*(?P<a>hitespace)(?P<desc>.*)"),  # not a typo
-        re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"),
-        re.compile(r"^.*(?P<a>integers?)(?P<desc>.*)"),
-        re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"),
+        re.compile(r"^(?P<a>!+)(?P<desc>.*)"), # used for grabbing vals with ! as that is a legal val
+        re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"), # some descriptions mention alphanumeric vals legal
+        re.compile(r"^.*(?P<a>hitespace)(?P<desc>.*)"),  # grabs w/Whitespace, and returns none, white handled elsewhere
+        re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"), # if val is null, return None
+        re.compile(r"^.*(?P<a>integers?)(?P<desc>.*)"), # some descs just say integer, this catches that
+        re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"), # catch ranges built like 1 to 3
         re.compile(r"^(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
         re.compile(r"^\s*(?P<a>\d+) ?to ?(?P<b>\d+)(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\d+)\s*=\s*(?P<desc>.*)"),
-        re.compile(r"^\s?[a-zA-Z:]*\s?(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>\d+)\s*–\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),  # Different hyphen from previous line
+        re.compile(r"^\s*(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=\s*(?P<desc>.*)"), # catch ranges with desc delimited by =
+        re.compile(r"^\s*(?P<a>\d+)\s*=\s*(?P<desc>.*)"), # catch single vals with desc delimited by
+        re.compile(r"^\s?[a-zA-Z:]*\s?(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"), # catch base letter range vals
+        re.compile(r"^\s*(?P<a>\d+)\s*–\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),  # special ascii
         re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>[A-Z]+\d*)*-(?P<b>[A-Z]+\d*)(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>[A-Z]+\d*)(?P<desc>.*)"),
+        re.compile(r"^\s*(?P<a>[A-Z]+\d*)*-(?P<b>[A-Z]+\d*)(?P<desc>.*)"), # catch base 36 ranges
+        re.compile(r"^\s*(?P<a>[A-Z]+\d*)(?P<desc>.*)"), # catch base 36 single val with description
     ]
 
     @staticmethod
     def extract_range_and_desc(possible_legal_value,python_type=str,hardfail=False,width=None):
         possible_legal_value = possible_legal_value.strip()
         possible_legal_value = possible_legal_value.strip('and')
-        #possible_legal_value = possible_legal_value.lower()
 
-        #if possible_legal_value.count("=")>1:
-        #    logging.error("invalid possible legal values: {} ({})".format(possible_legal_value,possible_legal_value.count("=")))
-        #    return None
         for regex in Range.RANGE_RE_LIST:
-            """
-            if ("-" in possible_legal_value and "=" in possible_legal_value):
-                equal_index = possible_legal_value.index("=")
-                hyphen_index = possible_legal_value.index("-")
-                if equal_index < hyphen_index:
-                    m = Range.RANGE_RE_LIST[1].fullmatch(possible_legal_value)
-                else:
-                    m = Range.RANGE_RE_LIST[0].fullmatch(possible_legal_value)
-            """
             m = regex.fullmatch(possible_legal_value)
 
             if m:
                 a = m.group('a')
                 desc = m.group('desc')
-                if a in "integers":
-                    a = ""
-                    a = a.rjust(width, '0')
-                    b = ""
-                    b = b.rjust(width, '9')
+                if IN_INTEGER in a.lower():
+                    a = "".rjust(width, '0')
+                    b = "".rjust(width, '9')
                     return Range(a, b)
-                elif a == 'null':
+                elif IN_NULL in a.lower():
                     return None
-                elif a == 'alphanumeric':
-                    a = ""
-                    a = a.rjust(width, ' ')
-                    b = ""
-                    b = b.rjust(width, 'z')
+                elif IN_ALPHANUMERIC in a.lower():
+                    a = "".rjust(width, ' ')
+                    b = "".rjust(width, 'z')
                     return Range(a, b)
                 elif '!' in a:
                     return Range(a, a)
-                elif a in 'whitespace':
+                elif IN_WHITESPACE in a.lower():
                     return None
                 try:
                     b = m.group('b')
@@ -93,18 +81,6 @@ class Range:
         if hardfail:
             raise ValueError("Cannot recognize range in: "+possible_legal_value)
         return None
-
-        #if ("=" not in possible_legal_value) and ("-" not in possible_legal_value) and (len(possible_legal_value)>10):
-        #    return None
-        #if "=" in possible_legal_value:
-        #    (rng,desc) = possible_legal_value.split("=")
-        #else:
-        #    (rng,desc) = (possible_legal_value, "")
-        #if "-" in rng:
-        #    (r0,r1) = rng.split("-")
-        #else:
-        #    r0 = r1 = rng
-        #return (convertRange(r0,r1), desc)
         
     @staticmethod
     def combine_ranges(ranges):
@@ -170,12 +146,6 @@ class Range:
         """Return the range as a python expression in x"""
         if self.a == schema.RANGE_ANY or self.b == schema.RANGE_ANY:
             return "True "      # anything works
-
-        #if int(self.a) < 0:
-        #    whitespace = ""
-        #    for i in range(len(str(self.a))-2):
-        #        whitespace = whitespace + " "
-        #    return "x=='{}'".format(whitespace)
 
         if python_type==int or python_type==float:
             if self.a==self.b:

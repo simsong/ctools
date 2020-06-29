@@ -21,24 +21,24 @@ import json
 import decimal
 from collections import OrderedDict
 
-unquote_re     = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
-type_width_re  = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]") # matches a type and width specification
-note_re        = re.compile(r"Note([ 0-9])*:",re.I)
-assignVal_re   = re.compile(r"([^=]*)\s*=\s*(.*)")
-assignRange_re = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
-range_re       = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)") # handles unicode dashes
-integer_re     = re.compile(r"INTEGER ?\((\d+)\)",re.I)
+unquote_re         = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
+type_width_re      = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]") # matches a type and width specification
+note_re            = re.compile(r"Note([ 0-9])*:",re.I)
+assignVal_re       = re.compile(r"([^=]*)\s*=\s*(.*)")
+assignRange_re     = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
+range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)") # handles unicode dashes
+integer_re         = re.compile(r"INTEGER ?\((\d+)\)",re.I)
 
-TYPE_NUMBER    = "NUMBER"
-TYPE_INTEGER   = "INTEGER"
-TYPE_INT       = "INT"
-TYPE_VARCHAR   = "VARCHAR"
-TYPE_CHAR      = "CHAR"
-TYPE_DECIMAL   = "DECIMAL"
-TYPE_FLOAT     = "FLOAT"
-TYPE_DATE      = "DATE"
-TYPE_SDO_GEOMETRY = "SDO_GEOMETRY"
-TYPE_STRING = "STRING"
+TYPE_NUMBER        = "NUMBER"
+TYPE_INTEGER       = "INTEGER"
+TYPE_INT           = "INT"
+TYPE_VARCHAR       = "VARCHAR"
+TYPE_CHAR          = "CHAR"
+TYPE_DECIMAL       = "DECIMAL"
+TYPE_FLOAT         = "FLOAT"
+TYPE_DATE          = "DATE"
+TYPE_SDO_GEOMETRY  = "SDO_GEOMETRY"
+TYPE_STRING        = "STRING"
 # map SQL names to Python types
 PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_INTEGER:int,

@@ -137,7 +137,6 @@ class Variable:
         """Parse the variable descriptions typical of US Census Bureau data
         files that are used to describe valid values."""
         if "\n" in desc:
-            print(desc)
             for line in desc.split("\n"):
                 self.add_valid_data_description(line)
             return
@@ -316,9 +315,7 @@ class Variable:
             ret.append("        if x is None or x == \"None\":")
             ret.append("            return False")
         if self.allow_whitespace:
-            size = ""
-            for x in range(self.width):
-                size += " "
+            size = "".rjust(self.width, " ")
             ret.append("        if x == '{}':".format(size))
             ret.append("            return True")
 
