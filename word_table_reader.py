@@ -34,7 +34,6 @@ GRIDCOL = WORD_NAMESPACE + "gridCol"
 TR = WORD_NAMESPACE+"tr"                       # table row?
 TC = WORD_NAMESPACE+"tc"                       # table cell?
 
-
 def get_docx_table(path):
     """
     Find the table inside the .docx file and return it in an array
@@ -103,14 +102,16 @@ def get_docx_text(path):
     """
     Take the path of a docx file as argument, return the text in unicode.
     """
-    texts = []
-    for paragraph in path.iter(PARA):
-        texts = [node.text for node in paragraph.iter(TEXT) if node.text]
-        paragraph_text = "".join(texts)
-        if paragraph_text:
-            text += paragraph_text + "\n"
-        texts.append(text)
-    return "".join(texts)
+    document = zipfile.ZipFile(path)
+    xml_content = document.read('word/document.xml')
+    document.close()
+    tree = XML(xml_content)
+    text = []
+    for paragraph in tree.iter(PARA):
+        current_paragraphs = [node.text for node in paragraph.iter(TEXT) if node.text]
+        if len(current_paragraphs) > 0:
+            text.append(current_paragraphs)
+    return text
 
 if __name__=="__main__":
     import sys
