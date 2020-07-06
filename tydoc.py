@@ -210,7 +210,6 @@ OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
 OPTION_CENTER    = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
 OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
-OPTION_DATATABLES = 'datatables' # 
 
 ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
@@ -1785,13 +1784,6 @@ def tabdemo1():
     d2.add_data(['Virginia', 'VA', 8001045], cell_attribs=lcr)
     d2.add_data(['California', 'CA', 37252895], cell_attribs=lcr)
     return doc
-
-
-def datatables():
-    doc = tydoc()
-    doc.script('https://code.jquery.com/jquery-3.3.1.js')
-    doc.script('https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js')
-    t = doc.table(attrib={'id': '1234'})
 
 
 def demo_toc():
