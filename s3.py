@@ -504,15 +504,21 @@ def print_du(root):
     part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
     MiB = 1024*1024
-    for (ct,line) in enumerate(p.stdout):
-        parts       = part_re.search(line)
-        bytes_      = int(parts.group(3))
-        path        = parts.group(4)
-        total_bytes += bytes_
-        prefixes[ os.path.dirname(path) ].count(bytes_)
+    try:
+        for (ct,line) in enumerate(p.stdout):
+            parts       = part_re.search(line)
+            if parts is None:
+                print("Cannot parse: ",line,file=sys.stderr,flush=True)
+                continue
+            bytes_      = int(parts.group(3))
+            path        = parts.group(4)
+            total_bytes += bytes_
+            prefixes[ os.path.dirname(path) ].count(bytes_)
 
-        if ct%1000==0:
-            print(f"lines: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}")
+            if ct%1000==0:
+                print(f"files: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}",flush=True)
+    except KeyboardInterrupt as e:
+        print("*** interrupted ***")
 
     print(f"Total lines: {ct}  MiB: {int(total_bytes/MiB):,},")
     fmt1 = "{:>10}{:>20}  {}"
@@ -525,12 +531,14 @@ def print_du(root):
                          prefixes[path].total_bytes,
                          path))
     print("")
-    print("Top 10 by size:")
+    print("Top 20 by size:")
     print(fmt1.format('files','bytes','path'))
-    for path in sorted(prefixes, key=lambda path:prefixes[path].total_bytes, reverse=True):
+    for (ct,path) in enumerate(sorted(prefixes, key=lambda path:prefixes[path].total_bytes, reverse=True),1):
         print(fmt2.format(prefixes[path].total_files,
                           prefixes[path].total_bytes,
                           path))
+        if ct==20:
+            break
         
 
 
