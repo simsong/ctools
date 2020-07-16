@@ -145,6 +145,8 @@ class Variable:
                 self.add_valid_data_description(line)
             return
         r = Range.extract_range_and_desc(desc, width=self.width)
+        if r is not None and len(r.b) > self.width:
+            self.width = len(r.b)
         self.ranges.add(r)
         # TODO: Rework this to use the range parser in the Range function
         """
