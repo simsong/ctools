@@ -62,20 +62,29 @@ class Range:
                     a = "".rjust(width, '0')
                     b = "".rjust(width, '9')
                     return Range(a, b)
-                elif IN_NULL in a.lower():
+                elif IN_NULL in a.lower():  # if null in range return None, handled elsewhere
                     return None
-                elif IN_ALPHANUMERIC in a.lower():
+                elif IN_ALPHANUMERIC in a.lower():  # if alphanumeric range must be handled differently
                     a = "".rjust(width, ' ')
                     b = "".rjust(width, 'z')
                     return Range(a, b)
                 elif '!' in a:
                     return Range(a, a)
-                elif IN_WHITESPACE in a.lower():
+                elif IN_WHITESPACE in a.lower():  # informs if whitespace is legal, handled elsewhere
                     return None
                 try:
                     b = m.group('b')
                 except IndexError:
                     b = a
+
+                if python_type == int:
+                    for char in a:
+                        if char.isalpha():
+                            return None
+                    for char in b:
+                        if char.isalpha():
+                            return None
+
                 return Range(python_type(a), python_type(b), desc)
 
         if hardfail:
@@ -86,6 +95,8 @@ class Range:
     def combine_ranges(ranges):
         """Examine a list of ranges and combine adjacent ranges"""
         # Make a new list with the ranges in sorted order
+        print(ranges)
+        print(None in ranges)
         if None in ranges:
             ranges.remove(None)
 
@@ -114,6 +125,8 @@ class Range:
         self.b = b if b else a
 
     def __eq__(self,other):
+        if other is None:
+            return False
         assert type(other)==Range
         return (self.a==other.a) and (self.b==other.b)
 
