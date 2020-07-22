@@ -49,7 +49,7 @@ def test_parse():
     assert Range.extract_range_and_desc("1-2 = hello 3-4", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
     assert Range.extract_range_and_desc("1-2 = (hello 3-4)", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
 
-    assert Range.extract_range_and_desc("      1 = hello 3-4", python_type = int, hardfail = True) == Range(1,1,"hello 3-4")
+    assert Range.extract_range_and_desc("      1 = hello 3-4", python_type = int, hardfail=True) == Range(1,1,"hello 3-4")
 
 
     # A few descriptions that we don't want to parse as Ranges

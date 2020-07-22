@@ -78,7 +78,7 @@ SQL_SCHEMA = {MYSQL : {'param':'%s'},
 # Included in programmatically-generated output
 SCHEMA_SUPPORT_FUNCTIONS="""
 def leftpad(x,width):
-    return ' '*(width-len(str(x)))+str(x)
+    return '0'*(width-len(str(x)))+str(x)
 
 def between(a,b,c,width):
     if len(b) > width:
