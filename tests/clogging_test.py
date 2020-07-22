@@ -43,6 +43,7 @@ def test_logging_to_syslog():
             count += 1
     if count==0:
         warnings.warn("local1 is not logging to /var/log/local1.log")
+
     assert count in [0,1,2]
     clogging.shutdown()
 

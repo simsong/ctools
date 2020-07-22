@@ -14,7 +14,8 @@ from os.path import dirname
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-import ctools.latex_tools as latex_tools 
+import ctools.latex_tools as latex_tools
+
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")
