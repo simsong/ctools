@@ -916,7 +916,7 @@ class jsonTable(TyTag):
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
         self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT]  = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -1000,7 +1000,7 @@ class jsonTable(TyTag):
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
                 return cell
             elif cell.attrib[ATTR_TYPE] != 'str':
-                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(float(value))
                 return cell
         except TypeError as e:
             pass
