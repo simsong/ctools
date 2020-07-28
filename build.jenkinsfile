@@ -1,0 +1,66 @@
+// Text
+// Details:
+// - Repo is configured with a web hook to notify Jenkins of the new release:
+//   https://github.ti.census.gov/CB-Mojo/ags-ops/settings/hooks
+
+def environments = [
+    "Ite" : [account_number: '245748476030']
+]
+
+pipeline {
+    agent { label('node8') }
+
+    environment{
+        ART_CREDS = credentials("artifactory-creds")
+        DAS_EMR_SSH_CREDS_DEV = credentials("das_emr_ssh_creds")
+        DAS_EMR_SSH_CREDS_ITE = credentials("das_emr_ssh_creds_ite")
+        DAS_EMR_SSH_CREDS_PROD= credentials("das_emr_ssh_creds_prod")
+        IAM_EXT_ID = credentials('iam_ext_id')
+        http_proxy = "http://proxy.ti.census.gov:3128"
+        https_proxy = "http://proxy.ti.census.gov:3128"
+        NO_PROXY = "10.,172.16.,148.129.,169.254.169.254,127.,localhost,.census.gov"
+    }
+    
+    stages {
+        stage('Cleanup') {
+            steps {
+                step([$class: 'WsCleanup'])
+                checkout scm
+            }
+        }
+        stage('Init Vars') {
+            steps {
+                script {
+                    PIP_FILE = "${env.WORKSPACE}/pip_config"
+                    AWS_CONFIG_FILE = "${env.WORKSPACE}/aws_config"
+                }
+            }
+        }
+        stage ('Initialize Deployment'){
+            steps{
+                sh """
+                    virtualenv cli
+                    source cli/bin/activate
+                    cat <<-EOF > ${PIP_FILE}
+[global] 
+index-url = https://${ART_CREDS_USR}:${ART_CREDS_PSW}@artifactory.ti.census.gov:8443/artifactory/api/pypi/TI-INF-PyPI-VIRT/simple
+trusted-host = artifactory.ti.census.gov:8443
+EOF
+                    export PIP_CONFIG_FILE=${PIP_FILE}
+                    pip install --upgrade awscli
+                    pip install boto3
+                    chmod +x ${env.WORKSPACE}/cli/bin/aws
+                    """
+            }
+        }
+        stage('SSH Test') {
+            steps {
+                sh """
+                    echo "Seeing what environment variables are present: "
+                    echo "GIT_COMMIT: $GIT_COMMIT"
+                    sshpass -p "${DAS_EMR_SSH_CREDS_ITE_PSW}" ssh -o StrictHostKeyChecking=no ${DAS_EMR_SSH_CREDS_ITE_USR}@10.252.46.139 bash /mnt/users/heine008/new_jenkins_script.sh --repository_name=ctools --commit_sha=$GIT_COMMIT --syntax_checks --unit_tests --merge_conflicts
+                """
+            }
+        }
+    }
+}
