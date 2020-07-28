@@ -1,5 +1,3 @@
-// This job is intended to kick off another job to deploy emr cluster in dev
-//
 // Details:
 // - Master branch updated with a commit 
 // - Repo is configured with a web hook to notify Jenkins of the new release:
