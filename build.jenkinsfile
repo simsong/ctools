@@ -5,9 +5,6 @@
 // - Repo is configured with a web hook to notify Jenkins of the new release:
 //   https://github.ti.census.gov/CB-Mojo/ags-ops/settings/hooks
 // - This job is configured to be triggered by that webhook
-// - It kicks off deploy-cluster job to build dev cluster
-// - Additional stages can be created for test automation
-// - Additional stages can be created to remove cluster after test
 
 def environments = [
     "Ite" : [account_number: '245748476030']
