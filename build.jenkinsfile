@@ -1,5 +1,4 @@
 // Details:
-// - Master branch updated with a commit 
 // - Repo is configured with a web hook to notify Jenkins of the new release:
 //   https://github.ti.census.gov/CB-Mojo/ags-ops/settings/hooks
 // - This job is configured to be triggered by that webhook
