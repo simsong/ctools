@@ -94,7 +94,8 @@ def excel_convert(infile,out_ext):
 
     try:
         wb.SaveAs(outfile, FileFormat=format_number[out_ext])
-    except Exception as e:
+        # I am not sure what exception this API will return can't find doc strings on it.
+    except Exception as e: # pylint: disable=W0702,W0703
         print("Failed to convert")
         print(str(e))
 

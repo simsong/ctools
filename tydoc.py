@@ -989,7 +989,7 @@ class jsonTable(TyTag):
 
         try:
             value = eval(typename)(typeval)
-        except Exception as e:
+        except (NameError, SyntaxError) as e:
             return cell
 
         if isinstance(value, ET.Element):
@@ -1462,7 +1462,7 @@ class tytable(TyTag):
 
         try:
             value = TYPECONV[typename](typeval)
-        except Exception as e:
+        except KeyError as e:
             return str(typeval)
 
         if isinstance(value, ET.Element):
