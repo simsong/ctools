@@ -14,7 +14,6 @@
 
 import os
 import re
-import numpy
 import logging
 import random
 import json
@@ -121,6 +120,7 @@ def decode_vtype(t):
     
 
 def vtype_for_numpy_type(t):
+    import numpy
     try:
         return {bytes:TYPE_CHAR,
                 float:TYPE_NUMBER,
