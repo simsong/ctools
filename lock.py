@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
+"""
+Tool for implementing locking of script
+To assure that only one copy of a script is running, insert this in __main__:
+    import ctools.lock
+    ctools.lock.lock_script()
 
-#
-# tools for implementing locking of script
+If a copy of the script is already running, a RuntimeError will be generated. 
+"""
+
 
 import sys
 import os

@@ -1,7 +1,7 @@
 import logging
-
+#from ctools.schema import *
 import ctools.schema as schema
-from ctools.schema.range import Range
+from ctools.schema.range import Range, convertRange
 from ctools.schema import valid_sql_name,decode_vtype,SQL_TYPE_MAP
 
 
@@ -21,38 +21,46 @@ class Variable:
     attrib   = a dictionary of user-specified attributes
     """
 
-    __slots__ = ('name','python_type','vtype','desc','field','column','width','ranges','default','format','prefix','attrib')
+    __slots__ = ('name','python_type','vtype','desc','position','column','width','ranges','default','format','prefix','attrib','allow_whitespace','start','end','allow_null')
 
-    def __init__(self,*,name=None,vtype=None,python_type=None,desc="",field=None,column=None,width=None,default=None,
-                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix=""):
+    def __init__(self,*,name=None,vtype=None,python_type=None,desc="",position=None,column=None,width=None,default=None,
+                 format=schema.DEFAULT_VARIABLE_FORMAT,attrib={},prefix="",allow_whitespace=False,start=None,end=None, allow_null=False):
         self.width       = None       # initial value
         self.set_name(name)
-        self.set_vtype(vtype=vtype, python_type=python_type)            
-        self.field       = field         # field number
+        self.set_vtype(vtype=vtype, python_type=python_type)
+        #self.field      = field         # field number
+        self.position    = position
         self.desc        = desc          # description
         self.column      = column        # Starting column in the line if this is a column-specified file 0
+        self.start = start
+        self.end = end
+        self.allow_null = allow_null
 
 
         # If width was specified, use it
         if width:
-            self.width   = width         # number of characters wide
+            try:
+                self.width   = int(width)         # number of characters wide
+            except ValueError:
+                print(f"No width passed to {self.name}, using default")
 
         self.ranges      = set()
         self.default     = default
         self.format      = format
         self.prefix      = prefix
         self.attrib      = attrib
+        self.allow_whitespace = allow_whitespace
 
     def __str__(self):
         return "{}({} column:{} width:{})".format(self.name,self.python_type.__name__,self.column,self.width)
 
     def __repr__(self):
-        return "Variable(field:{} name:{} desc:{} vtype:{})".format(self.field,self.name,self.desc,self.vtype)
+        return "Variable(position:{} name:{} desc:{} vtype:{})".format(self.position,self.name,self.desc,self.vtype)
 
     def json_dict(self):
         return {"name":self.name,
                 "vtype":self.vtype,
-                "field":self.field,
+                "position":self.position,
                 "desc":self.desc,
                 "column":self.column,
                 "width":self.width,
@@ -128,114 +136,17 @@ class Variable:
     def add_valid_data_description(self,desc):
         """Parse the variable descriptions typical of US Census Bureau data
         files that are used to describe valid values."""
-
-        # TODO: Rework this to use the range parser in the Range function
-
-        # If there are multiple lines, process each separately
         if "\n" in desc:
             for line in desc.split("\n"):
                 self.add_valid_data_description(line)
             return
+        if "," in desc:
+            for line in desc.split(","):
+                self.add_valid_data_description(line)
+            return
+        r = Range.extract_range_and_desc(desc, width=self.width)
+        self.ranges.add(r)
 
-        # If this is a note, just add it to the description and return
-        if note_re.search(desc):
-            if len(self.desc) > 0:
-                self.desc += " "
-            self.desc += desc
-            return
-
-        # Look to see if this is a longitude or a latitude:
-        if "(Latitude)" in desc:
-            self.format = "{:+.6f}"
-            self.ranges.add( Range(-90,90,"Latitude") )
-            return
-
-        if "(Longitude)" in desc:
-            self.format = "{:+.8f}"
-            self.ranges.add( Range(-180, 180, "Longitude") )
-            return
-
-        if desc.startswith("EMPTY-STRING"):
-            self.format = ""
-            self.ranges.add( Range("","",desc) )
-            return
-
-        # Look for specific patterns that are used. 
-        # Each pattern consists of a LEFT HAND SIDE and a RIGHT HAND SIDE of the equal sign.
-        # The LHS can be a set of values that are separated by commas. Each value can be a number or a range.
-        # The RHS is the description.
-        # For example:
-        #      3 = Three People
-        #  3,4,5 = Number of people
-        #  3-5,8 = Several people
-        #
-        m = assignVal_re.search(desc)
-        if m:
-            (lhs,rhs) = m.group(1,2)
-            assert "=" not in lhs
-            valDesc = rhs          # the description
-            if valDesc=="":
-                valDesc = "Allowable Values"
-            # Now loop for each comma item
-            for val in lhs.split(","):
-
-                val = unquote(val.strip())
-                if "EMPTY-STRING" in val:
-                    self.ranges.add(Range("","", desc=valDesc))
-                    continue
-
-                # Do we have a range?
-                m = range_re.search(val)
-                if m:
-                    (a,b) = m.group(1,2)
-                    assert a!="EMPTY"
-                     
-                    # Check for T numbers... (used for american indian reservations)
-                    if a[0:1]=='T' and b[0:1]=='T':
-                        self.prefix = 'T'
-                        a = a[1:]
-                        b = b[1:]
-            
-                    # Smart convert the range
-                    self.ranges.add( convertRange( a, b, desc=valDesc, vtype=self.vtype))
-                    continue
-                val = convertValue(val, vtype=self.vtype)
-                self.ranges.add( Range(val,val, desc=valDesc))
-                continue
-            return
-        #
-        # No equal sign was found. Check for a range.
-        #
-        m = range_re.search(desc) # see if we have just a range
-        if m:
-            (a,b) = m.group(1,2)
-            if a=="EMPTY-STRING": a=''
-            if b=="EMPTY-STRING": b=''
-            self.add_range( convertRange( a, b, desc="(inferred allowable range)", vtype=self.vtype))
-            return
-        # 
-        # No range was found. See if it is a magic value that we know how to recognize
-        #
-        
-        if "EMPTY-STRING" in desc:
-            self.add_range( Range(""))
-            return
-        if "not reported" in desc.lower():
-            self.add_range( Range(""))
-            return
-        
-        # 
-        # Can't figure it out; if it is a single word, add it.
-        #
-        if len(desc)>0 and (" " not in desc):
-            self.add_range( Range(desc) )
-            return
-
-        #
-        # Give up
-        #
-        raise RuntimeError("{} Unknown range description: '{}'".format(self.name,desc))
-        
 
     def random_value(self):
         """Generate a random value"""
@@ -288,7 +199,18 @@ class Variable:
         ret.append("    @classmethod")
         ret.append("    def {}(self,x):".format(self.python_validator_name()))
         ret.append('        """{}"""'.format(self.desc))
-        if self.python_type == int or self.python_type==float:
+        if self.allow_null:
+            ret.append("        if x is None or x == \"None\":")
+            ret.append("            return True")
+        else:
+            ret.append("        if x is None or x == \"None\":")
+            ret.append("            return False")
+        if self.allow_whitespace:
+            size = "".rjust(self.width, " ")
+            ret.append("        if x == '{}':".format(size))
+            ret.append("            return True")
+
+        if self.python_type == int or self.python_type == float:
             ret.append('        x = str(x).strip()')
             ret.append('        try:')
             if self.python_type==int:
@@ -297,7 +219,6 @@ class Variable:
                 ret.append('            x = float(x)')
             ret.append('        except ValueError:')
             ret.append('            return False')
-
         ranges = Range.combine_ranges(self.ranges)
         try:
             expr = " or ".join(["({})".format(r.python_expr(self.python_type, self.width)) for r in ranges])
@@ -323,7 +244,7 @@ class Variable:
 
     def dump(self,func=print):
         out = "".join([ "  ",
-                        f" #{self.field}" if self.field is not None else "",
+                        f" #{self.position}" if self.position is not None else "",
                         f"[{self.column}:{self.width}] ",
                         f"{self.name} ",
                         f"({self.desc}) " if self.desc else "",

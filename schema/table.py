@@ -222,12 +222,19 @@ class Table:
         for var in self.vars():
             if var.name in ignore_vars:
                 continue
-            ret.append("            {name_lower}=safe_{python_type}(self.{name}),"
-                       .format(name_lower=var.name.lower(),
-                               python_type=var.python_type.__name__,
-                               name=var.name))
+            type_str = 'str' if (var.allow_whitespace and var.python_type == int) else var.python_type.__name__
+            ret.append(f"            {var.name.lower()}=safe_{var.python_type.__name__}(self.{var.name}),")
         ret.append('        )')
-        ret.append('')
+        ret.append('\n')
+
+        ret.append("    @staticmethod")
+        ret.append("    def parse_line(line):")
+        ret.append("        # Read a line and return it as a dictionary.")
+        ret.append(f"        inst: {self.python_name()} = {self.python_name()}()")
+        ret.append("        inst.parse_column_specified(line)")
+        ret.append("        assert inst.validate(), f'A line is invalid!! line: {line}, validate_reason: {inst.validate_reason()}'")
+        ret.append("        row = inst.SparkSQLRow()")
+        ret.append("        return row\n")
         return "\n".join(ret) + "\n"
 
     def sql_schema(self, extra={}):
@@ -312,7 +319,12 @@ class Table:
         if delimiter is not None:
             fields = line.split(delimiter)
             return [v.python_type( fields[v.field] ) for v in self.vars() ]
-        return [ v.python_type(line[ v.column: v.column+v.width]) for v in self.vars() if (v.column is not None)]
+        for v in self.vars():
+            if v.start is not None and v.end is not None and v.width is not None:
+                if v.width - 1 + v.start != v.end:
+                    raise RuntimeError("Specified width did not line up with specified start and end of var {}".format(v.name))
+
+        return [ v.python_type(line[ v.start -1: v.end]) for v in self.vars() if (v.start is not None and v.end is not None)]
 
     def parse_line_to_dict(self, line, delimiter=None):
         """Parse a line (that was probably read from a text file) 
