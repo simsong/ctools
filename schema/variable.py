@@ -311,7 +311,7 @@ class Variable:
         ret.append("    def {}(self,x):".format(self.python_validator_name()))
         ret.append('        """{}"""'.format(self.desc))
         if self.allow_null:
-            ret.append("        if x is None or x == \"None\":")
+            ret.append("        if x is None or x == \"None\" or len(x) == 0:")
             ret.append("            return True")
         else:
             ret.append("        if x is None or x == \"None\":")
