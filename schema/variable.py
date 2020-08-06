@@ -1,9 +1,11 @@
 import logging
+from os.path import dirname, abspath
+import sys
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 #from ctools.schema import *
 import ctools.schema as schema
 from ctools.schema.range import Range, convertRange
 from ctools.schema import valid_sql_name,decode_vtype,SQL_TYPE_MAP
-
 
 class Variable:
     """The MDF Variable.
@@ -124,7 +126,6 @@ class Variable:
             if text in r.desc.lower():
                 self.default = r.a
                 return
-                
 
     def add_range(self,newrange):
         """Add a range of legal values for this variable."""
