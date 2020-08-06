@@ -12,25 +12,29 @@ class CodeSnippet:
     """
     Code Snippet
 
-    desc        = description of code snippet
-    attrib      = user defined attributes
-    name        = code snippet name
-    expressions = ordered list of loops, conditionals, and variable assignments
+    desc          = description of code snippet
+    attrib        = user defined attributes
+    name          = code snippet name
+    expressions   = ordered list of loops, conditionals, and variable assignments
+    indent_spaces = number of spaces in an indent
     
     note - there is no indent level for code snippets. if this is to be added later,
             you can use an indent_level=1 and indent_spaces=4, etc.
     """
 
-    __slots__ = ('desc','attrib','name','expressions')
+    __slots__ = ('desc','attrib','name','expressions','indent_spaces')
 
-    def __init__(self,*,desc="",attrib={},name='',expressions=[]):
+    def __init__(self,*,desc="",attrib={},name='',expressions=[], indent_spaces=4):
         self.desc        = desc          # description
         self.attrib      = attrib
         assert isinstance(name, str)
         if len(name) == 0:
             raise ValueError('name must be provided')
+        if ' ' in name or '\"' in name or '\'' in name:
+            raise ValueError('invalid characters in name found')
         self.name = name
 
+        self.indent_spaces = indent_spaces
         self.expressions = []
         for exp in expressions:
             self.add_expression(exp)
@@ -42,9 +46,13 @@ class CodeSnippet:
         self.expressions.append(expression)
 
     def __str__(self):
-        str_data = []
+        single_level_indent = ' ' * self.indent_spaces
+        # outputs a function representation of the snippet
+        str_data = [f'def snippet_{self.name}():']
 
-        expressions = [line for exp in self.expressions for line in str(exp).split('\n')]
+
+        expressions = [single_level_indent + line \
+            for exp in self.expressions for line in str(exp).split('\n')]
         str_data.extend(expressions)
 
         return '\n'.join(str_data)
