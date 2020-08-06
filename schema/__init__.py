@@ -86,7 +86,7 @@ def between(a,b,c,width):
         return False
     if '.' in a or '.' in b or '.' in c:
         try:
-            return float(leftpad(a,width)) <= float(leftpad(b,width)) <= float(leftpad(c,width))
+            return float(a) <= float(b) <= float(c)
         except:
             pass  # tries to return a float but might have weird input like 1.1.0 which will be compared traditionally instead
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
