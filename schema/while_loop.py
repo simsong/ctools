@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from boolean_expression import BooleanExpression
+from .boolean_expression import BooleanExpression
 
 default_expression = 'pass'
 default_condition = BooleanExpression()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from variable import Variable
+from .variable import Variable
 import z3
 
 class VariableAssignment:

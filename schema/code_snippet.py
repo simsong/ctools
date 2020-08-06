@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 import logging
-from boolean_expression import BooleanExpression
+from .boolean_expression import BooleanExpression
+from .while_loop import WhileLoop
+from .conditional import Conditional
+from .variable_assignment import VariableAssignment
 
 valid_expression_types = [WhileLoop, Conditional, VariableAssignment]
 
@@ -28,45 +31,45 @@ class CodeSnippet:
             raise ValueError('name must be provided')
         self.name = name
 
-        for expression of expressions:
-            
-        self.expressions = expressions
+        self.expressions = []
+        for exp in expressions:
+            self.add_expression(exp)
+
+    def add_expression(self, expression):
+        given_type = type(expression)
+        if given_type not in valid_expression_types:
+            raise TypeError(f'invalid expression type {given_type} provided')
+        self.expressions.append(expression)
 
     def __str__(self):
-        single_level_indent = ' ' * self.indent_spaces
-        conditional = ''.join([
-                    'while ',
-                    str(self.condition).strip(),
-                    ':'
-                   ])
-        str_data = [conditional]
+        str_data = []
 
-        expressions = [single_level_indent + line \
-            for exp in self.consequent for line in str(exp).split('\n')]
+        expressions = [line for exp in self.expressions for line in str(exp).split('\n')]
         str_data.extend(expressions)
 
         return '\n'.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'While Loop(condition: {repr(self.condition)}, consequent: ', \
-                str([repr(exp) for exp in self.consequent]), ')'])
+        return ''.join([f'Code Snippet(nam: {self.name}, expressions: ', \
+                str([repr(exp) for exp in self.expressions]), ')'])
 
     def json_dict(self):
         return {
                 "desc": self.desc,
                 "attrib": self.attrib,
-                "condition": self.condition.json_dict(),
-                "consequent": [str(elem) for elem in self.consequent]
+                "name": self.name,
+                "expressions": [str(elem) for elem in self.expressions]
                }
 
     def dump(self,func=print):
         func(str(self))
 
 def main():
-    loop = WhileLoop()
-    # print(repr(loop))
-    # print(loop.json_dict())
-    print(loop)
+    snippet = CodeSnippet(name='snippet')
+    snippet.add_expression(Conditional())
+    print(repr(snippet))
+    print(snippet.json_dict())
+    print(snippet)
 
 if __name__ == '__main__':
     main()

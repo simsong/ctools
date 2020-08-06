@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from boolean_expression import BooleanExpression
+from .boolean_expression import BooleanExpression
 
 default_condition = BooleanExpression()
 default_expression = 'pass'
@@ -69,7 +69,7 @@ class Conditional:
     def __repr__(self):
         return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ', \
                 str([repr(exp) for exp in self.consequent]), 'elif_arr: ', \
-                str([repr(elif_cond) for elif_cond in self.elif_arr]), 'alternative: ', \
+                str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ', \
                 str([repr(exp) for exp in self.alternative]), ')'])
 
     def json_dict(self):
