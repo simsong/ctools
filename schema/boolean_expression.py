@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from boolean_operator import BooleanOperator
+from .boolean_operator import BooleanOperator
 
 default_condition=True
 

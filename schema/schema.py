@@ -1,6 +1,6 @@
 import os
 import sys
-import pandas
+# import pandas
 from collections import OrderedDict
 import logging
 
@@ -13,6 +13,7 @@ from ctools.schema.range import Range
 from ctools.schema.table import Table
 from ctools.schema.variable import Variable
 from ctools.schema.recode import Recode
+from ctools.schema.code_snippet import CodeSnippet
 
 from types import ModuleType
 
