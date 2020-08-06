@@ -4,11 +4,15 @@ import sys
 import os
 import os.path
 import tempfile
+import warnings
 
-sys.path.append( os.path.join( os.path.dirname(__file__), "../.."))
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 from ctools.tydoc import *
-from ctools.latex_tools import run_latex
+from ctools.latex_tools import run_latex,no_latex
 
 def test_tytag_option():
     t = TyTag('demo')
@@ -73,7 +77,11 @@ def test_tydoc_latex(tmpdir):
     d2.add_data(['California','CA',37252895])
 
     doc.save(os.path.join(tmpdir, "tydoc.tex"), format="latex")
-    run_latex(os.path.join(tmpdir, "tydoc.tex"))
+
+    if no_latex():
+        warnings.warn("Cannot run LaTeX tests")
+    else:
+        run_latex(os.path.join(tmpdir, "tydoc.tex"))
 
 def test_tydoc_toc():
     """Test the Tydoc table of contents feature."""

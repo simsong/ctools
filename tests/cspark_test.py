@@ -3,8 +3,10 @@ import os
 import py.test
 import io
 
-#sys.path.append( os.path.join( os.path.dirname(__file__), "..") )
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from os.path import abspath
+from os.path import dirname
+
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 import ctools.cspark as cspark
 
@@ -88,5 +90,5 @@ if __name__=="__main__":
     # This is solely so that we can run under py.test
     # Don't remove it! You can also just run this program to see what happens
     # It should print "spark ran successfully."
-    test_run_spark()
+    test_spark_submit_cmd()
     

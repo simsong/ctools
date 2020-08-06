@@ -13,9 +13,10 @@ import logging
 import hashlib
 import platform
 import shutil
+import distutils.spawn
 
 ERROR_LINES=50
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEBUG=False
 
@@ -36,6 +37,10 @@ if sys.platform=='win32':
     LATEX_EXE='pdflatex.exe'
 else:
     LATEX_EXE='pdflatex'
+
+def no_latex():
+    """Return true if latex is not available"""
+    return distutils.spawn.find_executable(LATEX_EXE) is None
 
 LATEX_QUOTE_TRANSFORMS = {
     "’": "'",

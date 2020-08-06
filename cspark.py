@@ -12,6 +12,7 @@ import sys
 import time
 import glob
 import json
+import subprocess
 
 SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
 AWS_PATH = 'AWS_PATH'
@@ -216,6 +217,8 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
                      num_executors=num_executors,
                      conf=conf, configdict=configdict, properties_file=properties_file,
                      argv=sys.argv)
+        return None # spark_submit() will return if we are running under PYTEST
+
     # Running inside spark
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.appName(appName).getOrCreate()

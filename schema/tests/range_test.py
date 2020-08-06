@@ -5,8 +5,10 @@
 
 import os
 import sys
+from os.path import dirname
+from os.path import abspath
 
-sys.path.append(os.path.join(os.path.dirname(__file__),"../../.."))
+sys.path.append(dirname(dirname(dirname(dirname(abspath(__file__))))))
 
 from ctools.schema.range import Range
 
@@ -36,3 +38,21 @@ def test_parse():
     assert Range.extract_range_and_desc("1-2 hello", python_type=int, hardfail=True) == Range(1,2,"hello")
     assert Range.extract_range_and_desc("1-2 = hello", python_type=int, hardfail=True) == Range(1,2,"hello")
     assert Range.extract_range_and_desc("1-2 = (hello)", python_type=int, hardfail=True) == Range(1,2,"hello")
+
+    assert Range.extract_range_and_desc("1 hello 3-4", python_type=int, hardfail=True) == Range(1,1,"hello 3-4")
+    assert Range.extract_range_and_desc("1 (hello 3-4)", python_type=int, hardfail=True) == Range(1,1,"hello 3-4")
+    assert Range.extract_range_and_desc("1 = hello 3-4", python_type=int, hardfail=True) == Range(1,1,"hello 3-4")
+    assert Range.extract_range_and_desc("1 = (hello 3-4)", python_type=int, hardfail=True) == Range(1,1,"hello 3-4")
+
+    assert Range.extract_range_and_desc("1-2 hello 3-4", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
+    assert Range.extract_range_and_desc("1-2 (hello 3-4)", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
+    assert Range.extract_range_and_desc("1-2 = hello 3-4", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
+    assert Range.extract_range_and_desc("1-2 = (hello 3-4)", python_type=int, hardfail=True) == Range(1,2,"hello 3-4")
+
+    assert Range.extract_range_and_desc("      1 = hello 3-4", python_type = int, hardfail = True) == Range(1,1,"hello 3-4")
+
+
+    # A few descriptions that we don't want to parse as Ranges
+    assert Range.extract_range_and_desc("Up to 22 values", python_type = int, hardfail = False) == None
+    assert Range.extract_range_and_desc("Fips State Code (The legal values for this file are 01-02, 04-06)", python_type=int, hardfail = False) == None
+
