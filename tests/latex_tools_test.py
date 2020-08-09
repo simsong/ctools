@@ -16,8 +16,6 @@ from os.path import dirname
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 import ctools.latex_tools as latex_tools
 
-from latex_tools import no_latex
-
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 HELLO_TEX=os.path.join(TEST_FILES_DIR,"hello.tex")
 HELLO_PDF=HELLO_TEX.replace("tex","pdf")
@@ -55,7 +53,7 @@ def test_label_parser():
 ## These tools require running LaTeX
 
 def test_run_latex():
-    if no_latex():
+    if latex_tools.no_latex():
         warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
 
@@ -85,7 +83,7 @@ def test_run_latex():
     os.unlink(HELLO_PDF)
 
 def test_count_pdf_pages_pypdf():
-    if no_latex():
+    if latex_tools.no_latex():
         warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     try:
@@ -97,7 +95,7 @@ def test_count_pdf_pages_pypdf():
         logging.warning("PyPDF2 is not available")
 
 def test_count_pdf_pages():
-    if no_latex():
+    if latex_tools.no_latex():
         warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     assert os.path.exists(FIVEPAGES_PDF) # we need this file
@@ -112,13 +110,13 @@ def test_count_pdf_pages():
     assert not os.path.exists(FIVEPAGES_OUT) # we do not want this
 
 def test_inspect_pdf():
-    if no_latex():
+    if latex_tools.no_latex():
         warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     assert latex_tools.count_pdf_pages(FIVEPAGES_PDF) == 5
 
 def test_extract_pdf_pages():
-    if no_latex():
+    if latex_tools.no_latex():
         warnings.warn("No "+latex_tools.LATEX_EXE+": Tests involving running LaTeX will not be return")
         return
     if os.path.exists(EXTRACT_PDF):
