@@ -53,6 +53,7 @@ class Variable:
         self.attrib      = attrib
         self.allow_whitespace = allow_whitespace
 
+
     def __str__(self):
         return "{}({} column:{} width:{})".format(self.name,self.python_type.__name__,self.column,self.width)
 
@@ -149,6 +150,10 @@ class Variable:
         if r is not None and len(r.b) > self.width:
             self.width = len(r.b)
         self.ranges.add(r)
+
+    def set_allow_whitespace(self):
+        self.allow_whitespace = True
+        self.python_type = str
 
 
     def random_value(self):
