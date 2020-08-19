@@ -92,6 +92,9 @@ def excel_convert(infile,out_ext):
 
     print("{} => {}".format(infile_fullpath,outfile))
 
+    # Select all worksheets for the save process
+    wb.Worksheets.Select()
+    
     try:
         wb.SaveAs(outfile, FileFormat=format_number[out_ext])
         # I am not sure what exception this API will return can't find doc strings on it.
@@ -100,7 +103,9 @@ def excel_convert(infile,out_ext):
         print(str(e))
 
     if wb:
+        # False parameter closes without saving
         wb.Close(False)         # May work
+        # Excel quits properly for PDF conversion but not other types
         excel.Quit()
     return True
 
