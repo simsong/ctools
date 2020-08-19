@@ -8,7 +8,7 @@ from ctools.schema import clean_int
 IN_INTEGER = "integer"
 IN_NULL = "null"
 IN_ALPHANUMERIC = "alphanumeric"
-IN_WHITESPACE = "whitespace"
+IN_WHITESPACE = "hitespace"
 
 def all_ints(ranges):
     for r in ranges:
@@ -95,8 +95,6 @@ class Range:
     def combine_ranges(ranges):
         """Examine a list of ranges and combine adjacent ranges"""
         # Make a new list with the ranges in sorted order
-        print(ranges)
-        print(None in ranges)
         if None in ranges:
             ranges.remove(None)
 
