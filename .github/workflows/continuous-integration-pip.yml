@@ -32,29 +32,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools wheel
 
-      - name: check for requirements.txt
-        id: has_requirements
-        uses: andstor/file-existence-action@v1
-        with:
-          files: "requirements.txt"
-
-      - name: Install Python dependencies on all platforms
-        if: steps.has_requirements.output.files_exists == 'true'
-        # only runs if all of the files in the comma-delimited 'files' above is true
+      - name: install requirements.txt if present
         run: |
-          pip install -r requirements.txt
+          python -c 'import os,sys,subprocess; subprocess.call(["pip","install","-r","requirements.txt"]) if os.path.exists("requirements.txt")'
 
       - name: check for requirements_win32.txt
-        id: has_requirements_win32
-        uses: andstor/file-existence-action@v1
-        with:
-          files: "requirements_win32.txt"
-
-      - name: Install Python dependencies on all windows
-        if: (steps.has_requirements_win32.output.files_exists == 'true') && ( matrix.os == 'windows-latest')
-        # only runs if all of the files in the comma-delimited 'files' above is true
         run: |
-          pip install -r requirements_win32.txt
+          python -c 'import os,sys,subprocess; subprocess.call(["pip","install","-r","requirements.txt"]) if os.path.exists("requirements_win32.txt") and sys.platform=="windows"'
 
       - name: Test with pytest
         run: |
