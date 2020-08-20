@@ -41,11 +41,7 @@ def is_xls_xml(infile):
 # https://stackoverflow.com/questions/16683376/print-chosen-worksheets-in-excel-files-to-pdf-in-python
 # https://github.com/mwhit74/excel/blob/master/excel_to_pdf.py
 def excel_convert(infile,out_ext):
-    try:
-        import win32com.client
-    except ImportError as e:
-        warnings.warn("excel_convert requires win32.client")
-        return False
+    import win32com.client
 
     if out_ext not in format_number:
         raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
