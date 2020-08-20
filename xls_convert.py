@@ -48,7 +48,7 @@ def excel_convert(infile,out_ext):
         return False
 
     if out_ext not in format_number:
-        print("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
+        raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
 
     infile_fullpath = os.path.abspath(infile)
     (base,in_ext) = os.path.splitext(infile_fullpath)
@@ -62,10 +62,10 @@ def excel_convert(infile,out_ext):
         raise FileExistsError(outfile)
 
     if in_ext==out_ext:
-        return ValueError(f"Input extension {in_ext} matches output extension {out_ext}")
+        raise ValueError(f"Input extension {in_ext} matches output extension {out_ext}")
 
     if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
-        return RuntimeError(f"{in_ext} is not an XLS XML file")
+        raise RuntimeError(f"{in_ext} is not an XLS XML file")
 
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = 0
@@ -106,19 +106,10 @@ def excel_convert(infile,out_ext):
 
     # Select all worksheets for the save process
     wb.Worksheets.Select()
-
-    try:
-        wb.SaveAs(outfile, FileFormat=format_number[out_ext])
-        # I am not sure what exception this API will return can't find doc strings on it.
-    except Exception as e: # pylint: disable=W0702,W0703
-        print("Failed to convert")
-        print(str(e))
-
-    if wb:
-        # False parameter closes without saving
-        wb.Close(False)         # May work
-        # Excel quits properly for PDF conversion but not other types
-        excel.Quit()
+    wb.SaveAs(outfile, FileFormat=format_number[out_ext])
+    wb.Close(False)         # May work
+    # Excel quits properly for PDF conversion but not other types
+    excel.Quit()
     return True
 
 if __name__=="__main__":
