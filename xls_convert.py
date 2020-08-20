@@ -3,6 +3,14 @@ import os.path
 import sys,os,glob
 import warnings
 
+class NoExcel(Exception):
+    def __init__(self, msg=''):
+        Exception.__init__(self, msg)
+    def __repr__(self):
+        return self.message
+    __str__ = __repr__
+
+
 #import win32api
 
 # Notes on accessing Excel from Python with COM:
@@ -47,19 +55,17 @@ def excel_convert(infile,out_ext):
 
     wb = None
     if not os.path.isfile(infile_fullpath):
-        print("{} does not exist".format(infile_fullpath));
-        return False
+        raise FileNotFoundError(infile_fullpath)
 
     outfile    = base+out_ext
     if os.path.exists(outfile):
-        print("   {} exists".format(outfile))
-        return False
+        raise FileExistsError(outfile)
 
     if in_ext==out_ext:
-        return False
+        return ValueError(f"Input extension {in_ext} matches output extension {out_ext}")
 
     if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
-        return False
+        return RuntimeError(f"{in_ext} is not an XLS XML file")
 
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = 0
@@ -100,7 +106,7 @@ def excel_convert(infile,out_ext):
 
     # Select all worksheets for the save process
     wb.Worksheets.Select()
-    
+
     try:
         wb.SaveAs(outfile, FileFormat=format_number[out_ext])
         # I am not sure what exception this API will return can't find doc strings on it.
