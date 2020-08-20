@@ -33,16 +33,28 @@ jobs:
           python -m pip install --upgrade setuptools wheel
 
       - name: check for requirements.txt
-        id: check_files
+        id: has_requirements
         uses: andstor/file-existence-action@v1
         with:
           files: "requirements.txt"
 
-      - name: Install Python dependencies
-        if: steps.check_files.output.files_exists == 'true'
+      - name: Install Python dependencies on all platforms
+        if: steps.has_requirements.output.files_exists == 'true'
         # only runs if all of the files in the comma-delimited 'files' above is true
         run: |
           pip install -r requirements.txt
+
+      - name: check for requirements_win32.txt
+        id: has_requirements_win32
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "requirements_win32.txt"
+
+      - name: Install Python dependencies on all windows
+        if: (steps.has_requirements_win32.output.files_exists == 'true') && ( matrix.os == 'windows-latest')
+        # only runs if all of the files in the comma-delimited 'files' above is true
+        run: |
+          pip install -r requirements_win32.txt
 
       - name: Test with pytest
         run: |
