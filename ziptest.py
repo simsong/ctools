@@ -20,12 +20,12 @@ class VerboseFile:
         return self.fp.read(len)
 
     def seek(self,offset,whence):
-        print("will seek {},{}".format(offset,whence))
+        print("will seek {},{}".format(offset, whence))
         try:
-            r = self.fp.seek(offset,whence)
-        except Exception as e:
-            print("Exception: ",e)
-        print("seek({},{})={}".format(offset,whence,r))
+            r = self.fp.seek(offset, whence)
+        except IOError as e:
+            print("Exception: ", e)
+        print("seek({},{})={}".format(offset, whence, r))
         return r
 
     def tell(self):

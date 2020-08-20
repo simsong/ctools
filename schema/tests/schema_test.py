@@ -49,9 +49,9 @@ def test_unquote():
     
 
 SQL_CREATE1="""    CREATE TABLE output (
-        INTEGER StudentNumber,
-	VARCHAR CourseNumber,
-	VARCHAR CourseName
+    INTEGER StudentNumber,
+    VARCHAR CourseNumber,
+    VARCHAR CourseName
     );
 """
 

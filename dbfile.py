@@ -7,7 +7,9 @@ import logging
 import sys
 import threading
 import sqlite3
+import pymysql
 
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 
 """
@@ -101,7 +103,7 @@ def hostname():
     """Hostname without domain"""
     return socket.gethostname().partition('.')[0]
 
-from abc import ABC, abstractmethod
+
 class DBSQL(ABC):
     def __init__(self,dicts=True,debug=False):
         self.dicts = dicts
@@ -119,7 +121,7 @@ class DBSQL(ABC):
             t0 = time.time()
         try:
             res = self.conn.cursor().execute(cmd, *args, **kwargs)
-        except Exception as e:
+        except (sqlite3.Error, pymysql.MySQLError) as e:
             print(cmd,*args,file=sys.stderr)
             print(e,file=sys.stderr)
             exit(1)
@@ -141,12 +143,12 @@ class DBSQL(ABC):
             line = line.strip()
             if len(line)>0:
                 if self.debug or debug:
-                    print(f"{line};",file=sys.stderr)
+                    print(f"{line};", file=sys.stderr)
                 try:
                     c.execute(line)
-                except Exception as e:
-                    print("SQL:",line,file=sys.stderr)
-                    print("Error:",e,file=sys.stderr)
+                except (sqlite3.Error, pymysql.MySQLError) as e:
+                    print("SQL:", line, file=sys.stderr)
+                    print("Error:", e, file=sys.stderr)
                     exit(1)
 
     def execselect(self, sql, vals=()):
@@ -157,6 +159,7 @@ class DBSQL(ABC):
 
     def close(self):
         self.conn.close()
+
 
 class DBSqlite3(DBSQL):
     def __init__(self,fname=None,*args,**kwargs):

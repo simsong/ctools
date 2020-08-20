@@ -98,14 +98,20 @@ def excel_convert(infile,out_ext):
 
     print("{} => {}".format(infile_fullpath,outfile))
 
+    # Select all worksheets for the save process
+    wb.Worksheets.Select()
+    
     try:
         wb.SaveAs(outfile, FileFormat=format_number[out_ext])
-    except Exception as e:
+        # I am not sure what exception this API will return can't find doc strings on it.
+    except Exception as e: # pylint: disable=W0702,W0703
         print("Failed to convert")
         print(str(e))
 
     if wb:
+        # False parameter closes without saving
         wb.Close(False)         # May work
+        # Excel quits properly for PDF conversion but not other types
         excel.Quit()
     return True
 

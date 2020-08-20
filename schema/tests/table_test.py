@@ -31,9 +31,9 @@ def test_Table():
     s = Schema()
     t = Table(name="students")
     s.add_table(t)
-    name = Variable(name="name",vtype='VARCHAR(4)',column=0,width=4)
+    name = Variable(name="name",vtype='VARCHAR(4)',column=0,width=4,start=1,end=4)
     assert(name.python_type==str)
-    age  = Variable(name="age",vtype='INTEGER(2)',column=4,width=2)
+    age  = Variable(name="age",vtype='INTEGER(2)',column=4,width=2,start=5,end=6)
     t.add_variable(name)
     t.add_variable(age)
     assert name.column==0
@@ -85,9 +85,9 @@ def test_Table():
 
 
 SQL_CREATE1="""    CREATE TABLE output (
-        INTEGER StudentNumber,
-	VARCHAR CourseNumber,
-	VARCHAR CourseName
+    INTEGER StudentNumber,
+    VARCHAR CourseNumber,
+    VARCHAR CourseName
     );
 """
 

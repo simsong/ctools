@@ -20,21 +20,24 @@ import json
 import decimal
 from collections import OrderedDict
 
-unquote_re     = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
-type_width_re  = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]") # matches a type and width specification
-note_re        = re.compile(r"Note([ 0-9])*:",re.I)
-assignVal_re   = re.compile(r"([^=]*)\s*=\s*(.*)")
-assignRange_re = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
-range_re       = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)") # handles unicode dashes
-integer_re     = re.compile(r"INTEGER ?\((\d+)\)",re.I)
+unquote_re         = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
+type_width_re      = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]") # matches a type and width specification
+note_re            = re.compile(r"Note([ 0-9])*:",re.I)
+assignVal_re       = re.compile(r"([^=]*)\s*=\s*(.*)")
+assignRange_re     = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
+range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)") # handles unicode dashes
+integer_re         = re.compile(r"INTEGER ?\((\d+)\)",re.I)
 
-TYPE_NUMBER    = "NUMBER"
-TYPE_INTEGER   = "INTEGER"
-TYPE_INT       = "INT"
-TYPE_VARCHAR   = "VARCHAR"
-TYPE_CHAR      = "CHAR"
-TYPE_DECIMAL   = "DECIMAL"
-TYPE_FLOAT     = "FLOAT"
+TYPE_NUMBER        = "NUMBER"
+TYPE_INTEGER       = "INTEGER"
+TYPE_INT           = "INT"
+TYPE_VARCHAR       = "VARCHAR"
+TYPE_CHAR          = "CHAR"
+TYPE_DECIMAL       = "DECIMAL"
+TYPE_FLOAT         = "FLOAT"
+TYPE_DATE          = "DATE"
+TYPE_SDO_GEOMETRY  = "SDO_GEOMETRY"
+TYPE_STRING        = "STRING"
 # map SQL names to Python types
 PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_INTEGER:int,
@@ -42,6 +45,9 @@ PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
                   TYPE_VARCHAR:str,
                   TYPE_CHAR:str,
                   TYPE_FLOAT:float,
+                  TYPE_DATE:str,
+                  TYPE_SDO_GEOMETRY:str,
+                  TYPE_STRING:str,
                   TYPE_DECIMAL:decimal.Decimal }
 # Python types to SQL names
 SQL_TYPE_MAP = { int: {'type': TYPE_INTEGER,'width':8},
@@ -75,7 +81,15 @@ def leftpad(x,width):
     return ' '*(width-len(str(x)))+str(x)
 
 def between(a,b,c,width):
+    if len(b) > width:
+        return False
+    if '.' in a or '.' in b or '.' in c:
+        try:
+            return float(leftpad(a,width)) <= float(leftpad(b,width)) <= float(leftpad(c,width))
+        except:
+            pass  # tries to return a float but might have weird input like 1.1.0 which will be compared traditionally instead
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
+
 
 def safe_int(i):
     try:
