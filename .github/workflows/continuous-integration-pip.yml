@@ -20,16 +20,18 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov
+          python -m pip install --upgrade setuptools wheel
           if [ -r requirements.txt ]; then pip install -r requirements.txt ; fi
           if [ -r requirements-dev.txt ]; then pip install -r requirements-dev.txt ; fi
 
       - name: Test with pytest
-        run: pytest --cov=./ --cov-report=xml python
+        run: |
+          python -m pip install --upgrade pytest pytest-cov
+          pytest --cov=./ --cov-report=xml python
