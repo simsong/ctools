@@ -1,8 +1,8 @@
 import os
 import os.path
 import sys,os,glob
+import warnings
 
-import win32com.client
 #import win32api
 
 # Notes on accessing Excel from Python with COM:
@@ -21,7 +21,7 @@ def is_xls_xml(infile):
     if os.path.splitext(infile)[1].lower()=='.xml':
         with open(infile,"r") as f:
             lines = f.read(65536).split("\n")[0:5]
-            if (len(lines)>3 and 
+            if (len(lines)>3 and
                 lines[0].strip()=='<?xml version="1.0"?>' and
                 lines[1].strip()=='<?mso-application progid="Excel.Sheet"?>'):
                 return True
@@ -33,6 +33,12 @@ def is_xls_xml(infile):
 # https://stackoverflow.com/questions/16683376/print-chosen-worksheets-in-excel-files-to-pdf-in-python
 # https://github.com/mwhit74/excel/blob/master/excel_to_pdf.py
 def excel_convert(infile,out_ext):
+    try:
+        import win32com.client
+    except ImportError as e:
+        warnings.warn("excel_convert requires win32.client")
+        return False
+
     if out_ext not in format_number:
         print("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
 
@@ -67,7 +73,7 @@ def excel_convert(infile,out_ext):
             ws.Activate()                       # activate this worksheet
 
             # Autofit the colums
-            excel.ActiveSheet.Columns.AutoFit() 
+            excel.ActiveSheet.Columns.AutoFit()
 
             excel.PrintCommunication    = False
             # Don't change the orientation
@@ -115,4 +121,3 @@ if __name__=="__main__":
             excel_convert(fn,args.out_ext)
     else:
         excel_convert(args.infile,args.out_ext)
-

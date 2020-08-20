@@ -1,0 +1,35 @@
+# This file based on https://gist.github.com/mwouts/9842452d020c08faf9e84a3bba38a66f
+# See: https://help.github.com/en/actions/reference/software-installed-on-github-hosted-runners
+# 2020-06-22 - slg - customized
+# 2020-06-27 - slg - expanded to G++ for MacOS
+#
+# https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions
+
+name: CI (pytest and c++)
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['windows-latest', 'ubuntu-18.04', 'ubuntu-20.04', 'macos-latest']
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          if [ -r requirements.txt ]; then pip install -r requirements.txt ; fi
+          if [ -r requirements-dev.txt ]; then pip install -r requirements-dev.txt ; fi
+
+      - name: Test with pytest
+        run: pytest --cov=./ --cov-report=xml python
