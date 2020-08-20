@@ -78,16 +78,17 @@ SQL_SCHEMA = {MYSQL : {'param':'%s'},
 # Included in programmatically-generated output
 SCHEMA_SUPPORT_FUNCTIONS="""
 def leftpad(x,width):
-    return ' '*(width-len(str(x)))+str(x)
+    return '0'*(width-len(str(x)))+str(x)
 
 def between(a,b,c,width):
     if len(b) > width:
         return False
     if '.' in a or '.' in b or '.' in c:
         try:
-            return float(leftpad(a,width)) <= float(leftpad(b,width)) <= float(leftpad(c,width))
+            return float(a) <= float(b) <= float(c)
         except:
             pass  # tries to return a float but might have weird input like 1.1.0 which will be compared traditionally instead
+    b = b.replace(' ', '0')
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
 
 
