@@ -77,7 +77,9 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
     print("    --> {}".format(outfile))
     if sys.platform=='win32':
         try:
-            import os,win32com.client,pywintypes
+            import os
+            import win32com.client
+            import pywintypes
         except ModuleNotFoundError as e:
             print(e)
             print("Cannot convert {} --- please convert it manually".format(infile))

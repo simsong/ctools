@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from urllib.parse import urlparse
 
-# 
+#
 # This creates an S3 file that supports seeking and caching.
 # We keep this file at Python2.7 for legacy reasons
 
@@ -385,7 +385,7 @@ class S3File:
 # Tools for reading and write files from Amazon S3 without boto or boto3
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
-# 
+#
 # This could be redesigned to simply use the S3File() below
 # Todo: redesign so that it can be used in a "with" statement
 
@@ -412,7 +412,7 @@ class s3open:
 
         cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/", "_"))
 
-        # If not caching and a cache file is present, delete it. 
+        # If not caching and a cache file is present, delete it.
         if not cache and os.path.exists(cache_name):
             os.unlink(cache_name)
 
@@ -492,7 +492,6 @@ class DuCounter:
     def count(self, bytes_):
         self.total_bytes += bytes_
         self.total_files += 1
-        
 
 def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
@@ -501,7 +500,7 @@ def print_du(root):
     cmd = [awscli(),'s3','ls','--recursive',root]
     print(" ".join(cmd))
     p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
-    part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
+    part_re = re.compile(r"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
     MiB = 1024*1024
     try:
@@ -539,8 +538,6 @@ def print_du(root):
                           path))
         if ct==20:
             break
-        
-
 
 if __name__ == "__main__":
     t0 = time.time()
