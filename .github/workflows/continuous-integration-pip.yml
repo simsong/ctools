@@ -34,11 +34,11 @@ jobs:
 
       - name: install requirements.txt if present
         run: |
-          python -c 'import os,sys,subprocess; subprocess.call(["pip","install","-r","requirements.txt"]) if os.path.exists("requirements.txt") else None'
+          python -c "import os,sys,subprocess; subprocess.call(['pip','install','-r','requirements.txt']) if os.path.exists('requirements.txt') else None"
 
       - name: check for requirements_win32.txt
         run: |
-          python -c 'import os,sys,subprocess; subprocess.call(["pip","install","-r","requirements.txt"]) if os.path.exists("requirements_win32.txt") and sys.platform=="windows" else None'
+          python -c "import os,sys,subprocess; subprocess.call(['pip','install','-r','requirements.txt']) if os.path.exists('requirements_win32.txt') and sys.platform=='windows' else None"
 
       - name: Test with pytest
         run: |
