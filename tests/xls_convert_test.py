@@ -1,6 +1,7 @@
 import py.test
 import os
 import sys
+import warnings
 
 from os.path import abspath
 from os.path import dirname
@@ -34,6 +35,11 @@ def test_prep():
 
 def test_excel_convert():
     # Only return for excel_convert if it doesn't halt is True
+    # right now, we can only do this on windows
+    if sys.platform!='win32':
+        warnings.warn("excel tests only run on Windows")
+        return
+
     assert excel_convert(TEST_XLSX, ".pdf") == True
     # Verify PDF was created
     assert os.path.exists(TEST_PDF) == True
