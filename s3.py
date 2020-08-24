@@ -501,7 +501,7 @@ def print_du(root):
     cmd = [awscli(),'s3','ls','--recursive',root]
     print(" ".join(cmd))
     p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
-    part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
+    part_re = re.compile(r"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
     MiB = 1024*1024
     try:
