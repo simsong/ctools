@@ -26,8 +26,7 @@ class Conditional:
         self.condition   = condition
         assert isinstance(self.condition, BooleanExpression)
 
-        if len(consequent) == 0:
-            consequent.append(default_expression)
+
         self.consequent = consequent
 
         self.elif_arr = elif_arr
@@ -59,10 +58,10 @@ class Conditional:
         elif_expressions = [str(exp) for exp in self.elif_arr]
         str_data.extend(elif_expressions)
 
-        str_data.append('else:')
-        else_expressions = [single_level_indent + line \
-            for exp in self.consequent for line in str(exp).split('\n')]
-        str_data.extend(else_expressions)
+        #str_data.append('else:')
+        #else_expressions = [single_level_indent + line \
+        #    for exp in self.consequent for line in str(exp).split('\n')]
+        #str_data.extend(else_expressions)
 
         return '\n'.join(str_data)
 
