@@ -86,7 +86,7 @@ def between(a,b,c,width):
     if '.' in a or '.' in b or '.' in c:
         try:
             return float(a) <= float(b) <= float(c)
-        except:
+        except ValueError:
             pass  # tries to return a float but might have weird input like 1.1.0 which will be compared traditionally instead
     b = b.replace(' ', '0')
     return leftpad(a,width) <= leftpad(b,width) <= leftpad(c,width)
