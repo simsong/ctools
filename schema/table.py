@@ -235,7 +235,18 @@ class Table:
         ret.append("        assert inst.validate(), f'A line is invalid!! line: {line}, validate_reason: {inst.validate_reason()}'")
         ret.append("        row = inst.SparkSQLRow()")
         ret.append("        return row\n")
+
+        ret.append("    @staticmethod")
+        ret.append("    def parse_piped_line(line):")
+        ret.append("        # Read a pipe-delimited line and return it as a dictionary.")
+        ret.append(f"        inst: {self.python_name()} = {self.python_name()}()")
+        ret.append("        inst.parse_pipe_delimited(line)")
+        ret.append(
+            "        assert inst.validate(), f'A line is invalid!! line: {line}, validate_reason: {inst.validate_reason()}'")
+        ret.append("        row = inst.SparkSQLRow()")
+        ret.append("        return row\n")
         return "\n".join(ret) + "\n"
+
 
     def sql_schema(self, extra={}):
         """Generate CREATE TABLE statement for this schema"""
