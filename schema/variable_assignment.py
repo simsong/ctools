@@ -19,14 +19,18 @@ class VariableAssignment:
 
     def __init__(self,variable,value,desc="",attrib={},\
                 solver=None):
-        self.desc        = desc          # description
+        if desc:
+            self.desc        = desc          # description
+        if variable.desc:
+            self.desc = variable.desc
         self.attrib      = attrib
         assert isinstance(variable, Variable)
         if variable.name is None:
             raise ValueError('variable name cannot be none')
         self.variable = variable
 
-        self.solver = solver
+        if solver:
+            self.solver = solver
         self.set_value(value)
 
     def check_range(self):
@@ -48,15 +52,15 @@ class VariableAssignment:
             return
         if not isinstance(value, self.variable.python_type):
             raise ValueError(f'value is not of type {self.variable.python_type}')
-        if self.python_type == int:
+        if self.variable.python_type == int:
             self.z3_obj = z3.Int(int(value))
-        elif self.python_type == bool:
+        elif self.variable.python_type == bool:
             self.z3_obj = z3.Bool(bool(value))
-        elif self.python_type == float:
+        elif self.variable.python_type == float:
             self.z3_obj = z3.Float(float(value))
-        elif self.python_type == str:
+        elif self.variable.python_type == str:
             self.z3_obj = z3.String(str(value))
-        elif self.python_type == long:
+        elif self.variable.python_type == long:
             self.z3_obj = z3.Long(long(value))
         else:
             raise ValueError('invalid python type provided')
