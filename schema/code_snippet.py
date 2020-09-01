@@ -22,7 +22,7 @@ class CodeSnippet:
             you can use an indent_level=1 and indent_spaces=4, etc.
     """
 
-    __slots__ = ('desc','attrib','name','expressions','indent_spaces')
+    __slots__ = ('desc','attrib','name','expressions','indent_spaces', 'variables')
 
     def __init__(self,*,desc="",attrib={},name='',expressions=[], indent_spaces=4):
         self.desc        = desc          # description
@@ -39,6 +39,12 @@ class CodeSnippet:
         for exp in expressions:
             self.add_expression(exp)
 
+        self.variables = []
+
+    def add_variable(self, variable):
+        if variable not in self.variables:
+            self.variables.append(variable)
+
     def add_expression(self, expression):
         given_type = type(expression)
         if given_type not in valid_expression_types:
@@ -48,7 +54,10 @@ class CodeSnippet:
     def __str__(self):
         single_level_indent = ' ' * self.indent_spaces
         # outputs a function representation of the snippet
-        str_data = [f'def snippet_{self.name}():']
+        var_output = self.variables[0]
+        for var in self.variables[1:]:
+            var_output += ', ' + var
+        str_data = [f'def snippet_{self.name}({var_output}):']
 
 
         expressions = [single_level_indent + line \
@@ -58,7 +67,7 @@ class CodeSnippet:
         return '\n'.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'Code Snippet(nam: {self.name}, expressions: ', \
+        return ''.join([f'Code Snippet(name: {self.name}, expressions: ', \
                 str([repr(exp) for exp in self.expressions]), ')'])
 
     def json_dict(self):
@@ -66,7 +75,8 @@ class CodeSnippet:
                 "desc": self.desc,
                 "attrib": self.attrib,
                 "name": self.name,
-                "expressions": [str(elem) for elem in self.expressions]
+                "expressions": [str(elem) for elem in self.expressions],
+                "variables": [var for var in self.variables]
                }
 
     def dump(self,func=print):
