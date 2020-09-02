@@ -22,7 +22,7 @@ class CodeSnippet:
             you can use an indent_level=1 and indent_spaces=4, etc.
     """
 
-    __slots__ = ('desc','attrib','name','expressions','indent_spaces', 'variables')
+    __slots__ = ('desc','attrib','name','expressions','indent_spaces', 'variables', 'variable_to_validate')
 
     def __init__(self,*,desc="",attrib={},name='',expressions=[], indent_spaces=4):
         self.desc        = desc          # description
@@ -40,10 +40,16 @@ class CodeSnippet:
             self.add_expression(exp)
 
         self.variables = []
+        self.variable_to_validate = None
 
     def add_variable(self, variable):
         if variable not in self.variables:
             self.variables.append(variable)
+
+    def set_validation_variable(self, variable):
+        if self.variable_to_validate is not None:
+            print(f'changing variable to validate from {self.variable_to_validate} to {variable}')
+        self.variable_to_validate = variable
 
     def add_expression(self, expression):
         given_type = type(expression)
@@ -58,11 +64,13 @@ class CodeSnippet:
         for var in self.variables[1:]:
             var_output += ', ' + var
         str_data = [f'def snippet_{self.name}({var_output}):']
-
+        str_data += [f'    original_{self.variable_to_validate} = {self.variable_to_validate}\n']
 
         expressions = [single_level_indent + line \
             for exp in self.expressions for line in str(exp).split('\n')]
         str_data.extend(expressions)
+
+        str_data += [f'    return original_{self.variable_to_validate} == {self.variable_to_validate}']
 
         return '\n'.join(str_data)
 

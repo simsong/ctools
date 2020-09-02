@@ -24,7 +24,7 @@ class Conditional:
         self.desc        = desc          # description
         self.attrib      = attrib
         self.condition   = condition
-        assert isinstance(self.condition, BooleanExpression)
+        #assert isinstance(self.condition, BooleanExpression)
 
 
         self.consequent = consequent
