@@ -123,10 +123,10 @@ def shutdown():
 ### Support for ArgumentParser
 
 
-def add_argument(parser):
+def add_argument(parser, *, loglevel_default='INFO'):
     """Add the --loglevel argument to the ArgumentParser"""
     parser.add_argument("--loglevel", help="Set logging level",
-                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
+                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='WARNING')
     try:
         parser.add_argument("--logfilename", help="output filename for logfile")
     except argparse.ArgumentError as e:
