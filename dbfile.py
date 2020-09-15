@@ -441,8 +441,9 @@ class DBMySQL(DBSQL):
                 auth.cache_clear()
                 pass
             except errors.InternalError as e:
-                if "Unknown column" in str(e):
-                    logging.error(e)
+                se = str(e)
+                if ("Unknown column" in se) or ("Column count" in se):
+                    logging.error(se)
                     raise e
                 if i>1:
                     logging.warning(e)
