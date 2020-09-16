@@ -15,10 +15,10 @@ class VariableAssignment:
     solver   = z3 solver object
     """
 
-    __slots__ = ('desc','attrib','variable','value','solver','z3_obj')
+    __slots__ = ('desc','attrib','variable','value','solver','z3_obj', 'second_element_is_variable')
 
     def __init__(self,variable,value,desc="",attrib={},\
-                solver=None):
+                solver=None, second_element_is_variable=False):
         if desc:
             self.desc        = desc          # description
         if variable.desc:
@@ -28,6 +28,7 @@ class VariableAssignment:
         if variable.name is None:
             raise ValueError('variable name cannot be none')
         self.variable = variable
+        self.second_element_is_variable = second_element_is_variable
 
         if solver:
             self.solver = solver
@@ -66,7 +67,11 @@ class VariableAssignment:
             raise ValueError('invalid python type provided')
 
     def __str__(self):
-        str_data = [self.variable.name.strip(), ' = ', str(self.value).strip()]
+        if not self.second_element_is_variable:
+            str_data = [f"row['{self.variable.name.strip().lower()}']", ' = ', str(self.value).strip()]
+        else:
+            str_data = [f"row['{self.variable.name.strip().lower()}']", ' = ', f"row['{str(self.value).strip()}']"]
+
         return ''.join(str_data)
 
     def __repr__(self):

@@ -43,13 +43,11 @@ class CodeSnippet:
         self.variable_to_validate = None
 
     def add_variable(self, variable):
-        if variable not in self.variables:
-            self.variables.append(variable)
+        if variable.lower() not in self.variables:
+            self.variables.append(variable.lower())
 
     def set_validation_variable(self, variable):
-        if self.variable_to_validate is not None:
-            print(f'changing variable to validate from {self.variable_to_validate} to {variable}')
-        self.variable_to_validate = variable
+        self.variable_to_validate = variable.lower()
 
     def add_expression(self, expression):
         given_type = type(expression)
@@ -60,17 +58,16 @@ class CodeSnippet:
     def __str__(self):
         single_level_indent = ' ' * self.indent_spaces
         # outputs a function representation of the snippet
-        var_output = self.variables[0]
-        for var in self.variables[1:]:
-            var_output += ', ' + var
-        str_data = [f'def snippet_{self.name}({var_output}):']
-        str_data += [f'    original_{self.variable_to_validate} = {self.variable_to_validate}\n']
-
+        #var_output = self.variables[0]
+        #for var in self.variables[1:]:
+        #    var_output += ', ' + var
+        #str_data = [f'def snippet_{self.name}({var_output}):']
+        str_data = [f'def snippet_{self.name}(row):']
         expressions = [single_level_indent + line \
             for exp in self.expressions for line in str(exp).split('\n')]
         str_data.extend(expressions)
 
-        str_data += [f'    return original_{self.variable_to_validate} == {self.variable_to_validate}']
+        str_data += [f'    return row']
 
         return '\n'.join(str_data)
 
