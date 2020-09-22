@@ -14,6 +14,7 @@ import hashlib
 import platform
 import shutil
 import distutils.spawn
+import warnings
 
 ERROR_LINES=50
 __version__ = "0.2.0"
@@ -120,6 +121,10 @@ PAGECOUNTER_TEX=r"""
 
 LATEX_EXTRA_DIR=os.path.join( os.path.dirname(__file__), "latex-windows")
 
+class LatexException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
 def latex_escape(msg):
     """Quote all special characters in msg"""
     msg = "".join([LATEX_QUOTE_TRANSFORMS.get(ch,ch) for ch in msg])
@@ -225,7 +230,8 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     assert os.path.exists(pathname)
     assert repeat>=1
 
-    (dirname,filename) = os.path.split(pathname)
+    (dirname,filename) = os.path.split( pathname)
+    dirname_ = dirname
 
     if chdir:
         cwd = os.getcwd()
@@ -255,10 +261,15 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         print("======================================")
         print("")
     for i in range(start_run,start_run+repeat):
+        assert os.path.exists(pathname)
         cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
         if verbose:
             print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
         r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
+        if r.returncode and (("I can't find the format file" in r.stderr) or
+                             ("does not exist" in r.stderr)):
+            warnings.warn("Latex returns: "+r.stderr)
+            raise LatexException("LaTeX not properly installed")
         if r.returncode and not ignore_ret:
             print("r=",r,"r.returncode=",r.returncode)
             outlines = r.stdout.split("\n")
@@ -295,10 +306,16 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         print("auxfilename:",auxfilename,os.path.exists(auxfilename))
 
     if not os.path.exists(logfilename):
-        raise FileNotFoundError("logfile {} not created. LaTeX failed. dir: {} filename: {}".format(logfilename,os.getcwd(),filename))
+        warnings.warn(f"chdir: {chdir} dirname_: {dirname_}")
+        warnings.warn(f"cmd: {' '.join(cmd)}")
+        raise FileNotFoundError("logfile {} not created. LaTeX failed. dir: {} filename: {}"
+                                .format(logfilename,os.getcwd(),filename))
 
     if not os.path.exists(auxfilename):
-        raise FileNotFoundError("auxfile {} not created. LaTeX failed. dir: {} filename: {}".format(auxfilename,os.getcwd(),filename))
+        warnings.warn(f"chdir: {chdir} dirname_: {dirname_}")
+        warnings.warn(f"cmd: {' '.join(cmd)}")
+        raise FileNotFoundError("auxfile {} not created. LaTeX failed. dir: {} filename: {}"
+                                .format(auxfilename,os.getcwd(),filename))
 
     if callback_log:
         callback_log(open(logfilename,"r"))
@@ -434,7 +451,7 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
 def inspect_pdf_pypdf(pdf_fname):
     """As above, but with PyPDF"""
     if os.path.getsize(pdf_fname)==0:
-        raise RuntimeError(f"{pdf_fname} is a zero-length file")
+        raise LatexException(f"{pdf_fname} is a zero-length file")
 
     import PyPDF2
     with open(pdf_fname,"rb") as f:
@@ -468,9 +485,9 @@ def count_pdf_pages_pypdf(pdf_fname):
 def count_pdf_pages(pdf_fname):
     """Use pdfpages.sty to count how many pages in a pdf_fname"""
     if not os.path.exists(pdf_fname):
-        raise RuntimeError("count_pdf_pages: {} does not exist".format(pdf_fname))
+        raise LatexException("count_pdf_pages: {} does not exist".format(pdf_fname))
     if not pdf_fname.endswith(".pdf"):
-        raise RuntimeError("count_pdf_pages: {} must end with a .pdf".format(pdf_fname))
+        raise LatexException("count_pdf_pages: {} must end with a .pdf".format(pdf_fname))
 
     try:
         return count_pdf_pages_pypdf(pdf_fname)

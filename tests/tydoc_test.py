@@ -12,7 +12,7 @@ from os.path import dirname
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 from ctools.tydoc import *
-from ctools.latex_tools import run_latex,no_latex
+from ctools.latex_tools import run_latex,no_latex,LatexException
 
 def test_tytag_option():
     t = TyTag('demo')
@@ -80,8 +80,11 @@ def test_tydoc_latex(tmpdir):
 
     if no_latex():
         warnings.warn("Cannot run LaTeX tests")
-    else:
+        return
+    try:
         run_latex(os.path.join(tmpdir, "tydoc.tex"))
+    except LatexException as e:
+        warnings.warn("LatexException: "+str(e))
 
 def test_tydoc_toc():
     """Test the Tydoc table of contents feature."""
