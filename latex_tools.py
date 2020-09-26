@@ -199,7 +199,7 @@ def extract_pages_from_aux(auxfile):
         else:
             ret.append((data[0],data[1],data[2],data[3],pdata[3]-data[3]))
     return ret
-        
+
 def delete_temp_files(latex_source,verbose=False):
     # Delete LaTeX temp file
     (name,ext) = os.path.splitext(latex_source)
@@ -214,6 +214,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
               texinputs=None,
               callback_aux=None,callback_log=None,ignore_ret=False,
               chdir=True,verbose=False):
+
     """Run LaTeX and return (name of file PDF file,# of pages)"""
 
     if DEBUG:
@@ -248,32 +249,38 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     # If we are on windows, copy the context of the LATEX_WINDOWS_EXTRA_DIR to the current directory
     delete_files = []
     if platform.system()=='Windows':
-        for fn in glob.glob( os.path.join(LATEX_EXTRA_DIR, "*")):
+        for fn in glob.glob(os.path.join(LATEX_EXTRA_DIR, "*")):
             dest = os.path.basename(fn)
             if not os.path.exists(dest):
-                print("copy {} -> {}".format(fn,dest ))
-                shutil.copy( fn, dest )
-                delete_files.append(dest)
+                d = shutil.copy(fn, dest)
+                print("copy {} -> {}\{}".format(fn, os.getcwd(), d))
+            
+            delete_files.append(dest)
 
     if DEBUG:
         print("==============",pathname,"===========")
         print(open(pathname).read())
         print("======================================")
         print("")
+
     for i in range(start_run,start_run+repeat):
         assert os.path.exists(pathname)
-        cmd = [LATEX_EXE,pathname, '-interaction=nonstopmode']
+        cmd = [LATEX_EXE, pathname, '-interaction=nonstopmode']
+
         if verbose:
-            print("LaTeX Run #{}:  {}> {}".format(i,os.getcwd()," ".join(cmd)),flush=True)
-        r = subprocess.run(cmd,stdout=PIPE,stderr=PIPE,stdin=DEVNULL,encoding='utf8',shell=False)
+            print("LaTeX Run #{}: {}> {}".format(i, os.getcwd()," ".join(cmd)), flush=True)
+
+        r = subprocess.run(cmd, stdout=PIPE, stderr=PIPE, stdin=DEVNULL, encoding='utf8', shell=False)
         if r.returncode and (("I can't find the format file" in r.stderr) or
                              ("does not exist" in r.stderr)):
             warnings.warn("Latex returns: "+r.stderr)
             raise LatexException("LaTeX not properly installed")
+
         if r.returncode and not ignore_ret:
             print("r=",r,"r.returncode=",r.returncode)
             outlines = r.stdout.split("\n")
             print("***************************")
+
             if len(outlines)<ERROR_LINES*2:
                 print("\n".join(outlines))
             else:
@@ -282,8 +289,10 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
                 print("")
                 print("Last {} lines of error:".format(ERROR_LINES))
                 print("\n".join(outlines[-ERROR_LINES:]))
+
             print("***************************")
             exit(1)
+
         if r.returncode and DEBUG:
             print("r.returncode=",r.returncode)
             print("STDOUT")
@@ -292,6 +301,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print(r.stderr)
 
     for fn in delete_files:
+        print("delete: {}\{}".format(os.getcwd(), fn))
         os.unlink(fn)
 
     #
