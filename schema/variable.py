@@ -149,116 +149,12 @@ class Variable:
         if r is not None and len(r.b) > self.width:
             self.width = len(r.b)
         self.ranges.add(r)
-        # TODO: Rework this to use the range parser in the Range function
-        """
-        # If there are multiple lines, process each separately
-        if "\n" in desc:
-            for line in desc.split("\n"):
-                self.add_valid_data_description(line)
-            return
 
-        # If this is a note, just add it to the description and return
-        if note_re.search(desc):
-            if len(self.desc) > 0:
-                self.desc += " "
-            self.desc += desc
-            return
 
-        # Look to see if this is a longitude or a latitude:
-        if "(Latitude)" in desc:
-            self.format = "{:+.6f}"
-            self.ranges.add( Range(-90,90,"Latitude") )
-            return
+    def set_allow_whitespace(self):
+        self.allow_whitespace = True
+        self.python_type = str
 
-        if "(Longitude)" in desc:
-            self.format = "{:+.8f}"
-            self.ranges.add( Range(-180, 180, "Longitude") )
-            return
-
-        if desc.startswith("EMPTY-STRING"):
-            self.format = ""
-            self.ranges.add( Range("","",desc) )
-            return
-
-        # Look for specific patterns that are used. 
-        # Each pattern consists of a LEFT HAND SIDE and a RIGHT HAND SIDE of the equal sign.
-        # The LHS can be a set of values that are separated by commas. Each value can be a number or a range.
-        # The RHS is the description.
-        # For example:
-        #      3 = Three People
-        #  3,4,5 = Number of people
-        #  3-5,8 = Several people
-        #
-        m = assignVal_re.search(desc)
-        if m:
-            (lhs,rhs) = m.group(1,2)
-            assert "=" not in lhs
-            valDesc = rhs          # the description
-            if valDesc=="":
-                valDesc = "Allowable Values"
-            # Now loop for each comma item
-            #print(self.name)
-            for val in lhs.split(","):
-            #    print(val)
-
-                val = unquote(val.strip())
-                if "EMPTY-STRING" in val:
-                    self.ranges.add(Range("","", desc=valDesc))
-                    continue
-
-                # Do we have a range?
-                m = range_re.search(val)
-                if m:
-                    (a,b) = m.group(1,2)
-                    assert a!="EMPTY"
-                     
-                    # Check for T numbers... (used for american indian reservations)
-                    if a[0:1]=='T' and b[0:1]=='T':
-                        self.prefix = 'T'
-                        a = a[1:]
-                        b = b[1:]
-            
-                    # Smart convert the range
-                    self.ranges.add( convertRange( a, b, desc=valDesc, vtype=self.vtype))
-                    continue
-                val = convertValue(val, vtype=self.vtype)
-                self.ranges.add( Range(val,val, desc=valDesc))
-                continue
-            return
-        #
-        # No equal sign was found. Check for a range.
-        #
-        m = range_re.search(desc) # see if we have just a range
-        if m:
-            (a,b) = m.group(1,2)
-            if a=="EMPTY-STRING": a=''
-            if b=="EMPTY-STRING": b=''
-            self.add_range( convertRange( a, b, desc="(inferred allowable range)", vtype=self.vtype))
-            return
-        # 
-        # No range was found. See if it is a magic value that we know how to recognize
-        #
-        
-        if "EMPTY-STRING" in desc:
-            self.add_range( Range(""))
-            return
-        if "not reported" in desc.lower():
-            self.add_range( Range(""))
-            return
-        
-        # 
-        # Can't figure it out; if it is a single word, add it.
-        #
-        if len(desc)>0 and (" " not in desc):
-            self.add_range( Range(desc) )
-            return
-
-        #
-        # Give up
-        #
-        raise RuntimeError("{} Unknown range description: '{}'".format(self.name,desc))
-        """
-        
 
     def random_value(self):
         """Generate a random value"""

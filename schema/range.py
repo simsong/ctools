@@ -32,7 +32,7 @@ class Range:
     RANGE_RE_LIST = [
         re.compile(r"^(?P<a>!+)(?P<desc>.*)"), # used for grabbing vals with ! as that is a legal val
         re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"), # some descriptions mention alphanumeric vals legal
-        re.compile(r"^.*(?P<a>hitespace)(?P<desc>.*)"),  # grabs w/Whitespace, and returns none, white handled elsewhere
+        re.compile(r"^.*(?P<a>[Ww]hitespace)(?P<desc>.*)"),  # grabs w/Whitespace, and returns none, white handled elsewhere
         re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"), # if val is null, return None
         re.compile(r"^.*(?P<a>integers?)(?P<desc>.*)"), # some descs just say integer, this catches that
         re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"), # catch ranges built like 1 to 3
@@ -63,20 +63,29 @@ class Range:
                     a = "".rjust(width, '0')
                     b = "".rjust(width, '9')
                     return Range(a, b)
-                elif IN_NULL in a.lower():
+                elif IN_NULL in a.lower():  # if null in range return None, handled elsewhere
                     return None
-                elif IN_ALPHANUMERIC in a.lower():
+                elif IN_ALPHANUMERIC in a.lower():  # if alphanumeric range must be handled differently
                     a = "".rjust(width, ' ')
                     b = "".rjust(width, 'z')
                     return Range(a, b)
                 elif '!' in a:
                     return Range(a, a)
-                elif IN_WHITESPACE in a.lower():
+                elif IN_WHITESPACE in a.lower():  # informs if whitespace is legal, handled elsewhere
                     return None
                 try:
                     b = m.group('b')
                 except IndexError:
                     b = a
+
+                if python_type == int:
+                    for char in a:
+                        if char.isalpha():
+                            return None
+                    for char in b:
+                        if char.isalpha():
+                            return None
+
                 return Range(python_type(a), python_type(b), desc)
 
         if hardfail:
@@ -115,6 +124,8 @@ class Range:
         self.b = b if b else a
 
     def __eq__(self,other):
+        if other is None:
+            return False
         assert type(other)==Range
         return (self.a==other.a) and (self.b==other.b)
 

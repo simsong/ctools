@@ -247,6 +247,7 @@ class Table:
         ret.append("        return row\n")
         return "\n".join(ret) + "\n"
 
+
     def sql_schema(self, extra={}):
         """Generate CREATE TABLE statement for this schema"""
         ret = []

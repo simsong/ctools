@@ -210,7 +210,6 @@ OPTION_TABULARX  = 'tabularx' # use LaTeX {tabularx} environment
 OPTION_CENTER    = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape' # do not escape LaTeX values
 OPTION_SUPPRESS_ZERO    = "suppress_zero" # suppress zeros
-OPTION_DATATABLES = 'datatables' # 
 
 ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
@@ -916,7 +915,7 @@ class jsonTable(TyTag):
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
         self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_NUMBER_FORMAT]  = DEFAULT_NUMBER_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT]  = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
@@ -989,7 +988,7 @@ class jsonTable(TyTag):
 
         try:
             value = eval(typename)(typeval)
-        except Exception as e:
+        except (NameError, SyntaxError) as e:
             return cell
 
         if isinstance(value, ET.Element):
@@ -1000,7 +999,7 @@ class jsonTable(TyTag):
                 cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
                 return cell
             elif cell.attrib[ATTR_TYPE] != 'str':
-                cell.text = self.attrib[ATTRIB_NUMBER_FORMAT].format(float(value))
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(float(value))
                 return cell
         except TypeError as e:
             pass
@@ -1462,7 +1461,7 @@ class tytable(TyTag):
 
         try:
             value = TYPECONV[typename](typeval)
-        except Exception as e:
+        except KeyError as e:
             return str(typeval)
 
         if isinstance(value, ET.Element):
@@ -1785,13 +1784,6 @@ def tabdemo1():
     d2.add_data(['Virginia', 'VA', 8001045], cell_attribs=lcr)
     d2.add_data(['California', 'CA', 37252895], cell_attribs=lcr)
     return doc
-
-
-def datatables():
-    doc = tydoc()
-    doc.script('https://code.jquery.com/jquery-3.3.1.js')
-    doc.script('https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js')
-    t = doc.table(attrib={'id': '1234'})
 
 
 def demo_toc():

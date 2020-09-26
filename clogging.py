@@ -1,14 +1,14 @@
 #
-# 
+#
 """clogging.py - a collection of logging support methods for use at the US Census Bureau.
 
-This module adds support for logging to syslog to the Python logging system. 
+This module adds support for logging to syslog to the Python logging system.
 
 All messages sent to the default logger will also go to syslog. We use
 this in some production environments to aggregate log messages using
 syslog and Splunk.
 
-In the 2020 Disclosure Avoidance System, we will be using local1 as our logging facility. 
+In the 2020 Disclosure Avoidance System, we will be using local1 as our logging facility.
 Within Amazon's Elastic Map Reduce system, we set up the EMR CORE nodes to send all local1 messages
 to the MASTER node, and we set up the MASTER node to send all local1 messages to the Splunk server.
 
@@ -61,7 +61,7 @@ __version__ = "0.0.1"
 DEVLOG     = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
 
-# Default log formats. 
+# Default log formats.
 #
 
 # YEAR is used in callers
@@ -77,7 +77,7 @@ called_basicConfig = False
 
 
 def applicationIdFromEnvironment():
-    return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])    
+    return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
 
 def applicationId():
     """Return the Yarn (or local) applicationID.
@@ -99,7 +99,7 @@ def applicationId():
 
     # Perhaps we are running on the head-end. If so, run a Spark job that finds it.
     try:
-        from pyspark     import SparkConf, SparkContext
+        from pyspark import SparkConf, SparkContext
         sc = SparkContext.getOrCreate()
         if "local" in sc.getConf().get("spark.master"):
             return f"local{os.getpid()}"
@@ -123,10 +123,10 @@ def shutdown():
 ### Support for ArgumentParser
 
 
-def add_argument(parser):
+def add_argument(parser, *, loglevel_default='INFO'):
     """Add the --loglevel argument to the ArgumentParser"""
     parser.add_argument("--loglevel", help="Set logging level",
-                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO')
+                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='WARNING')
     try:
         parser.add_argument("--logfilename", help="output filename for logfile")
     except argparse.ArgumentError as e:
