@@ -51,24 +51,25 @@ class Conditional:
                    ])
         str_data = [conditional]
 
-        if_expressions = [single_level_indent + line \
+        if_expressions = [single_level_indent + line
             for exp in self.consequent for line in str(exp).split('\n')]
         str_data.extend(if_expressions)
 
         elif_expressions = [str(exp) for exp in self.elif_arr]
         str_data.extend(elif_expressions)
 
-        #str_data.append('else:')
-        #else_expressions = [single_level_indent + line \
-        #    for exp in self.consequent for line in str(exp).split('\n')]
-        #str_data.extend(else_expressions)
+        if len(self.consequent) > 0:
+            str_data.append('else:')
+            else_expressions = [single_level_indent + line
+                for exp in self.consequent for line in str(exp).split('\n')]
+            str_data.extend(else_expressions)
 
         return '\n'.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ', \
-                str([repr(exp) for exp in self.consequent]), 'elif_arr: ', \
-                str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ', \
+        return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ',
+                str([repr(exp) for exp in self.consequent]), 'elif_arr: ',
+                str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ',
                 str([repr(exp) for exp in self.alternative]), ')'])
 
     def json_dict(self):
@@ -84,11 +85,13 @@ class Conditional:
     def dump(self,func=print):
         func(str(self))
 
+
 def main():
     conditional = Conditional()
     # print(repr(conditional))
     # print(conditional.json_dict())
     print(conditional)
+
 
 if __name__ == '__main__':
     main()

@@ -40,7 +40,7 @@ class VariableAssignment:
         if self.solver is None:
             raise RuntimeError('no z3 solver provided')
 
-        for range_val in self.variable.ranges:
+        for rangeval in self.variable.ranges:
             self.solver.add(self.z3_obj >= rangeval.a)
             self.solver.add(self.z3_obj <= rangeval.b)
 

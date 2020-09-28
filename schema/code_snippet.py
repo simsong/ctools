@@ -58,10 +58,6 @@ class CodeSnippet:
     def __str__(self):
         single_level_indent = ' ' * self.indent_spaces
         # outputs a function representation of the snippet
-        #var_output = self.variables[0]
-        #for var in self.variables[1:]:
-        #    var_output += ', ' + var
-        #str_data = [f'def snippet_{self.name}({var_output}):']
         str_data = [f'def snippet_{self.name}(row):']
         expressions = [single_level_indent + line \
             for exp in self.expressions for line in str(exp).split('\n')]
@@ -87,12 +83,14 @@ class CodeSnippet:
     def dump(self,func=print):
         func(str(self))
 
+
 def main():
     snippet = CodeSnippet(name='snippet')
     snippet.add_expression(Conditional())
     print(repr(snippet))
     print(snippet.json_dict())
     print(snippet)
+
 
 if __name__ == '__main__':
     main()

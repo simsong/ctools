@@ -56,8 +56,6 @@ class BooleanOperator:
 
 def main():
     operator = BooleanOperator(op_type="<=")
-    # print(repr(operator))
-    # print(operator.json_dict())
     print(operator)
 
 if __name__ == '__main__':
