@@ -43,7 +43,8 @@ class Range:
         re.compile(r"^\s?[a-zA-Z:]*\s?(?P<a>\d+)\s*-\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"), # catch base letter range vals
         re.compile(r"^\s*(?P<a>\d+)\s*–\s*(?P<b>\d+)\s*=?\s*(?P<desc>.*)"),  # special ascii
         re.compile(r"^\s*(?P<a>\d+)\s*=?\s*(?P<desc>.*)"),
-        re.compile(r"^\s*(?P<a>[A-Z]+\d*)*-(?P<b>[A-Z]+\d*)(?P<desc>.*)"), # catch base 36 ranges
+        re.compile(r"^\s*(?P<a>[A-Z]+\d*)-(?P<b>[A-Z]+\d*)(?P<desc>.*)"), # catch base 36 ranges
+        # removed star, was ?P<a>[A-Z]+\d*)*, check this hasn't broken things elsewhere
         re.compile(r"^\s*(?P<a>[A-Z]+\d*)(?P<desc>.*)"), # catch base 36 single val with description
     ]
 

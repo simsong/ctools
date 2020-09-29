@@ -1,6 +1,6 @@
 import os
 import sys
-
+# import pandas
 from collections import OrderedDict
 import logging
 
@@ -13,15 +13,17 @@ from ctools.schema.range import Range
 from ctools.schema.table import Table
 from ctools.schema.variable import Variable
 from ctools.schema.recode import Recode
+from ctools.schema.code_snippet import CodeSnippet
 
 from types import ModuleType
 
 class Schema:
-    """A Schema is a collection of tables and recodes"""
+    """A Schema is a collection of tables and recodes and code snippets"""
     def __init__(self, name='', *, debug=False, attrib={}):
         self.debug     = debug
         self.tabledict = OrderedDict()        # by table name
         self.recodes = OrderedDict()
+        self.code_snippets = OrderedDict()
         self.tables_with_recodes = set()
         self.name    = name
         self.attrib  = attrib
@@ -38,6 +40,52 @@ class Schema:
             table.dump(func)
         for recode in self.recodes.values():
             recode.dump(func)
+        for code_snippet in self.code_snippets:
+            code_snippet.dump(func)
+
+    # code snippets
+
+    def has_code_snippet(self, name):
+        return name in self.code_snippets
+
+    def add_code_snippet(self, code_snippet):
+        assert isinstance(code_snippet, CodeSnippet)
+        self.code_snippets[code_snippet.name] = code_snippet
+        logging.info("Added code snippet {}".format(code_snippet.name))
+        return code_snippet
+
+    def del_code_snippet_named(self, name):
+        del self.code_snippet[name]
+        logging.info("Deleted code snippet {}".format(name))
+
+    def add_code_snippet_named(self, *, name, **kwargs):
+        return self.add_code_snippet( CodeSnippet(name=name, **kwargs) )
+
+    def get_code_snippet(self, name, create=False):
+        """
+        Get the named code snippet. If create is true, create the code snippet
+        if it doesn't exist.
+        """
+        try:
+            return self.code_snippets[name]
+        except KeyError as e:
+            if create:
+                code_snippet = CodeSnippet(name=name)
+                self.add_code_snippet(code_snippet)
+                return code_snippet
+            logging.error(f"Code Snippet {name} requested, " + \
+                            f"current code snippets: {self.code_snippet_names()}")
+            raise KeyError(f"Code Snippet {name} does not exist")
+
+    def code_snippet_vals(self):
+        return self.code_snippets.values()
+
+    def code_snippet_names(self):
+        return self.code_snippets.keys()
+
+
+
+    # TABLES
 
     def has_table(self,name):
         return name in self.tabledict
