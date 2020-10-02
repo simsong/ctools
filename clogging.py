@@ -155,6 +155,7 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
         logging.getLogger().addHandler(handler)
         added_syslog = True
 
+
 def setup(level='INFO',
           syslog=False,
           syslog_address=None,
@@ -171,12 +172,25 @@ def setup(level='INFO',
     """
     global called_basicConfig
     if not called_basicConfig:
-        loglevel = logging.getLevelName(level)
-        if filename:
-            logging.basicConfig(filename=filename, format=log_format, level=loglevel)
+        # getLevelName sometimes returns a string and sometimes returns an int, and we want it always to be an integer
+        loglevel: int = level if isinstance(level, int) else logging.getLevelName(level)
+        filename_to_use = None if filename is None else filename
+
+        # Check to see if the logger already has handlers.
+        if logging.getLogger().hasHandlers():
+            # The logger already has handlers, even though setup wasn't called yet
+            # This will happen if a logging.info (or similar) call is made prior to calling this method
+            current_level: int = logging.getLogger().getEffectiveLevel()
+
+            # Check to see if the current effective level is lower than what was requested
+            # If the current logging level is NOTSET (has not been set yet) OR
+            # the requested level is lower that (meaning more
+            if (current_level == logging.NOTSET) or (loglevel < current_level):
+                logging.getLogger().setLevel(loglevel)
         else:
-            logging.basicConfig(format=log_format, level=loglevel)
-        called_basedConig = True
+            # logging.basicConfig only works if no handlers have been set
+            logging.basicConfig(filename=filename_to_use, format=log_format, level=loglevel)
+        called_basicConfig = True
 
     if syslog:
         setup_syslog(facility=facility, syslog_address=syslog_address, syslog_format=syslog_format)
