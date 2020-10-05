@@ -184,7 +184,8 @@ def setup(level='INFO',
 
             # Check to see if the current effective level is lower than what was requested
             # If the current logging level is NOTSET (has not been set yet) OR
-            # the requested level is lower that (meaning more
+            # the requested level is lower, then set it to the requested level
+            # See the logger levels here: https://docs.python.org/3/library/logging.html#levels
             if (current_level == logging.NOTSET) or (loglevel < current_level):
                 logging.getLogger().setLevel(loglevel)
         else:
