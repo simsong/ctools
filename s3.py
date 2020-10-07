@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from urllib.parse import urlparse
 
-# 
+#
 # This creates an S3 file that supports seeking and caching.
 # We keep this file at Python2.7 for legacy reasons
 
@@ -94,16 +94,18 @@ def aws_s3api(cmd, debug=False):
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, data))
 
 
-def put_object(bucket, key, fname):
+def put_object(bucket, key, fname, use_acl=False):
     """Given a bucket and a key, upload a file"""
     assert os.path.exists(fname)
+    if use_acl:
+        return aws_s3api(['put-object', '--bucket', bucket, '--key', key, '--body', fname, '--acl', 'bucket-owner-full-control'])
+
     return aws_s3api(['put-object', '--bucket', bucket, '--key', key, '--body', fname])
 
-
-def put_s3url(s3url, fname):
+def put_s3url(s3url, fname, use_acl=False):
     """Upload a file to a given s3 URL"""
     (bucket, key) = get_bucket_key(s3url)
-    return put_object(bucket, key, fname)
+    return put_object(bucket, key, fname, use_acl)
 
 def get_object(bucket, key, fname):
     """Given a bucket and a key, download a file"""
@@ -385,7 +387,7 @@ class S3File:
 # Tools for reading and write files from Amazon S3 without boto or boto3
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
-# 
+#
 # This could be redesigned to simply use the S3File() below
 # Todo: redesign so that it can be used in a "with" statement
 
@@ -412,7 +414,7 @@ class s3open:
 
         cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/", "_"))
 
-        # If not caching and a cache file is present, delete it. 
+        # If not caching and a cache file is present, delete it.
         if not cache and os.path.exists(cache_name):
             os.unlink(cache_name)
 
@@ -492,7 +494,7 @@ class DuCounter:
     def count(self, bytes_):
         self.total_bytes += bytes_
         self.total_files += 1
-        
+
 
 def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
@@ -539,7 +541,7 @@ def print_du(root):
                           path))
         if ct==20:
             break
-        
+
 
 
 if __name__ == "__main__":
