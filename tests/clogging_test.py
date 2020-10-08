@@ -45,7 +45,8 @@ def test_logging_to_syslog():
         warnings.warn("local1 is not logging to /var/log/local1.log")
 
     assert count in [0,1,2]
-    clogging.shutdown()
+    # Turned off shutting down logging because it breaks subsequent pytests that rely on TCP logging 
+    #clogging.shutdown()
 
     
 
