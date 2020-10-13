@@ -22,6 +22,7 @@ import sqlite3
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
+import re
 
 # not sure why this was put in, but it breaks calling tytable from this directory.
 # if __name__ == "__main__" or __package__=="":
@@ -316,17 +317,22 @@ class ttable:
 
     def set_col_alignmnets(self, fmt):
         col = 0
-        for ch in fmt:
-            if ch == 'r':
-                self.set_col_alignment(col, self.RIGHT)
-                col += 1
-                continue
-            elif ch == 'l':
-                self.set_col_alignment(col, self.LEFT)
-                col += 1
-                continue
-            else:
-                raise RuntimeError("Invalid format string '{}' in '{}'".format(fmt, ch))
+        for ch in re.split(r'(l)|(r)|(p\{[^}]*\})',fmt):
+            if isinstance(ch,str) and len(ch)>0:
+                if ch == 'r':
+                    self.set_col_alignment(col, self.RIGHT)
+                    col += 1
+                    continue
+                elif ch == 'l':
+                    self.set_col_alignment(col, self.LEFT)
+                    col += 1
+                    continue
+                elif ch[0] == 'p':  
+                    self.set_col_alignment(col, self.LEFT)
+                    col += 1
+                    continue
+                else:
+                    raise RuntimeError("Invalid format string '{}' in '{}'".format(fmt, ch))
 
     def set_col_totals(self, totals):
         self.col_totals = totals
