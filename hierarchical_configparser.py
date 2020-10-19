@@ -49,23 +49,29 @@ Line = namedtuple('Line', ['filename','lineno','line'])
 
 SECTION_RE = re.compile(r'^\[([^\]]*)\]\s*$')
 OPTION_RE  = re.compile(r'^([^=:]+)\s*[=:]\s*(.*)$')
+INCLUDE_RE = re.compile(r'^include\s*=\s*([^\s]+)\s*$',re.I)
 
-NO_SECTION=""
+HEAD_SECTION=""
 DEFAULT_SECTION="default"
 
 class HCP:
+    """This class implements the HiearchicalConfigFile includes. But it does not implement the generic configfile.
+    That's done below in the HiearchicalConfigParser class. This just implements read, write and blame.
+    """
     def __init__(self, *args, **kwargs):
         self.sections   = collections.OrderedDict() # section name is lowercased
 
     def read(self, filename, *, onlySection=None):
         """
-        Reads a config file.
+        Reads a config file, processing includes as specified above.
         :param filename: filename to read. Mandatory.
         :param section:  just read this section. Optional
         """
         with open(filename,"r") as f:
-            currentSection = NO_SECTION
             seen_sections = set()
+            currentSection = HEAD_SECTION
+            if onlySection is None:
+                self.sections[HEAD_SECTION] = list()
             for line in f:
                 # Check for new section
                 m = SECTION_RE.search(line)
@@ -75,12 +81,50 @@ class HCP:
                         raise ValueError(f"{seen_section} appears twice in {filename}")
                     seen_sections.add( currentSection )
 
-                if currentSection not in self.sections:
-                    self.sections[currentSection] = list()
-
                 if (onlySection is not None) and (onlySection.lower() != currentSection.lower()):
                     continue
 
+                # Add the current section if it is not in the orderedDictionary.
+                # Note that the section may be here even if it is not in seen_sections, as it
+                # may have been imported as part of an INCLUDE in the [default] section.
+                if currentSection not in self.sections:
+                    self.sections[currentSection] = list()
+                    self.sections[currentSection].append(line)
+                    continue
+
+                # Check for an include
+                m = INCLUDE_RE.search(line)
+                if m:
+                    print("m=",m)
+                    # Insert the include line as a comment
+                    self.sections[currentSection].append(";"+line)
+
+                    # Get the file
+                    h2 = HCP()
+                    if currentSection == HEAD_SECTION:
+                        theSection = None
+                    else:
+                        theSection = currentSection
+                    theIncludeFile = m.group(1)
+                    theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
+                    h2.read( theIncludePath, onlySection=theSection)
+
+                    # Add each of the sections from this one
+                    for subsection in h2.sections:
+                        print("subsection=",subsection)
+                        addedSection = False
+                        if subsection not in self.sections:
+                            self.sections[subsection] = list()
+                            addedSection = True
+                        self.sections[subsection].append("; begin include from "+theIncludeFile + "\n")
+                        if addedSection:
+                            # We didn't know about this section already; get its name from the include file
+                            self.sections[subsection].append( h2.sections[subsection][0] )
+                        self.sections[subsection].extend(h2.sections[subsection])
+                        self.sections[subsection].append("; end include from "+theIncludeFile + "\n")
+                    continue
+
+                # Looks like we should just add the line
                 self.sections[currentSection].append(line)
 
     def asString( self ):

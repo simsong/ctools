@@ -8,7 +8,7 @@ import pytest
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from ctools.hierarchical_configparser import HierarchicalConfigParser,HCP
+from ctools.hierarchical_configparser import HierarchicalConfigParser,HCP,INCLUDE_RE
 
 MYDIR=os.path.dirname(__file__)
 
@@ -20,9 +20,11 @@ def fcontents(path):
     return open(fname(path),"r").read()
 
 
+HCF_FILE7_NAME=fname("hcf_file7.ini")
 HCF_FILED_NAME=fname("hcf_filed.ini")
+HCF_FILE7_CONTENTS_HEADER=";\n; test case 7:\n; just include filed\n"
 HCF_FILED_CONTENTS=fcontents("hcf_filed.ini")
-HCF_FILED_CONTENTS_ONLYB="[b]\nname=hcf_filed\n\n"
+HCF_FILED_CONTENTS_ONLYB="[b]\nname=hcf_filed_section_b\n\n"
 
 def test_no_includes():
     hcp = HCP()
@@ -33,11 +35,28 @@ def test_no_includes():
     print("b=",b)
     print(len(a),len(b))
     assert hcp.asString() == HCF_FILED_CONTENTS
+    assert len(hcp.sections)==6
+    assert list(hcp.sections.keys())==['','a','b','c','d','e']
 
     hcp = HCP()
     hcp.read( HCF_FILED_NAME ,onlySection='b')
     assert hcp.asString() == HCF_FILED_CONTENTS_ONLYB
 
+    print("sections=",hcp.sections)
+    assert len(hcp.sections)==1
+    assert list(hcp.sections.keys())==['b']
+
+@pytest.mark.skip
+def test_default_include():
+    hcp = HCP()
+    hcp.read( HCF_FILE7_NAME )
+    print("hcp=",hcp.asString())
+    assert hcp.asString() == HCF_FILE7_CONTENTS_HEADER + '[default]\n' + HCF_FILED_CONTENTS
+
+@pytest.mark.skip
+def test_include_re():
+    m = INCLUDE_RE.search("INCLUDE=foobar")
+    assert m.group(1)=="foobar"
 
 @pytest.mark.skip
 def test_hierarchical_configparser1():
