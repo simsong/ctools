@@ -29,6 +29,10 @@ HCF_FILE8_CONTENTS_FLATTENED=fcontents("hcf_file8_flattened.ini")
 HCF_FILED_CONTENTS=fcontents("hcf_filed.ini")
 HCF_FILED_CONTENTS_ONLYB="[b]\nname=hcf_filed_section_b\n\n"
 
+def test_include_re():
+    m = INCLUDE_RE.search("INCLUDE=foobar")
+    assert m.group(1)=="foobar"
+
 def test_no_includes():
     hcp = HCP()
     hcp.read( HCF_FILED_NAME )
@@ -59,12 +63,7 @@ def test_include_one_section():
     hcp.read( HCF_FILE8_NAME )
     assert hcp.asString() == HCF_FILE8_CONTENTS_FLATTENED
 
-@pytest.mark.skip
-def test_include_re():
-    m = INCLUDE_RE.search("INCLUDE=foobar")
-    assert m.group(1)=="foobar"
 
-@pytest.mark.skip
 def test_hierarchical_configparser1():
     hcf = HierarchicalConfigParser(debug=True)
     hcf.read(MYDIR + "/hcf_file2.ini")

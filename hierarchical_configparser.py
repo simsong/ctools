@@ -135,7 +135,26 @@ class HCP:
         return s.getvalue()
 
 
-class HierarchicalConfigParser(ConfigParser):
+class HiearchicalConfigParser(ConfigParser):
+    """
+    Similar to a normal ConfigParser, but implements the INCLUDE= statement.
+    """
+    def read(self, filenames):
+        filenames_ = filenames
+        if isinstance(filenames,str) or instance(filenames,bytes):
+            filenames = [filenames]
+        for filename in filenames:
+            if os.path.exists(filename):
+                self.hcp = HCP()
+                self.hcp.read(filename)
+                self.read_string( self.hcp.asString() )
+                return
+        raise FileNotFoundError(filenames_)
+
+    def write(self, fileobject, **kwargs):
+        fileobject.write( self.hcp.asString() )
+
+class OLD_HierarchicalConfigParser(ConfigParser):
     cache = dict()          # maps filenames to a dictionary
     def __init__(self, *args, debug=False, depth=1, **kwargs):
         super().__init__(*args,  **kwargs)
