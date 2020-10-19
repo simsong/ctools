@@ -21,9 +21,11 @@ def fcontents(path):
 
 
 HCF_FILE7_NAME=fname("hcf_file7.ini")
+HCF_FILE8_NAME=fname("hcf_file8.ini")
 HCF_FILED_NAME=fname("hcf_filed.ini")
 HCF_FILE7_CONTENTS_HEADER=";\n; test case 7:\n; just include filed\n"
 HCF_FILE7_CONTENTS_FLATTENED=fcontents("hcf_file7_flattened.ini")
+HCF_FILE8_CONTENTS_FLATTENED=fcontents("hcf_file8_flattened.ini")
 HCF_FILED_CONTENTS=fcontents("hcf_filed.ini")
 HCF_FILED_CONTENTS_ONLYB="[b]\nname=hcf_filed_section_b\n\n"
 
@@ -51,6 +53,11 @@ def test_default_include():
     hcp = HCP()
     hcp.read( HCF_FILE7_NAME )
     assert hcp.asString() == HCF_FILE7_CONTENTS_FLATTENED
+
+def test_include_one_section():
+    hcp = HCP()
+    hcp.read( HCF_FILE8_NAME )
+    assert hcp.asString() == HCF_FILE8_CONTENTS_FLATTENED
 
 @pytest.mark.skip
 def test_include_re():
