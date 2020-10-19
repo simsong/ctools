@@ -4,33 +4,91 @@
 hierarchical_configparser.py:
 
 Like a regular configparser, but supports the INCLUDE= statement.
+
 If INCLUDE=filename.ini is present in any section, the contents of that section are
-read from filename.ini. If filename.ini includes its own INCLUDE=, that is included as well.
+read from filename.ini and provided as base definitions. Those definitions can be shadowed
+by the local config file.
 
-Name/value pairs in the included file are read FIRST, so that they can be shadowed by name/value
-pairs in the including file. 
+If filename.ini includes its own INCLUDE=, those are included as well.
 
-If the INCLUDE= is when the [DEFAULT] section, then the values of *every* section are included.
+Special handling of the [default] section:
+The [default] section provides default options (e.g. name=value pairs) for *every* section.
+If INCLUDE= appears in the [default] section of the ROOT hiearchical config file, then
+all of the sections are read.
 
-Don't have INCLUDE loops. I tried to protect against them, but it was too hard.
+Implementation Notes:
+- This is rev 2.0, which preserves comments and implements blame(). Python's config parser
+  strips comments on read and thus cannot write them.
+
+- Name/value pairs in the included file are read FIRST, so that they can be shadowed by name/value
+  pairs in the including file.
+
+- We implement a Line() class which remembers, for each line, the file from which it was read.
+
+- The config file is imported with HCP which implements all of the include parsing.
+  It then provides a flattened config file to HiearchicalConfigParser().
+
+- Include loops are reliably detected.
 """
 
 import os
 import os.path
 import logging
 import sys
+import collections
+import re
+import io
 from configparser import ConfigParser
 from copy import copy
-from collections import defaultdict 
+from collections import defaultdict ,namedtuple
 
 DEFAULT='default'
 INCLUDE='include'
 
-def fixpath(base,name):
-    """If name is not an absolute path name, make it relative to the directory of base"""
-    if name[0]=='/': 
-        return name
-    return os.path.join(os.path.dirname(base), name)
+Line = namedtuple('Line', ['filename','lineno','line'])
+
+SECTION_RE = re.compile(r'^\[([^\]]*)\]\s*$')
+OPTION_RE  = re.compile(r'^([^=:]+)\s*[=:]\s*(.*)$')
+
+NO_SECTION=""
+DEFAULT_SECTION="default"
+
+class HCP:
+    def __init__(self, *args, **kwargs):
+        self.sections   = collections.OrderedDict() # section name is lowercased
+
+    def read(self, filename, *, onlySection=None):
+        """
+        Reads a config file.
+        :param filename: filename to read. Mandatory.
+        :param section:  just read this section. Optional
+        """
+        with open(filename,"r") as f:
+            currentSection = NO_SECTION
+            seen_sections = set()
+            for line in f:
+                # Check for new section
+                m = SECTION_RE.search(line)
+                if m:
+                    currentSection = m.group(1).lower()
+                    if currentSection in seen_sections:
+                        raise ValueError(f"{seen_section} appears twice in {filename}")
+                    seen_sections.add( currentSection )
+
+                if currentSection not in self.sections:
+                    self.sections[currentSection] = list()
+
+                if (onlySection is not None) and (onlySection.lower() != currentSection.lower()):
+                    continue
+
+                self.sections[currentSection].append(line)
+
+    def asString( self ):
+        s = io.StringIO()
+        for (section,lines) in self.sections.items():
+            s.write("".join(lines)) # get the lines
+        return s.getvalue()
+
 
 class HierarchicalConfigParser(ConfigParser):
     cache = dict()          # maps filenames to a dictionary
@@ -52,7 +110,7 @@ class HierarchicalConfigParser(ConfigParser):
 
     def read(self,filename):
         """First read the requested filename into a temporary config parser.
-        Scan for any INCLUDE statements. If any are found in any section, read the included file 
+        Scan for any INCLUDE statements. If any are found in any section, read the included file
         recursively, unless it has already been read.
         """
         if filename[0]!='/':
@@ -96,17 +154,17 @@ class HierarchicalConfigParser(ConfigParser):
 
         default_cf = None
         if (DEFAULT in self) and (INCLUDE in self[DEFAULT]):
-            include_file = fixpath(filename, self[DEFAULT][INCLUDE] )
+            include_file = os.path.join(filename, self[DEFAULT][INCLUDE] )
             if self.debug:
                 print(self.depth, filename,f"{filename} [DEFAULT] INCLUDE={include_file}",file=sys.stderr)
             default_cf = HierarchicalConfigParser( debug=self.debug, depth=self.depth+1 )
-            default_cf.read( fixpath( filename, include_file ))
+            default_cf.read( os.path.join( filename, include_file ))
             for section in sorted( default_cf.sections() ):
                 if section not in self:
                     if self.debug:
                         print(self.depth, filename,f"{filename} Adding section {section} FROM DEFUALT INCLUDE",file=sys.stderr)
                     self.add_section(section)
-                        
+
         # For each section see if there is an INCLUDE. Get the file and set the options not already set.
 
         for section in self.sections():
@@ -117,7 +175,7 @@ class HierarchicalConfigParser(ConfigParser):
                     section_include_file = self[section][INCLUDE]
                 except KeyError:
                     section_include_file = self[DEFAULT][INCLUDE]
-                section_include_file = fixpath(filename, section_include_file)
+                section_include_file = os.path.join(filename, section_include_file)
                 if not os.path.exists(section_include_file):
                     raise FileNotFoundError("File {} [{}]  INCLUDE={} not found".format(filename, section, section_include_file))
                 if self.debug:
@@ -151,5 +209,3 @@ class HierarchicalConfigParser(ConfigParser):
 
     def read_string(self,string,source=None):
         raise RuntimeError("read_string not implemented")
-
-    
