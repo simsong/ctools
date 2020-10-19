@@ -101,13 +101,14 @@ class HCP:
 
                     # Get the file
                     h2 = HCP()
-                    if currentSection == HEAD_SECTION:
+                    if (currentSection == HEAD_SECTION) or (currentSection=='default'):
                         theSection = None
                     else:
                         theSection = currentSection
                     theIncludeFile = m.group(1)
                     theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
                     h2.read( theIncludePath, onlySection=theSection)
+                    print(f"finished reading h2. theSection={theSection} h2.sections={h2.sections}")
 
                     # Add each of the sections from this one
                     for subsection in h2.sections:
@@ -120,7 +121,7 @@ class HCP:
                         if addedSection:
                             # We didn't know about this section already; get its name from the include file
                             self.sections[subsection].append( h2.sections[subsection][0] )
-                        self.sections[subsection].extend(h2.sections[subsection])
+                        self.sections[subsection].extend(h2.sections[subsection][1:])
                         self.sections[subsection].append("; end include from "+theIncludeFile + "\n")
                     continue
 
