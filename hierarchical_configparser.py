@@ -342,3 +342,14 @@ class OLD_HierarchicalConfigParser(ConfigParser):
 
     def read_string(self,string,source=None):
         raise RuntimeError("read_string not implemented")
+
+
+if __name__=="__main__":
+    import argparse
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("configfile",help="read and print the config file")
+    args = parser.parse_args()
+
+    hcp = HierarchicalConfigParser()
+    hcp.read(args.configfile)
+    hcp.write(sys.stdout)
