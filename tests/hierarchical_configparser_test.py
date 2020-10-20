@@ -35,6 +35,12 @@ def test_include_re():
     m = INCLUDE_RE.search("INCLUDE=foobar")
     assert m.group(1)=="foobar"
 
+    m = INCLUDE_RE.search("     INCLUDE = foobar        ;lovely comments")
+    assert m.group(1)=="foobar"
+
+    m = INCLUDE_RE.search("     INCLUDE = foo/bar        ;lovely comments")
+    assert m.group(1)=="foo/bar"
+
 
 def test_getOption():
     assert getOption("foo bar")==None
@@ -72,6 +78,8 @@ def test_no_includes():
 def test_default_include():
     hcp = HCP()
     hcp.read( HCF_FILE7_NAME )
+    print("hcp.asString:")
+    print(hcp.asString())
     assert hcp.asString() == HCF_FILE7_CONTENTS_FLATTENED
 
 

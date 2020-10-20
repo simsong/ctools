@@ -49,7 +49,7 @@ Line = namedtuple('Line', ['filename','lineno','line'])
 
 SECTION_RE = re.compile(r'^\[([^\]]*)\]\s*$')
 OPTION_RE  = re.compile(r'^\s*(\w+)\s*[=:]\s*(.*)$')
-INCLUDE_RE = re.compile(r'^include\s*=\s*([^\s]+)\s*$',re.I)
+INCLUDE_RE = re.compile(r'^\s*include\s*=\s*([^\s]+)\s*(;.*)?$',re.I)
 
 HEAD_SECTION=""
 DEFAULT_SECTION="default"
@@ -120,6 +120,7 @@ class HCP:
 
             # First we see if there is an include in the default section.
             # INCLUDES there are special, because they can create new sections.
+            default_include_files = []
             if  DEFAULT_SECTION  in self.sections:
                 lines = list()
                 for line in self.sections[ DEFAULT_SECTION ]:
@@ -133,9 +134,11 @@ class HCP:
                         for includedSection in h2.sections:
                             if includedSection not in self.sections:
                                 lines = []
-                                lines.append(f'; section added by {theIncludeFile}\n')
                                 lines.append(h2.sections[includedSection][0])
                                 self.sections[includedSection] = lines
+
+                        # Finally add this file to the list of include files in the default section
+                        default_include_files.append(theIncludeFile)
 
             # Now for each of the sections (including the default section, which no longer requires special processing),
             # See if there is an INCLUDE= statement.
@@ -144,22 +147,38 @@ class HCP:
             #  - for each line in the included file, add it without comments if it isn't shadowed,
             #  - otherwise add it as a comment, indicating that it is shadowed.
             for section in self.sections:
+                print(f"{self} reading {filename} *** section {section}")
+
                 newlines = list()
                 optionsForThisSection = getAllOptions(self.sections[section])
+                linesInSection = self.sections[section]
+                #
+                # If we are not in the [default] section, add additional INCLUDE= directives for the default include files
+                #
+                if (section != DEFAULT_SECTION) and (section != HEAD_SECTION):
+                    for fname in default_include_files:
+                        linesInSection.append(f"INCLUDE={fname} ; from [default]\n")
+
                 for line in self.sections[section]:
                     theIncludeFile = getIncludeFile(line)
                     if theIncludeFile:
-                        newlines.append(f';{line}')
-                        newlines.append(f'; begin include from {theIncludeFile}\n')
+                        newlines.append(f';{line}\n')
                         h2 = HCP()
                         theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
                         h2.read( theIncludePath, onlySection=section)
-                        for iLine in h2.sections[section][1:]: # do not include the section label
-                            if getOption(iLine) in optionsForThisSection:
-                                newlines.append(f'; [SHADOWED] {iLine}')
-                            else:
-                                newlines.append(iLine)
-                        newlines.append(f'; end include from {theIncludeFile}\n')
+
+                        print(f"Read {theIncludeFile} section {section} got {h2.sections}")
+
+                        if (section in h2.sections) and (len(h2.sections[section])>0):
+                            newlines.append(f'; begin include from {theIncludeFile}\n')
+                            for iLine in h2.sections[section][1:]: # do not include the section label
+                                iLineOption = getOption(iLine)
+                                if iLineOption in optionsForThisSection:
+                                    newlines.append(f'; [SHADOWED] {iLine}\n')
+                                else:
+                                    newlines.append(iLine)
+                                    optionsForThisSection.add(iLineOption)
+                            newlines.append(f'; end include from {theIncludeFile}\n')
                     else:
                         newlines.append(line)
                 assert len(newlines) >= len(self.sections[section])
