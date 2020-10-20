@@ -42,7 +42,6 @@ def test_include_re():
     m = INCLUDE_RE.search("     INCLUDE = foo/bar        ;lovely comments")
     assert m.group(1)=="foo/bar"
 
-
 def test_getOption():
     assert getOption("foo bar")==None
     assert getOption("foo: bar")=='foo'
@@ -50,6 +49,8 @@ def test_getOption():
     assert getOption("foo = bar")=='foo'
     assert getOption(" foo = bar")=='foo'
     assert getOption("; foo = bar")==None
+    assert getOption("foo=bar") == getOption("FOO=BAR")
+    assert getOption("foo.bar=32") == "foo.bar"
 
 def test_getAllOptions():
     allOptions = getAllOptions(["a=1\n","b=2\n","c=3"])

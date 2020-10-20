@@ -38,7 +38,7 @@ import sys
 import collections
 import re
 import io
-from configparser import ConfigParser
+from configparser import ConfigParser,DuplicateOptionError
 from copy import copy
 from collections import defaultdict ,namedtuple
 
@@ -48,17 +48,19 @@ INCLUDE='include'
 Line = namedtuple('Line', ['filename','lineno','line'])
 
 SECTION_RE = re.compile(r'^\[([^\]]*)\]\s*$')
-OPTION_RE  = re.compile(r'^\s*(\w+)\s*[=:]\s*(.*)$')
+OPTION_RE  = re.compile(r'^\s*([.\w]+)\s*[=:]\s*(.*)$')
 INCLUDE_RE = re.compile(r'^\s*include\s*=\s*([^\s]+)\s*(;.*)?$',re.I)
 
 HEAD_SECTION=""
 DEFAULT_SECTION="default"
 
 def getOption(line):
-    """If :param line: contains an option, return it, otherwise return None."""
+    """
+    If :param line: contains an option, return it, otherwise return None.
+    Lowercases option."""
     m = OPTION_RE.search(line)
     if m:
-        return m.group(1)
+        return m.group(1).lower()
     return None
 
 
@@ -216,7 +218,13 @@ class HierarchicalConfigParser(ConfigParser):
             if os.path.exists(filename):
                 self.hcp = HCP()
                 self.hcp.read(filename)
-                self.read_string( self.hcp.asString() )
+                try:
+                    self.read_string( self.hcp.asString() )
+                except DuplicateOptionError as e:
+                    print(str(e),file=sys.stderr)
+                    print("Internal Error:",file=sys.stderr)
+                    print(self.hcp.asString(), file=sys.stderr)
+                    abort()
                 return
         raise FileNotFoundError(filenames_)
 
