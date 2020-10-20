@@ -8,13 +8,14 @@ import pytest
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from ctools.hierarchical_configparser import HierarchicalConfigParser,HCP,INCLUDE_RE
+from ctools.hierarchical_configparser import *
 
 MYDIR=os.path.dirname(__file__)
 
 
 def fname(path):
     return os.path.join( os.path.abspath(MYDIR),path)
+
 
 def fcontents(path):
     return open(fname(path),"r").read()
@@ -29,9 +30,23 @@ HCF_FILE8_CONTENTS_FLATTENED=fcontents("hcf_file8_flattened.ini")
 HCF_FILED_CONTENTS=fcontents("hcf_filed.ini")
 HCF_FILED_CONTENTS_ONLYB="[b]\nname=hcf_filed_section_b\n\n"
 
+
 def test_include_re():
     m = INCLUDE_RE.search("INCLUDE=foobar")
     assert m.group(1)=="foobar"
+
+
+def test_getOption():
+    assert getOption("foo bar")==None
+    assert getOption("foo: bar")=='foo'
+    assert getOption("foo : bar")=='foo'
+    assert getOption("foo = bar")=='foo'
+    assert getOption(" foo = bar")=='foo'
+    assert getOption("; foo = bar")==None
+
+def test_getAllOptions():
+    allOptions = getAllOptions(["a=1\n","b=2\n","c=3"])
+    assert list(sorted(allOptions))==['a','b','c']
 
 def test_no_includes():
     hcp = HCP()
@@ -53,10 +68,12 @@ def test_no_includes():
     assert len(hcp.sections)==1
     assert list(hcp.sections.keys())==['b']
 
+
 def test_default_include():
     hcp = HCP()
     hcp.read( HCF_FILE7_NAME )
     assert hcp.asString() == HCF_FILE7_CONTENTS_FLATTENED
+
 
 def test_include_one_section():
     hcp = HCP()
@@ -65,7 +82,7 @@ def test_include_one_section():
 
 
 def test_hierarchical_configparser1():
-    hcf = HierarchicalConfigParser(debug=True)
+    hcf = HierarchicalConfigParser()
     hcf.read(MYDIR + "/hcf_file2.ini")
     assert sorted(list(hcf.sections())) == ['a', 'b', 'c']
     assert hcf['a']['color'] == 'file2-a'
@@ -75,7 +92,6 @@ def test_hierarchical_configparser1():
     assert hcf['c']['color'] == 'file2-c'
     assert hcf['c']['second'] == 'file2-c'
 
-@pytest.mark.skip
 def test_hierarchical_configparser2():
     fname = MYDIR + "/hcf_file1.ini"  # includes hcf_file2.ini as a default
     assert os.path.exists(fname)

@@ -48,11 +48,29 @@ INCLUDE='include'
 Line = namedtuple('Line', ['filename','lineno','line'])
 
 SECTION_RE = re.compile(r'^\[([^\]]*)\]\s*$')
-OPTION_RE  = re.compile(r'^([^=:]+)\s*[=:]\s*(.*)$')
+OPTION_RE  = re.compile(r'^\s*(\w+)\s*[=:]\s*(.*)$')
 INCLUDE_RE = re.compile(r'^include\s*=\s*([^\s]+)\s*$',re.I)
 
 HEAD_SECTION=""
 DEFAULT_SECTION="default"
+
+def getOption(line):
+    """If :param line: contains an option, return it, otherwise return None."""
+    m = OPTION_RE.search(line)
+    if m:
+        return m.group(1)
+    return None
+
+
+def getAllOptions(lines):
+    return set( [option for option in [getOption(line) for line in lines] if option is not None] )
+
+def getIncludeFile(line):
+    """If the line has an INCLUDE= statementon it, return the the file included"""
+    m = INCLUDE_RE.search(line)
+    if m:
+        return m.group(1)
+    return None
 
 class HCP:
     """This class implements the HiearchicalConfigFile includes. But it does not implement the generic configfile.
@@ -92,41 +110,65 @@ class HCP:
                     self.sections[currentSection].append(line)
                     continue
 
-                # Check for an include
-                m = INCLUDE_RE.search(line)
-                if m:
-                    print("m=",m)
-                    # Insert the include line as a comment
-                    self.sections[currentSection].append(";"+line)
-
-                    # Get the file
-                    h2 = HCP()
-                    if (currentSection == HEAD_SECTION) or (currentSection=='default'):
-                        theSection = None
-                    else:
-                        theSection = currentSection
-                    theIncludeFile = m.group(1)
-                    theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
-                    h2.read( theIncludePath, onlySection=theSection)
-                    print(f"finished reading h2. theSection={theSection} h2.sections={h2.sections}")
-
-                    # Add each of the sections from this one
-                    for subsection in h2.sections:
-                        print("subsection=",subsection)
-                        addedSection = False
-                        if subsection not in self.sections:
-                            self.sections[subsection] = list()
-                            addedSection = True
-                        self.sections[subsection].append("; begin include from "+theIncludeFile + "\n")
-                        if addedSection:
-                            # We didn't know about this section already; get its name from the include file
-                            self.sections[subsection].append( h2.sections[subsection][0] )
-                        self.sections[subsection].extend(h2.sections[subsection][1:])
-                        self.sections[subsection].append("; end include from "+theIncludeFile + "\n")
-                    continue
-
                 # Looks like we should just add the line
                 self.sections[currentSection].append(line)
+            #
+            # Once every section has been processed, it's time to handle the includes.
+            # We have to process the includes *after* the entire section is read, so that variables
+            # in the included file can be shadowed. We could process each section as it is finished,
+            # but it is simpler to do it here
+
+            # First we see if there is an include in the default section.
+            # INCLUDES there are special, because they can create new sections.
+            if  DEFAULT_SECTION  in self.sections:
+                lines = list()
+                for line in self.sections[ DEFAULT_SECTION ]:
+                    theIncludeFile = getIncludeFile(line)
+                    if theIncludeFile:
+                        h2 = HCP()
+                        theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
+                        h2.read( theIncludePath)
+
+                        # And make sure that for each of the sections in h2, we have a corresponding section in the current file
+                        for includedSection in h2.sections:
+                            if includedSection not in self.sections:
+                                lines = []
+                                lines.append(f'; section added by {theIncludeFile}\n')
+                                lines.append(h2.sections[includedSection][0])
+                                self.sections[includedSection] = lines
+
+            # Now for each of the sections (including the default section, which no longer requires special processing),
+            # See if there is an INCLUDE= statement.
+            # If there is:
+            #  - get a list of current options in this section
+            #  - for each line in the included file, add it without comments if it isn't shadowed,
+            #  - otherwise add it as a comment, indicating that it is shadowed.
+            for section in self.sections:
+                newlines = list()
+                optionsForThisSection = getAllOptions(self.sections[section])
+                for line in self.sections[section]:
+                    theIncludeFile = getIncludeFile(line)
+                    if theIncludeFile:
+                        newlines.append(f';{line}')
+                        newlines.append(f'; begin include from {theIncludeFile}\n')
+                        h2 = HCP()
+                        theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
+                        h2.read( theIncludePath, onlySection=section)
+                        for iLine in h2.sections[section][1:]: # do not include the section label
+                            if getOption(iLine) in optionsForThisSection:
+                                newlines.append(f'; [SHADOWED] {iLine}')
+                            else:
+                                newlines.append(iLine)
+                        newlines.append(f'; end include from {theIncludeFile}\n')
+                    else:
+                        newlines.append(line)
+                assert len(newlines) >= len(self.sections[section])
+                self.sections[section] = newlines
+            #
+            # Done with reading file
+            #
+        return
+
 
     def asString( self ):
         s = io.StringIO()
@@ -135,7 +177,7 @@ class HCP:
         return s.getvalue()
 
 
-class HiearchicalConfigParser(ConfigParser):
+class HierarchicalConfigParser(ConfigParser):
     """
     Similar to a normal ConfigParser, but implements the INCLUDE= statement.
     """
@@ -261,7 +303,7 @@ class OLD_HierarchicalConfigParser(ConfigParser):
         # If we are in the root, delete [DEFAULT]include
         if self.depth==1:
             try:
-                del self['default']['include']
+                del self[ DEFAULT_SECTION ]['include']
             except KeyError:
                 pass
 
