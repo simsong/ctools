@@ -162,7 +162,7 @@ class HCP:
                 for line in self.sections[section]:
                     theIncludeFile = getIncludeFile(line)
                     if theIncludeFile:
-                        newlines.append(f';{line}\n')
+                        newlines.append(f';{line}') # {line} already ends with \n
                         h2 = HCP()
                         theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
                         h2.read( theIncludePath, onlySection=section)
@@ -173,7 +173,7 @@ class HCP:
                             newlines.append(f'; begin include from {theIncludeFile}\n')
                             for iLine in h2.sections[section][1:]: # do not include the section label
                                 iLineOption = getOption(iLine)
-                                if iLineOption in optionsForThisSection:
+                                if iLineOption and (iLineOption in optionsForThisSection):
                                     newlines.append(f'; [SHADOWED] {iLine}\n')
                                 else:
                                     newlines.append(iLine)
