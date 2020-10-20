@@ -231,7 +231,8 @@ class HierarchicalConfigParser(ConfigParser):
     def write(self, fileobject, **kwargs):
         fileobject.write( self.hcp.asString() )
 
-class OLD_HierarchicalConfigParser(ConfigParser):
+# This is the prevoius implementation. We'll remove it at some point.
+class LegacyHierarchicalConfigParser(ConfigParser):
     cache = dict()          # maps filenames to a dictionary
     def __init__(self, *args, debug=False, depth=1, **kwargs):
         super().__init__(*args,  **kwargs)
