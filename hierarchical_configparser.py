@@ -86,7 +86,7 @@ class HCP:
         :param section:  if provided, then only read [default] and this section
         """
         with open(filename,"r") as f:
-            print(f"{self} reading {filename} onlySection={onlySection}")
+            #print(f"{self} reading {filename} onlySection={onlySection}")
             currentDirectory = os.path.dirname( os.path.abspath(filename) )
             seen_sections = set()
             currentSection = HEAD_SECTION
@@ -103,7 +103,7 @@ class HCP:
 
                 if onlySection is not None:
                     if (onlySection.lower() != currentSection.lower()) and (currentSection!=DEFAULT_SECTION):
-                        print(f"{self} reading {filename} skipping line in section {currentSection}")
+                        #print(f"{self} reading {filename} skipping line in section {currentSection}")
                         continue
 
                 # Add the current section if it is not in the orderedDictionary.
@@ -175,7 +175,7 @@ class HCP:
                         theIncludePath = os.path.join( currentDirectory, theIncludeFile)
                         h2.read( theIncludePath, onlySection=section)
 
-                        print(f"Read {theIncludeFile} section {section} got {h2.sections}")
+                        #print(f"Read {theIncludeFile} section {section} got {h2.sections}")
 
                         if (section in h2.sections) and (len(h2.sections[section])>0):
                             newlines.append(f'; begin include from {theIncludeFile}\n')
