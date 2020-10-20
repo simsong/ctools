@@ -253,7 +253,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             dest = os.path.basename(fn)
             if not os.path.exists(dest):
                 d = shutil.copy(fn, dest)
-                print("copy {} -> {}\{}".format(fn, os.getcwd(), d))
+                print("copy {} -> {}/{}".format(fn, os.getcwd(), d))
             
             delete_files.append(dest)
 
@@ -301,7 +301,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             print(r.stderr)
 
     for fn in delete_files:
-        print("delete: {}\{}".format(os.getcwd(), fn))
+        print("delete: {}/{}".format(os.getcwd(), fn))
         os.unlink(fn)
 
     #
