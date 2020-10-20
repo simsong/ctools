@@ -83,9 +83,11 @@ class HCP:
         """
         Reads a config file, processing includes as specified above.
         :param filename: filename to read. Mandatory.
-        :param section:  just read this section. Optional
+        :param section:  if provided, then only read [default] and this section
         """
         with open(filename,"r") as f:
+            print(f"{self} reading {filename} onlySection={onlySection}")
+            currentDirectory = os.path.dirname( os.path.abspath(filename) )
             seen_sections = set()
             currentSection = HEAD_SECTION
             if onlySection is None:
@@ -99,8 +101,10 @@ class HCP:
                         raise ValueError(f"{seen_section} appears twice in {filename}")
                     seen_sections.add( currentSection )
 
-                if (onlySection is not None) and (onlySection.lower() != currentSection.lower()):
-                    continue
+                if onlySection is not None:
+                    if (onlySection.lower() != currentSection.lower()) and (currentSection!=DEFAULT_SECTION):
+                        print(f"{self} reading {filename} skipping line in section {currentSection}")
+                        continue
 
                 # Add the current section if it is not in the orderedDictionary.
                 # Note that the section may be here even if it is not in seen_sections, as it
@@ -127,12 +131,16 @@ class HCP:
                     theIncludeFile = getIncludeFile(line)
                     if theIncludeFile:
                         h2 = HCP()
-                        theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
+                        theIncludePath = os.path.join( currentDirectory, theIncludeFile)
                         h2.read( theIncludePath)
 
                         # And make sure that for each of the sections in h2, we have a corresponding section in the current file
+                        # provided that we were not asked to read a specific section. In that case, we only add [default] and that section
                         for includedSection in h2.sections:
-                            if includedSection not in self.sections:
+                            if (  (includedSection not in self.sections) and
+                                  (len(h2.sections[includedSection])>0)  and
+                                  ((onlySection is None) or (includedSection==onlySection) or (includedSection==DEFAULT_SECTION))):
+
                                 lines = []
                                 lines.append(h2.sections[includedSection][0])
                                 self.sections[includedSection] = lines
@@ -147,14 +155,14 @@ class HCP:
             #  - for each line in the included file, add it without comments if it isn't shadowed,
             #  - otherwise add it as a comment, indicating that it is shadowed.
             for section in self.sections:
-                print(f"{self} reading {filename} *** section {section}")
+                #print(f"{self} reading {filename} *** section {section}")
 
                 newlines = list()
                 optionsForThisSection = getAllOptions(self.sections[section])
                 linesInSection = self.sections[section]
                 #
-                # If we are not in the [default] section, add additional INCLUDE= directives for the default include files
-                #
+                # If we are not in the [default] section, add an INCLUDE= directive for the default include files
+                # to this section
                 if (section != DEFAULT_SECTION) and (section != HEAD_SECTION):
                     for fname in default_include_files:
                         linesInSection.append(f"INCLUDE={fname} ; from [default]\n")
@@ -164,7 +172,7 @@ class HCP:
                     if theIncludeFile:
                         newlines.append(f';{line}') # {line} already ends with \n
                         h2 = HCP()
-                        theIncludePath = os.path.join( os.path.dirname( os.path.abspath(filename)), theIncludeFile)
+                        theIncludePath = os.path.join( currentDirectory, theIncludeFile)
                         h2.read( theIncludePath, onlySection=section)
 
                         print(f"Read {theIncludeFile} section {section} got {h2.sections}")

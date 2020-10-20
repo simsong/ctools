@@ -21,6 +21,7 @@ def fcontents(path):
     return open(fname(path),"r").read()
 
 
+HCF_FILE5_NAME=fname("hcf_file5.ini")
 HCF_FILE7_NAME=fname("hcf_file7.ini")
 HCF_FILE8_NAME=fname("hcf_file8.ini")
 HCF_FILED_NAME=fname("hcf_filed.ini")
@@ -83,6 +84,13 @@ def test_default_include():
     assert hcp.asString() == HCF_FILE7_CONTENTS_FLATTENED
 
 
+def test_read_section_with_default_include():
+    hcp = HCP()
+    hcp.read( HCF_FILE5_NAME, onlySection='c')
+    print("read file5 only section [c]:")
+    print(hcp.asString())
+    assert 'filename=hcf_file6\n' in hcp.sections['c']
+
 def test_include_one_section():
     hcp = HCP()
     hcp.read( HCF_FILE8_NAME )
@@ -106,7 +114,6 @@ def test_hierarchical_configparser2():
     hcf = HierarchicalConfigParser()
     hcf.read(fname)
     # Validate what's in hcf_file1.ini
-    assert hcf['a']['INCLUDE'] == 'hcf_file2.ini'
     assert hcf['a']['color'] == 'file1-a'
     assert hcf['b']['color'] == 'file1-b'
 
@@ -119,13 +126,12 @@ def test_hierarchical_configparser2():
     # Validate that section 'c' was not included
     assert 'c' not in hcf.sections()
 
-@pytest.mark.skip
 def test_hierarchical_configparser3():
     fname = MYDIR + "/hcf_file3.ini"
     print("Original config file:")
     print(open(fname,"r").read())
     print("--------------------------\n\n")
-    hcf = HierarchicalConfigParser(debug=True)
+    hcf = HierarchicalConfigParser()
     hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
@@ -142,12 +148,13 @@ def test_hierarchical_configparser3():
     assert hcf['c']['color'] == 'file2-c'
     assert hcf['c']['second'] == 'file2-c'
     print("Explaination:")
-    hcf.explain(sys.stdout)
+    #hcf.explain(sys.stdout)
 
-@pytest.mark.skip
 def test_hierarchical_configparser4():
+    # file4 DEFAULT includes file5
+    # file5 DEFAULT includes file6
     fname = MYDIR + "/hcf_file4.ini"
-    hcf = HierarchicalConfigParser(debug=True)
+    hcf = HierarchicalConfigParser()
     hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
@@ -156,16 +163,15 @@ def test_hierarchical_configparser4():
     assert hcf['c']['filename'] == 'hcf_file6'
     assert hcf['d']['filename'] == 'hcf_file6'
     print("Explaination:")
-    hcf.explain(sys.stdout)
+    #hcf.explain(sys.stdout)
 
-@pytest.mark.skip
 def test_hierarchical_configparser5():
     fname = MYDIR + "/hcf_filea.ini"
-    hcf = HierarchicalConfigParser(debug=True)
+    hcf = HierarchicalConfigParser()
     hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
-    hcf.explain()
+    #hcf.explain()
 
     # what was originally in hcf_filea.ini:
     assert hcf['a']['file']=='hcf_filea'
@@ -179,14 +185,13 @@ def test_hierarchical_configparser5():
     assert hcf['d']['file']=='hcf_filed'
 
 
-@pytest.mark.skip
 def test_hierarchical_configparser6():
     fname = MYDIR + "/hcf_test/child/hcf_file6.ini"
-    hcf = HierarchicalConfigParser(debug=True)
+    hcf = HierarchicalConfigParser()
     hcf.read(fname)
     print("and we got:")
     hcf.write(sys.stdout)
-    hcf.explain()
+    #hcf.explain()
 
     # what was originally in child/hcf_file4:
     assert hcf['level']['location'] == 'child'
@@ -205,4 +210,4 @@ def test_hierarchical_configparser6():
     assert hcf['c']['filename'] == 'hcf_file6'
     assert hcf['d']['filename'] == 'hcf_file6'
     print("Explaination:")
-    hcf.explain(sys.stdout)
+    #hcf.explain(sys.stdout)
