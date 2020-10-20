@@ -42,6 +42,9 @@ def test_include_re():
     m = INCLUDE_RE.search("     INCLUDE = foo/bar        ;lovely comments")
     assert m.group(1)=="foo/bar"
 
+    m = SECTION_RE.search("[geodict]:")
+    assert m.group(1)=="geodict"
+
 def test_getOption():
     assert getOption("foo bar")==None
     assert getOption("foo: bar")=='foo'
