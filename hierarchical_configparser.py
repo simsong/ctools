@@ -80,6 +80,7 @@ class HCP:
     """
     def __init__(self, *args, **kwargs):
         self.sections   = collections.OrderedDict() # section name is lowercased
+        self.seen_files = set()
 
     def read(self, filename, *, onlySection=None):
         """
@@ -87,6 +88,7 @@ class HCP:
         :param filename: filename to read. Mandatory.
         :param section:  if provided, then only read [default] and this section
         """
+        self.seen_files.add( os.path.abspath(filename) )
         with open(filename,"r") as f:
             #print(f"{self} reading {filename} onlySection={onlySection}")
             currentDirectory = os.path.dirname( os.path.abspath(filename) )
@@ -135,6 +137,7 @@ class HCP:
                         h2 = HCP()
                         theIncludePath = os.path.join( currentDirectory, theIncludeFile)
                         h2.read( theIncludePath)
+                        self.seen_files.update( h2.seen_files )
 
                         # And make sure that for each of the sections in h2, we have a corresponding section in the current file
                         # provided that we were not asked to read a specific section. In that case, we only add [default] and that section
@@ -176,6 +179,7 @@ class HCP:
                         h2 = HCP()
                         theIncludePath = os.path.join( currentDirectory, theIncludeFile)
                         h2.read( theIncludePath, onlySection=section)
+                        self.seen_files.update( h2.seen_files )
 
                         #print(f"Read {theIncludeFile} section {section} got {h2.sections}")
 
@@ -218,6 +222,7 @@ class HierarchicalConfigParser(ConfigParser):
             if os.path.exists(filename):
                 self.hcp = HCP()
                 self.hcp.read(filename)
+                self.seen_files = self.hcp.seen_files
                 try:
                     self.read_string( self.hcp.asString() )
                 except DuplicateOptionError as e:
