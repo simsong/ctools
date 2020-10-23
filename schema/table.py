@@ -153,7 +153,7 @@ class Table:
         for (i,v) in enumerate(self.vars(), 1):
             if v.name in ignore_vars:
                 continue
-            ret.append("        if {}(fields[{}]) == False: return False".
+            ret.append("        if self.{}(fields[{}]) == False: return False".
                            format(v.python_validator_name(),i))
         ret.append("        return True")
         ret.append("")
