@@ -46,13 +46,14 @@ Here is sample code for integrating this into Argparse:
 
 """
 
+import argparse
+import datetime
 import logging
 import logging.handlers
 import os
 import os.path
-import datetime
+import socket
 import sys
-import argparse
 
 
 __author__ = "Simson L. Garfinkel"
@@ -140,16 +141,32 @@ def syslog_default_address():
     else:
         raise RuntimeError("No default syslog address configured")
 
-
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
                  syslog_address = None,
-                 syslog_format = YEAR+" "+SYSLOG_FORMAT):
+                 syslog_format = YEAR+" "+SYSLOG_FORMAT,
+                 use_tcp=True):
     global added_syslog
     if not added_syslog:
         # Make a second handler that logs to syslog
-        if syslog_address is None:
-            syslog_address = syslog_default_address()
-        handler   = logging.handlers.SysLogHandler(address=syslog_address, facility=facility)
+        if use_tcp:
+            if syslog_address is None:
+                syslog_address = ('localhost', 514)
+            socktype = socket.SOCK_STREAM
+
+            # From https://stackoverflow.com/questions/52950147/sysloghandler-messages-grouped-on-one-line-on-remote-server
+            # This will add a line break to the message before it is 'emitted' which ensures that the messages are
+            # split up over multiple lines, see https://bugs.python.org/issue28404
+            syslog_format = f'{syslog_format}\n'
+            # In order for the above to work, then we need to ensure that the null terminator is not included
+            append_nul = False
+        else:
+            if syslog_address is None:
+                syslog_address = syslog_default_address()
+            socktype = socket.SOCK_DGRAM
+            append_nul = True
+
+        handler   = logging.handlers.SysLogHandler(address=syslog_address, facility=facility, socktype=socktype)
+        handler.append_nul = append_nul
         formatter = logging.Formatter(syslog_format)
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
