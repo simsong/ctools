@@ -2,7 +2,9 @@
 
 import logging
 from .variable import Variable
-import z3
+
+# Z3 is now only imported if it is needed
+# to prevent errors when z3 is not available
 
 class VariableAssignment:
     """
@@ -17,8 +19,7 @@ class VariableAssignment:
 
     __slots__ = ('desc','attrib','variable','value','solver','z3_obj')
 
-    def __init__(self,variable,value,desc="",attrib={},\
-                solver=None):
+    def __init__(self,variable,value,desc="",attrib={}, solver=None):
         self.desc        = desc          # description
         self.attrib      = attrib
         assert isinstance(variable, Variable)
@@ -40,6 +41,7 @@ class VariableAssignment:
             self.solver.add(self.z3_obj <= rangeval.b)
 
     def set_value(self, value):
+        import z3
         if value is None:
             raise ValueError('value cannot be none in assignment')
         self.value = value
