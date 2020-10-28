@@ -6,6 +6,7 @@ import sys
 import subprocess
 import time
 import re
+import string
 from collections import defaultdict
 
 from urllib.parse import urlparse
@@ -31,6 +32,17 @@ READTHROUGH_CACHE_DIR = '/mnt/tmp/s3cache'
 
 AWS_CLI_LIST = ['/usr/bin/aws', '/usr/local/bin/aws', '/usr/local/aws/bin/aws']
 AWS_CLI  = None
+
+def is_hexadecimal(s):
+    """Return true if s is hexadecimal string"""
+    if isinstance(s,str)==False:
+        return False
+    elif len(s)==0:
+        return False
+    elif len(s)==1:
+        return s in string.hexdigits
+    else:
+        return all([is_hexadecimal(ch) for ch in s])
 
 def awscli():
     global AWS_CLI
