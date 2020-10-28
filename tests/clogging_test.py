@@ -30,7 +30,11 @@ def test_logging_to_syslog():
         warnings.warn(f"{LOCAL1_LOG} does not exist; cannot test logging to local1")
         return
 
-    clogging.setup(level=logging.INFO, syslog=True)
+    try:
+        clogging.setup(level=logging.INFO, syslog=True)
+    except ConnectionRefusedError as e:
+        warnings.warn('Cannot connect syslog server; we must be trying to tcp connect')
+        return
     nonce = str(time.time())
     logging.error("Logging at t={}.".format(nonce))
     # Wait a few milliseconds for the nonce to appear in the logfile
