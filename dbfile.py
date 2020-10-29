@@ -90,9 +90,11 @@ MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
 
-
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
+
+from os.path import basename,abspath,dirname
+sys.path.append( dirname(dirname( abspath( __file__ ))))
 
 def sql_InternalError():
     try:
@@ -130,8 +132,18 @@ def sql_MySQLError():
     return pymysql.MySQLError
 
 def sql_mysql():
-    import mysql
-    return mysql
+    try:
+        import mysql
+        return mysql
+    except ImportError as e:
+        pass
+    try:
+        import pymysql
+        return pymysql
+    except ImportError as e:
+        pass
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    raise ImportError()
 
 def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
