@@ -7,7 +7,6 @@ import logging
 import sys
 import threading
 import sqlite3
-import pymysql
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -91,9 +90,60 @@ MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
 
-
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
+
+from os.path import basename,abspath,dirname
+sys.path.append( dirname(dirname( abspath( __file__ ))))
+
+def sql_InternalError():
+    try:
+        import mysql.connector as mysql
+        return RuntimeError
+    except ImportError as e:
+        pass
+    try:
+        import pymysql
+        import pymysql as mysql
+        return pymysql.err.InternalError
+    except ImportError as e:
+        pass
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    raise ImportError()
+
+def sql_errors():
+    try:
+        import mysql.connector.errors as errors
+        return errors
+    except ImportError as e:
+        pass
+
+    try:
+        import pymysql.err as errors
+        return errors
+    except ImportError as e:
+        pass
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    raise ImportError()
+
+
+def sql_MySQLError():
+    import pymysql
+    return pymysql.MySQLError
+
+def sql_mysql():
+    try:
+        import mysql
+        return mysql
+    except ImportError as e:
+        pass
+    try:
+        import pymysql
+        return pymysql
+    except ImportError as e:
+        pass
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    raise ImportError()
 
 def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
@@ -108,6 +158,7 @@ class DBSQL(ABC):
     def __init__(self,dicts=True,debug=False):
         self.dicts = dicts
         self.debug = debug
+        self.MySQLError = sql_MySQLError()
 
     def __enter__(self):
         return self
@@ -121,7 +172,7 @@ class DBSQL(ABC):
             t0 = time.time()
         try:
             res = self.conn.cursor().execute(cmd, *args, **kwargs)
-        except (sqlite3.Error, pymysql.MySQLError) as e:
+        except (sqlite3.Error, self.MySQLError) as e:
             print(cmd,*args,file=sys.stderr)
             print(e,file=sys.stderr)
             exit(1)
@@ -146,7 +197,7 @@ class DBSQL(ABC):
                     print(f"{line};", file=sys.stderr)
                 try:
                     c.execute(line)
-                except (sqlite3.Error, pymysql.MySQLError) as e:
+                except (sqlite3.Error, self.MySQLError) as e:
                     print("SQL:", line, file=sys.stderr)
                     print("Error:", e, file=sys.stderr)
                     exit(1)
@@ -288,28 +339,18 @@ class DBMySQL(DBSQL):
     """MySQL Database Connection"""
     def __init__(self, auth, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        try:
-            import mysql.connector as mysql
-            internalError = RuntimeError
-        except ImportError as e:
-            try:
-                import pymysql
-                import pymysql as mysql
-                internalError = pymysql.err.InternalError
-            except ImportError as e:
-                print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector")
-                raise ImportError()
-            
-        self.conn = mysql.connect(host=auth.host,
-                                  database=auth.database,
-                                  user=auth.user,
-                                  password=auth.password)
+        self.mysql = sql_mysql()
+        self.internalError = sql_InternalError()
+        self.conn = self.mysql.connect(host=auth.host,
+                                       database=auth.database,
+                                       user=auth.user,
+                                       password=auth.password)
         if self.debug:
             print(f"Successfully connected to {auth}",file=sys.stderr)
         # Census standard TZ is America/New_York
         try:
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except internalError as e:
+        except self.internalError as e:
             pass
         self.cursor().execute('SET autocommit = 1') # autocommit
 
@@ -349,10 +390,7 @@ class DBMySQL(DBSQL):
         debug = (debug or auth.debug)
 
 
-        try:
-            import mysql.connector.errors as errors
-        except ImportError as e:
-            import pymysql.err as errors
+        errors = sql_errors()
         for i in range(1,RETRIES):
             try:
                 try:
