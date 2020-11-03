@@ -231,7 +231,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     assert os.path.exists(pathname)
     assert repeat>=1
 
-    (dirname,filename) = os.path.split( pathname)
+    (dirname, filename) = os.path.split( pathname )
     dirname_ = dirname
 
     if chdir:
