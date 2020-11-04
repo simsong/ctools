@@ -496,8 +496,14 @@ def s3rm(path):
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
     print("res:",type(res))
-    if res['DeleteMarker'] != True:
-        raise RuntimeError("Unknown response from delete-object: {}".format(res))
+    # delete-object return no output in Staging, even though it successfully deleted the key
+    # This is likely because bucket versioning is not enabled in Staging
+    # See https://wiki.outscale.net/display/EN/Removing+Objects+from+a+Bucket
+    # This results in an empty byte string when returned from aws_s3api
+    if res == b'' or res['DeleteMarker'] == True:
+        return
+
+    raise RuntimeError("Unknown response from delete-object: {}".format(res))
 
 class DuCounter:
     def __init__(self):
