@@ -542,7 +542,7 @@ class ttable:
             raise RuntimeError("OPTION_LONGTABLE and OPTION_TABULARX conflict")
 
         if len(self.data) == 0:
-            print("typeset: no rows")
+            raise ValueError("no data to typeset")
             return ""
 
         if mode:
@@ -553,12 +553,10 @@ class ttable:
 
         if option:
             self.add_option(option)
-            print("add option", option)
         self.cols = self.ncols()  # cache
         if self.cols == 0:
-            print("typeset: no data")
-            return ""
-
+            raise ValueError("no data to typeset")
+            
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
             raise ValueError("Invalid typesetting mode " + self.mode)
 

@@ -220,6 +220,7 @@ class HierarchicalConfigParser(ConfigParser):
             filenames = [filenames]
         for filename in filenames:
             if os.path.exists(filename):
+                self.input_filename = filename
                 self.hcp = HCP()
                 self.hcp.read(filename)
                 self.seen_files = self.hcp.seen_files
@@ -235,6 +236,9 @@ class HierarchicalConfigParser(ConfigParser):
 
     def write(self, fileobject, **kwargs):
         fileobject.write( self.hcp.asString() )
+
+    def asString(self):
+        return self.hcp.asString()
 
 # This is the prevoius implementation. We'll remove it at some point.
 class LegacyHierarchicalConfigParser(ConfigParser):
