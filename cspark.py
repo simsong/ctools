@@ -70,7 +70,7 @@ def detach(logdir=os.getcwd()):
     if pid > 0:
         # We are the parent. Exit
         os._exit(0)  # do not call any registered signal handlers
-    # We are first child. 
+    # We are first child.
     os.setsid()  # become a session leader
 
     pid = os.fork()  # Fork a second achild and immediately exit to prevent zombies
@@ -170,7 +170,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     @param pydirs  - a list of file systme directories; add every .py file in each folder to the --py-files argument
     @param logLevel - if specified, run at this log level
     @param num_executors - The number of executors to use
-    @param conf    - a list containing name=value Spark properties to add to the --conf 
+    @param conf    - a list containing name=value Spark properties to add to the --conf
     @param properties_file - a file to be added as a --properties_file
     @param configdict - a dictionary of configuration parameters, designed to be taken from the [spark] section of a config.ini file.
     @param argv    - sys.argv (args[0] is script to run; remainder are arguments)
@@ -178,8 +178,8 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     """
     if spark_running():
         return True             # running inside Spark
-    cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs, 
-                           num_executors=num_executors, conf=conf, 
+    cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs,
+                           num_executors=num_executors, conf=conf,
                            configdict=configdict, properties_file=properties_file)
 
     if logLevel:
@@ -200,9 +200,9 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
         subprocess.call(cmd)
     else:
         os.execvp(cmd[0],cmd)
-    
 
-def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None, 
+
+def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None,
                   conf=[], configdict={},
                   properties_file=None, appName='spark'):
     """If spark is running, return the Spark Context.
@@ -262,14 +262,14 @@ def get_spark_info(host=None,port=None):
     for app in json.loads(spark_data):
         app_id   = app['id']
         app_name = app['name']
-        
+
         r2 = {'application':app}
         for param in ['jobs','allexecutors','storage/rdd']:
             url = f'http://{host}:{port}/api/v1/applications/{app_id}/{param}'
             resp = urlopen(url, context=ssl._create_unverified_context())
             data = resp.read()
             r2[param] = json.loads(data)
-        
+
         ret['spark'].append(r2)
     return ret
 
@@ -292,9 +292,9 @@ if __name__ == "__main__":
         time.sleep(600)
         sys.stdout.write("This was written to stdout 600 seconds later at {}...\n".format(time.asctime()))
         sys.stderr.write("This was written to stderr 600 seconds later...\n")
-    
+
     if args.spark:
-        sc = spark_context()    # create a Spark context with spark-submit
+        sc = spark_session()    # create a Spark context with spark-submit
         import operator
         result = sc.parallelize(range(0, 1000001)).reduce(operator.add)
         print("***********************************")
