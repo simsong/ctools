@@ -294,7 +294,7 @@ if __name__ == "__main__":
         sys.stderr.write("This was written to stderr 600 seconds later...\n")
 
     if args.spark:
-        sc = spark_session()    # create a Spark context with spark-submit
+        sc = spark_session().sparkContext    # create a Spark context with spark-submit
         import operator
         result = sc.parallelize(range(0, 1000001)).reduce(operator.add)
         print("***********************************")
