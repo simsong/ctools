@@ -241,7 +241,7 @@ def get_spark_info(host=None,port=None):
         host       = os.environ.get("SPARK_LOCAL_IP","localhost")
 
     if port:
-        ports = [p1]
+        ports = [port]
     else:
         ports = range(SPARK_PORT_START,SPARK_PORT_END+1)
 
