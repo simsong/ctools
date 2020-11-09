@@ -7,6 +7,12 @@ import logging
 import sys
 import threading
 import sqlite3
+import socket
+import re
+import resource
+import total_size
+import psutil
+
 
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -14,7 +20,7 @@ from collections import OrderedDict
 """
 This is the dbfile.py (database file)
 
-This package is mostly here for the MySQL interface, but parts can also be used with SQLite3. 
+This package is mostly here for the MySQL interface, but parts can also be used with SQLite3.
 
 The goals of this package:
 
@@ -51,7 +57,7 @@ The following classes are provided:
 The main DBMySQL class method that we use is:
 
   DBMySQL.csfr(auth, cmd, vals, quiet, rowcount, time_zone, get_column_names, asDicts, debug)
-  
+
   "Connect, Select, FetchAll, Retry"
 
 cmd - Statements should use "%s" for substituted arguments; this is turned to ? for SQLite3
@@ -70,7 +76,7 @@ For example, let's say you have a WSGI script that needs to know read-only MySQL
    $
 
 If you source this (which is not secure because it puts the password on the
-command line, but hold that thought), you can then test out the dbreader account by just typing 'dbreader'. 
+command line, but hold that thought), you can then test out the dbreader account by just typing 'dbreader'.
 
 You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
 
@@ -294,7 +300,7 @@ and cached_db is stored in the request-local storage."""
                     name = m.group(1)
                     val  = m.group(2)
                     # Check for quotes
-                    if val[0] in "'\"" and val[0]==val[-1]: 
+                    if val[0] in "'\"" and val[0]==val[-1]:
                         val = val[1:-1]
                     ret[name] = val
         return ret
@@ -303,7 +309,7 @@ and cached_db is stored in the request-local storage."""
     def FromEnv(filename):
         """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
         env = DBMySQLAuth.GetBashEnv(filename)
-        return DBMySQLAuth(host = env[MYSQL_HOST], 
+        return DBMySQLAuth(host = env[MYSQL_HOST],
                            user = env[MYSQL_USER],
                            password = env[MYSQL_PASSWORD],
                            database = env[MYSQL_DATABASE])
@@ -312,7 +318,7 @@ and cached_db is stored in the request-local storage."""
     def FromConfig(section,debug=None):
         """Returns from the section of a config file"""
         try:
-            return DBMySQLAuth(host = section[MYSQL_HOST], 
+            return DBMySQLAuth(host = section[MYSQL_HOST],
                                user = section[MYSQL_USER],
                                password = section[MYSQL_PASSWORD],
                                database = section[MYSQL_DATABASE],
@@ -368,7 +374,7 @@ class DBMySQL(DBSQL):
             return cmd % tuple([myquote(v) for v in vals])
         else:
             return cmd
-        
+
     @staticmethod
     def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
              setup=None, setup_vals=(),
@@ -411,8 +417,8 @@ class DBMySQL(DBSQL):
                         logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
                         logging.warning("EXPLAIN:")
                         logging.warning(DBMySQL.explain(cmd,vals))
-                        
-                    
+
+
                     ###
                     ###
                     if dry_run:
@@ -438,11 +444,11 @@ class DBMySQL(DBSQL):
                     logging.error("explained: %s ",DBMySQL.explain(cmd,vals))
                     logging.error(str(e))
                     raise e
-                    
+
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     raise e
-                    
+
                 verb = cmd.split()[0].upper()
                 if verb in ['SELECT','DESCRIBE','SHOW']:
                     result = c.fetchall()
@@ -502,7 +508,7 @@ class DBMySQL(DBSQL):
     def table_columns(auth, table_name):
         """Return a dictionary of the schema. This should probably be upgraded to return the ctools schema"""
         return [row[0] for row in DBMySQL.csfr(auth, "describe "+table_name)]
-                    
+
 
 ################################################################
 ##
@@ -511,7 +517,7 @@ class DBMySQL(DBSQL):
 
 def maxrss():
     """Return maxrss in bytes, not KB"""
-    return resource.getrusage(resource.RUSAGE_SELF)[2]*1024 
+    return resource.getrusage(resource.RUSAGE_SELF)[2]*1024
 
 def print_maxrss():
     for who in ['RUSAGE_SELF','RUSAGE_CHILDREN']:
@@ -520,6 +526,7 @@ def print_maxrss():
 
 def mem_info(what,df,dump=True):
     import pandas as pd
+    start_time = time.time()
     print(f'mem_info {what} ({type(df)}):')
     if type(df)!=pd.core.frame.DataFrame:
         print("Total {} memory usage: {:}".format(what,total_size(df)))
@@ -529,7 +536,7 @@ def mem_info(what,df,dump=True):
             pd.options.display.max_rows     = 5
             pd.options.display.max_colwidth = 240
             print(df)
-        for dtype in ['float','int','object']: 
+        for dtype in ['float','int','object']:
             selected_dtype = df.select_dtypes(include=[dtype])
             mean_usage_b = selected_dtype.memory_usage(deep=True).mean()
             mean_usage_mb = mean_usage_b / 1024 ** 2
@@ -551,7 +558,7 @@ def get_free_mem():
 
 REPORT_FREQUENCY = 60           # report this often
 last_report = 0                 # last time we reported
-def report_load_memory(auth):
+def report_load_memory(auth, quiet=True):
     """Report and print the load and free memory; return free memory"""
     global last_report
     free_mem = get_free_mem()
@@ -562,10 +569,7 @@ def report_load_memory(auth):
     if last_report < time.time() + REPORT_FREQUENCY:
         DBMySQL.csfr(auth,"insert into sysload (t, host, min1, min5, min15, freegb) "
                      "values (now(), %s, %s, %s, %s, %s) "
-                     "ON DUPLICATE KEY update min1=min1", 
-                     [HOSTNAME] + list(os.getloadavg()) + [get_free_mem()//GiB],
+                     "ON DUPLICATE KEY update min1=min1",
+                     [hostname()] + list(os.getloadavg()) + [get_free_mem()//GiB],
                      quiet=quiet)
         last_report = time.time()
-
-    
-
