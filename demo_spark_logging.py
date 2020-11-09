@@ -16,8 +16,8 @@ from os.path import dirname
 
 sys.path.append(dirname(dirname(abspath(__file__))))
 
-from .ctools import cspark
-from .ctools import clogging
+from ctools import cspark
+from ctools import clogging
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"

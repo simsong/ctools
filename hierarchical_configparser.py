@@ -102,7 +102,7 @@ class HCP:
                 if m:
                     currentSection = m.group(1).lower()
                     if currentSection in seen_sections:
-                        raise ValueError(f"{seen_section} appears twice in {filename}")
+                        raise ValueError(f"{seen_sections} appears twice in {filename}")
                     seen_sections.add( currentSection )
 
                 if onlySection is not None:
@@ -216,7 +216,7 @@ class HierarchicalConfigParser(ConfigParser):
     """
     def read(self, filenames):
         filenames_ = filenames
-        if isinstance(filenames,str) or instance(filenames,bytes):
+        if isinstance(filenames,str) or isinstance(filenames,bytes):
             filenames = [filenames]
         for filename in filenames:
             if os.path.exists(filename):

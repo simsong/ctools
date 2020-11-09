@@ -54,6 +54,7 @@ def valid_convertable_document_file(fname):
 # https://stackoverflow.com/questions/6011115/doc-to-pdf-using-python
 def quit_word():
     """Quit Microsoft Word"""
+    import win32com.client
     if sys.platform=='win32':
         word = win32com.client.Dispatch("Word.Application")
         word.Quit()
@@ -142,6 +143,6 @@ if __name__=="__main__":
     # Command to test the conversion
     #
     import sys
-    ofn = convert_doc_to_pdf(sys.argv[1])
+    ofn = convert_document_to_pdf(sys.argv[1])
     print("Converted {} to {}".format(sys.argv[1],ofn))
     exit(0)
