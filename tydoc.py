@@ -785,13 +785,6 @@ class tydoc(TyTag):
         else:
             return False
 
-    @staticmethod
-    def toc_tags(level=3):
-        """Return a new tytag ('toc') with of the heading tags as necessary,
-        up to the specified level.  This could probably be done with
-        some clever XPath..."""
-        ret = None
-        return ret  # TODO: ret is undefined
 
     def title(self, text, **kwargs):
         self.head.add_tag_elems(TAG_TITLE, [text], **kwargs)
@@ -1275,7 +1268,7 @@ class tytable(TyTag):
             # Pad this row out if it needs padding
             # Markdown tables don't support col span
             if len(row_cells) < len(all_cols):
-                row_cells.extend([TyTag(TAG_TD)] * (cols - len(row)))  # TODO: cols and row are undefined
+                row_cells.extend([TyTag(TAG_TD)] * (len(all_cols) - len(row_cells)))
 
             # Make up the format string for this row based on the cell attributes
 

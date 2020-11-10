@@ -37,8 +37,8 @@ class VariableAssignment:
             raise RuntimeError('no z3 solver provided')
 
         for range_val in self.variable.ranges:
-            self.solver.add(self.z3_obj >= rangeval.a)
-            self.solver.add(self.z3_obj <= rangeval.b)
+            self.solver.add(self.z3_obj >= range_val.a)
+            self.solver.add(self.z3_obj <= range_val.b)
 
     def set_value(self, value):
         import z3
@@ -58,8 +58,6 @@ class VariableAssignment:
             self.z3_obj = z3.Float(float(value))
         elif self.python_type == str:
             self.z3_obj = z3.String(str(value))
-        elif self.python_type == long:
-            self.z3_obj = z3.Long(long(value))
         else:
             raise ValueError('invalid python type provided')
 
@@ -91,4 +89,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

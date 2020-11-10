@@ -2,7 +2,7 @@
 # Tools for representing a database schema
 #
 # Developed by Simson Garfinkel at the US Census Bureau
-# 
+#
 # Classes:
 #   Range     - Describes a range that a value can have, from a to be inclusive. Includes a description of the range
 #   Variable - An individual variable. Can have multiple ranges and possible values, as well as type
@@ -24,6 +24,18 @@ assignVal_re       = re.compile(r"([^=]*)\s*=\s*(.*)")
 assignRange_re     = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
 range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)")  # handles unicode dashes
 integer_re         = re.compile(r"INTEGER ?\((\d+)\)", re.I)
+
+
+SAS_TEMPLATE = """OPTIONS NOCENTER PAGENO=1 SOURCE MPRINT;
+FILENAME RAWDATA "{}";
+DATA {};
+  INFILE RAWDATA DELIMITER='|' DSD;
+  INPUT {};
+RUN;
+PROC PRINT DATA={};
+RUN;
+"""
+
 
 TYPE_NUMBER        = "NUMBER"
 TYPE_INTEGER       = "INTEGER"
@@ -51,7 +63,7 @@ SQL_TYPE_MAP = {int: {'type': TYPE_INTEGER, 'width': 8},
                 str: {'type': TYPE_VARCHAR, 'width': 254},
                 float: {'type': TYPE_FLOAT, 'width': 15},
                 decimal.Decimal: {'type': TYPE_DECIMAL, 'width': 15}}
-    
+
 
 DEFAULT_VARIABLE_WIDTH = 8
 WIDTH_MAX       = 255
@@ -131,7 +143,7 @@ def decode_vtype(t):
     if vtype not in PYTHON_TYPE_MAP:
         raise ValueError("vtype {} is not in PYTHON_TYPE_MAP".format(vtype))
     return vtype, width
-    
+
 
 def vtype_for_numpy_type(t):
     import numpy

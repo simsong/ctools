@@ -562,7 +562,7 @@ def report_load_memory(auth, quiet=True):
     """Report and print the load and free memory; return free memory"""
     global last_report
     free_mem = get_free_mem()
-
+    GiB = 1024*1024*1024
     # print current tasks
     # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
     # why we should not use "INSERT IGNORE"

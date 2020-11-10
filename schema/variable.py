@@ -1,6 +1,8 @@
 import logging
 from os.path import dirname, abspath
 import sys
+import random
+import re
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 #from ctools.schema import *
 import ctools.schema as schema
@@ -71,7 +73,7 @@ class Variable:
     def set_name(self,name):
         self.name = name
         if self.name and not valid_sql_name(name):
-            raise RuntimeError("invalid SQL Variable name: {}".format(name)) 
+            raise RuntimeError("invalid SQL Variable name: {}".format(name))
 
     def set_vtype(self,vtype=None,python_type=None):
         """sets both vtype and python_type. Only one should be provided
@@ -99,13 +101,13 @@ class Variable:
         assert end>=start
         self.column = start
         self.width  = (end-start)+1
-        
+
     def sql_type(self):
         """Return the type as an SQL expression"""
         if self.width:
             return "{}({})".format(self.vtype,self.width)
         return self.vtype
-        
+
     def find_default_from_allowable_range_descriptions(self,text):
         """Search through all of the allowable ranges. If one of them has a
         TEXT in its description, use the first value of the range as
@@ -233,13 +235,13 @@ class Variable:
         except ValueError as e:
             logging.error("Cannot create python range expression for variable "+str(self))
             raise RuntimeError("Cannot create python range expression for variable "+str(self))
-            
+
         if expr=="":
             expr = "True"
         ret.append("        return "+expr)
         return "\n".join(ret)+"\n"
 
-        
+
     def vformat(self,val):
         """Format a value according to val's type and the variable's type. By default, just pass it through."""
         if type(val)==int and self.vtype== schema.TYPE_CHAR:
@@ -260,8 +262,6 @@ class Variable:
         func( out )
 
         for r in sorted(self.ranges):
-            func(f"      {f}")
+            func(f"      {r}")
         if self.default is not None:
             func(f"      DEFAULT: {self.default}")
-
-
