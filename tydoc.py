@@ -1819,7 +1819,7 @@ def jupyter_display_table(val,float_format="{:.5f}"):
     buf = io.StringIO()
     doc.render(buf,'html')
     buf.seek(0)
-    display(HTML(buf.read()))
+    HTML(buf.read())
 
 
 if __name__ == "__main__":
