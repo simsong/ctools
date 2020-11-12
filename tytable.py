@@ -10,7 +10,7 @@ Also creates LaTeX variables.
 Simson Garfinkel, 2010-
 
 This is really bad python. Let me clean it up before you copy it.
-ttable is the main typesetting class. It builds an abstract representation of a table and then typesets with output in Text, HTML or LateX. 
+ttable is the main typesetting class. It builds an abstract representation of a table and then typesets with output in Text, HTML or LateX.
 It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
@@ -185,12 +185,12 @@ class ttable:
        are center-justified.
 
        ## Data building functions:
-       ttable() - Constructor. 
-       .set_title(title) 
+       ttable() - Constructor.
+       .set_title(title)
        .compute_and_add_col_totals() - adds columns for specified columns / run automatically
        .compute_col_totals(col_totals) - adds columns for specified columns
-       .add_head([row]) to one or more heading rows. 
-       .add_data([row]) to append data rows. 
+       .add_head([row]) to one or more heading rows.
+       .add_data([row]) to append data rows.
        .add_data(ttable.HR) - add a horizontal line
 
        ## Formatting functions:
@@ -327,7 +327,7 @@ class ttable:
                     self.set_col_alignment(col, self.LEFT)
                     col += 1
                     continue
-                elif ch[0] == 'p':  
+                elif ch[0] == 'p':
                     self.set_col_alignment(col, self.LEFT)
                     col += 1
                     continue
@@ -556,7 +556,7 @@ class ttable:
         self.cols = self.ncols()  # cache
         if self.cols == 0:
             raise ValueError("no data to typeset")
-            
+
         if self.mode not in [self.TEXT, self.LATEX, self.HTML]:
             raise ValueError("Invalid typesetting mode " + self.mode)
 
@@ -569,14 +569,14 @@ class ttable:
         if hasattr(self, "col_totals"):
             self.compute_and_add_col_totals()
 
-        # Precalc any table widths if necessary 
+        # Precalc any table widths if necessary
         if self.mode == self.TEXT:
             self.calculate_col_formatted_widths()
             if self.title:
                 ret.append(self.title + ":" + "\n")
 
         #
-        # Start of the table 
+        # Start of the table
         #
         if self.mode == self.LATEX:
             if self.fontsize:
@@ -708,18 +708,3 @@ class ttable:
         else:
             self.add_head([col[0] for col in cur.description])
         [self.add_data(row) for row in cur]
-
-
-def demo():
-    doc = tytable()
-    doc.add_head(['State', 'Abbreviation', 'Population'])
-    doc.add_data(['Virginia', 'VA', 8001045])
-    doc.add_data(['California', 'CA', 37252895])
-    return doc
-
-
-if __name__ == "__main__":
-    # Showcase different ways of making a document and render it each way:
-    doc: tytable = demo()
-    print(doc.prettyprint())
-    exit(0)

@@ -4,11 +4,11 @@
 
 # Make sure we will use matplot lib headless:
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_agg import FigureCanvasAgg 
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tydoc import *
+from tydoc import tydoc
 import latex_tools
 
 def demo1():
@@ -32,17 +32,17 @@ def demo1():
 
     doc = tydoc()
     doc.h1("Matplotlib demo")
-    doc.p(["This demonstrates how you can add ",b("matplotlib"),
+    doc.p(["This demonstrates how you can add ",b"matplotlib",
            " to your documents"])
     doc.append_matplotlib(plt,dpi=72,pad_inches=0.1)
     doc.p("Pretty neat, eh?")
     doc.save("demo1.html")
     doc.save("demo1.tex")
     doc.save("demo1.md")
-    
+
     # Just for grins, let's also run LaTeX
     latex_tools.run_latex("demo1.tex", delete_tempfiles=True)
-    
+
 def demo2():
     doc = tydoc()
     doc.h1("sin(x) graph")

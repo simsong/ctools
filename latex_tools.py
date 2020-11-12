@@ -205,7 +205,7 @@ def delete_temp_files(latex_source,verbose=False):
     (name,ext) = os.path.splitext(latex_source)
     for ext in ['.log','.aux','.bbl','.toc','.blg','.dvi']:
         for nfn in glob.glob(name+ext):
-            if verbose: 
+            if verbose:
                 print("Deleting {}".format(nfn))
             os.unlink(nfn)
 
@@ -242,7 +242,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
                 print("Changed directory to",dirname)
 
         # change dirname and pathname to reflect current directory
-        dirname="."                 
+        dirname="."
         pathname=filename
         assert os.path.exists(filename) # make sure we can still reach it
 
@@ -254,7 +254,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             if not os.path.exists(dest):
                 d = shutil.copy(fn, dest)
                 print("copy {} -> {}/{}".format(fn, os.getcwd(), d))
-            
+
             delete_files.append(dest)
 
     if DEBUG:
@@ -332,7 +332,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
 
     if callback_aux:
         callback_aux(open(auxfilename,"r"))
-        
+
     # Read the log file to determine the number of pages
     # This should be done with the callback
 
@@ -352,7 +352,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
 
     # If we changed the current directory, change back
     if chdir:
-        os.chdir(cwd)           
+        os.chdir(cwd)
 
     # Restore environment
     if texinputs is not None:
@@ -383,7 +383,7 @@ def extract_pdf_pages(target,source,pagelist="-"):
     else:
         pagelist_str = ",".join(str(x) for x in pagelist)
 
-    # 
+    #
     # Generate an output file
     with open(target_latex,"w") as f:
         f.write("\\documentclass{book}\n")
@@ -393,8 +393,8 @@ def extract_pdf_pages(target,source,pagelist="-"):
         f.write("\\end{document}\n")
 
     run_latex(target_latex,repeat=1,delete_tempfiles=True)
-        
-    
+
+
 def inspect_json_all_pages_have_same_orientation(info):
     orientations = set([pageinfo[ORIENTATION] for pageinfo in info[PAGES]])
     if len(orientations)==1:
@@ -435,7 +435,7 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
             m = page_pat.search(line)
             if m:
                 if width==None or height==None:
-                    logging.error("************  CANNOT COUNT PAGES IN '%s' **************",pdf_name)
+                    logging.error("************  CANNOT COUNT PAGES IN '%s' **************",pdf_fname)
                     exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
@@ -453,7 +453,7 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
                                      dir=os.path.dirname( os.path.abspath(pdf_fname))) as tmp:
         tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
         tmp.flush()             # Make sure contents are written out
-        tmp.close()             # Windows compatability 
+        tmp.close()             # Windows compatability
         run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True, texinputs=texinputs)
         os.unlink( tmp.name)
     return ret
@@ -503,11 +503,9 @@ def count_pdf_pages(pdf_fname):
         return count_pdf_pages_pypdf(pdf_fname)
     except ImportError:
         return len( inspect_pdf_latex( pdf_fname )[PAGES])
-        
+
 if __name__=="__main__":
     import sys
     m = inspect_pdf(sys.argv[1])
     for info in sorted(m[PAGES].keys()):
         print('page ',info, m[PAGES][info])
-        
-    

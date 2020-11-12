@@ -5,7 +5,7 @@ To assure that only one copy of a script is running, insert this in __main__:
     import ctools.lock
     ctools.lock.lock_script()
 
-If a copy of the script is already running, a RuntimeError will be generated. 
+If a copy of the script is already running, a RuntimeError will be generated.
 """
 
 
@@ -18,8 +18,8 @@ def lock_script(scriptpath=sys.argv[0]):
     """Lock the script so that only one copy can run at once"""
     try:
         fd = os.open(scriptpath,os.O_RDONLY)
-    except FileNotFound as f:
-        raise FileNotFound("Could not find script at {}".format(scriptpath))
+    except FileNotFoundError as f:
+        raise FileNotFoundError("Could not find script at {}".format(scriptpath))
 
     if fd>0:
         try:

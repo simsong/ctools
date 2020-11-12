@@ -33,7 +33,7 @@ import aws
 # So we use 4
 DEFAULT_WORKERS=4
 
-# We also now implement exponential backoff 
+# We also now implement exponential backoff
 MAX_RETRIES = 7
 RETRY_MS_DELAY = 50
 
@@ -117,9 +117,6 @@ def decode_status(meminfo):
 def clusterId():
     return user_data()['clusterId']
 
-def get_instance_type(host):
-    return run_command_on_host(host,"curl -s http://169.254.169.254/latest/meta-data/instance-type")
-
 # https://docs.aws.amazon.com/general/latest/gr/api-retries.html
 def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     """run the command and return the JSON output. implements retries"""
@@ -145,7 +142,7 @@ def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
             logging.error(f"JSONDecodeError: out: {out}  err: {err}")
             raise e
     raise e
-    
+
 
 def list_clusters(*,state=None):
     """Returns the AWS Dictionary of cluster information"""
@@ -157,13 +154,13 @@ def list_clusters(*,state=None):
 
 def describe_cluster(clusterId):
     data = aws_emr_cmd(['describe-cluster','--cluster',clusterId])
-    return data['Cluster']    
+    return data['Cluster']
 
 def list_instances(clusterId = None):
     if clusterId is None:
         clusterId = clusterId()
     data = aws_emr_cmd(['list-instances','--cluster-id',clusterId])
-    return data['Instances']    
+    return data['Instances']
 
 def add_cluster_info(cluster):
     clusterId = cluster['Id']

@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import urllib.request
+import socket
 
 
 ################################################################
@@ -31,10 +32,10 @@ def proxy_off():
     if HTTPS_PROXY in os.environ:
         del os.environ[HTTPS_PROXY]
 
-class Proxy:    
+class Proxy:
     """Context manager that enables the Census proxy. By default http is not proxied and https is proxied.
     This allows AWS IAM Roles to operate (since they seem to be enabled by http) but we can reach the
-    endpoint through the HTTPS proxy (since it's IP address is otherwise blocked). 
+    endpoint through the HTTPS proxy (since it's IP address is otherwise blocked).
 
     This took a long time to figure out.
 

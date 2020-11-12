@@ -14,7 +14,7 @@ import json
 from os.path import abspath
 from os.path import dirname
 
-sys.path.append(dirname(dirname(abs_path(__file__))))
+sys.path.append(dirname(dirname(abspath(__file__))))
 
 from ctools import cspark
 from ctools import clogging
@@ -33,20 +33,20 @@ def applicationId():
         return "unknown"
 
 def square(x):
-    """This is the map function. It's going to run on the executors. 
-    Log the hostname, the PID and X as a JSON object""" 
+    """This is the map function. It's going to run on the executors.
+    Log the hostname, the PID and X as a JSON object"""
     from pyspark import SparkContext
     clogging.setup(level=logging.INFO, syslog='True')
-    logging.info( json.dumps({'hostname':socket.gethostname(), 
+    logging.info( json.dumps({'hostname':socket.gethostname(),
                               'pid':os.getpid(), 'x':x, 'func':'square', 'applicationId':applicationId()}))
     return x*x
 
 def myadder(x,y):
-    """This is the map function. It's going to run on the executors. 
+    """This is the map function. It's going to run on the executors.
     Log the hostname, the PID and X as a JSON object"""
     from pyspark import SparkContext
     clogging.setup(level=logging.INFO, syslog='True')
-    logging.info( json.dumps({'hostname':socket.gethostname(), 'pid':os.getpid(), 
+    logging.info( json.dumps({'hostname':socket.gethostname(), 'pid':os.getpid(),
                               'x':x, 'y':y, 'func':'myadder', 'applicationId':applicationId()}))
     return x+y
 
@@ -66,25 +66,25 @@ if __name__=="__main__":
     print("application id:",sc.applicationId)
 
     # Initialize logging on the head-end.
-    # This is done after the Spark context is acquired, but it could be done before. 
+    # This is done after the Spark context is acquired, but it could be done before.
     clogging.setup(level=logging.INFO, syslog=True, filename='demo_logfile.log')
 
     # Count the squares of the numbers 1..1000
     result = sc.parallelize(range(1,1001)).map(square).reduce(myadder)
-    
+
     print("The numbers 1..1000 square add to {}".format(result))
-    
+
     print("Dumping the lines in the logfile that have my applicationId and collect all of the json objects:")
     objs = []
     for line in open("/var/log/local1.log"):
         if sc.applicationId in line:
             print(line, end='')
             objs.append( json.loads( line[line.find('{'):] ))
-    
+
     print("Here are all the json objects with x=50:")
     for obj in objs:
         if obj['x']==50:
             print(obj)
-    
+
     print("We're still running under spark-submit. The parent program will exit as soon as the child does.")
     exit(0)

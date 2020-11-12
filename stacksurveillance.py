@@ -8,9 +8,10 @@ https://stackoverflow.com/questions/45290223/check-what-thread-is-currently-doin
 
 import threading
 import sys
+import time
 
 class StackSurveillance:
-    def __init__(thread=threading.current_thread(), file=sys.stderr, interval=60.0, callback=None):
+    def __init__(self, thread=threading.current_thread(), file=sys.stderr, interval=60.0, callback=None):
         self.thread = thread
         self.file   = file
         self.callback=callback
@@ -30,8 +31,7 @@ class StackSurveillance:
 if __name__=="__main__":
     print("demo program to show use with a slow fibinacci program.")
     def slow_fib(a):
-        sleep(1)
+        time.sleep(1)
         if a>2:
-            return self_fib(a-1)+self_fib(a-2)
+            return slow_fib(a-1)+slow_fib(a-2)
         return 1
-            
