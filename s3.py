@@ -407,10 +407,13 @@ class s3open:
     def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), cache=False, fsync=False):
         """
         Open an s3 file for reading or writing. Can handle any size, but cannot seek.
-        We could use boto.
-        http://boto.cloudhackers.com/en/latest/s3_tut.html
-        but it is easier to use the aws cli, since it is present and more likely to work.
-        @param fsync - if True and mode is writing, use object-exists to wait for the object to be created.
+        We could use boto3 or one of these packages:
+               * https://s3fs.readthedocs.io/en/latest/
+               * http://boto.cloudhackers.com/en/latest/s3_tut.html
+
+        This is legacy code from when we had systems that would not work with boto3.
+
+        :param fsync: if True and mode is writing, use object-exists to wait for the object to be created on exit.
         """
         if not path.startswith("s3://"):
             raise ValueError("Invalid path: " + path)
