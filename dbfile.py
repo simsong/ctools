@@ -441,6 +441,8 @@ class DBMySQL(DBSQL):
                     
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
+                    if 'not enough' in str(e):
+                        logging.error("Count of parameters: %s  count of values: %s",cmd.count("%"),len(vals))
                     raise e
                     
                 verb = cmd.split()[0].upper()
