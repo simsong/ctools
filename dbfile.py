@@ -10,8 +10,13 @@ import sqlite3
 import socket
 import re
 import resource
-import total_size
 import psutil
+
+MY_DIR=os.path.dirname( os.path.abspath( __file__ ))
+if MY_DIR not in sys.path:
+    sys.path.append(MY_DIR)
+
+import total_size
 
 
 from abc import ABC, abstractmethod
