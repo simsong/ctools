@@ -3,6 +3,14 @@ import os.path
 import sys,os,glob
 import warnings
 
+class NoExcel(Exception):
+    def __init__(self, msg=''):
+        Exception.__init__(self, msg)
+    def __repr__(self):
+        return self.message
+    __str__ = __repr__
+
+
 #import win32api
 
 # Notes on accessing Excel from Python with COM:
@@ -33,33 +41,27 @@ def is_xls_xml(infile):
 # https://stackoverflow.com/questions/16683376/print-chosen-worksheets-in-excel-files-to-pdf-in-python
 # https://github.com/mwhit74/excel/blob/master/excel_to_pdf.py
 def excel_convert(infile,out_ext):
-    try:
-        import win32com.client
-    except ImportError as e:
-        warnings.warn("excel_convert requires win32.client")
-        return False
+    import win32com.client
 
     if out_ext not in format_number:
-        print("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
+        raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
 
     infile_fullpath = os.path.abspath(infile)
     (base,in_ext) = os.path.splitext(infile_fullpath)
 
     wb = None
     if not os.path.isfile(infile_fullpath):
-        print("{} does not exist".format(infile_fullpath));
-        return False
+        raise FileNotFoundError(infile_fullpath)
 
     outfile    = base+out_ext
     if os.path.exists(outfile):
-        print("   {} exists".format(outfile))
-        return False
+        raise FileExistsError(outfile)
 
     if in_ext==out_ext:
-        return False
+        raise ValueError(f"Input extension {in_ext} matches output extension {out_ext}")
 
     if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
-        return False
+        raise RuntimeError(f"{in_ext} is not an XLS XML file")
 
     excel = win32com.client.DispatchEx("Excel.Application")
     excel.Visible = 0
@@ -98,16 +100,12 @@ def excel_convert(infile,out_ext):
 
     print("{} => {}".format(infile_fullpath,outfile))
 
-    try:
-        wb.SaveAs(outfile, FileFormat=format_number[out_ext])
-        # I am not sure what exception this API will return can't find doc strings on it.
-    except Exception as e: # pylint: disable=W0702,W0703
-        print("Failed to convert")
-        print(str(e))
-
-    if wb:
-        wb.Close(False)         # May work
-        excel.Quit()
+    # Select all worksheets for the save process
+    wb.Worksheets.Select()
+    wb.SaveAs(outfile, FileFormat=format_number[out_ext])
+    wb.Close(False)         # May work
+    # Excel quits properly for PDF conversion but not other types
+    excel.Quit()
     return True
 
 if __name__=="__main__":

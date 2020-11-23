@@ -516,7 +516,6 @@ class DuCounter:
         self.total_bytes += bytes_
         self.total_files += 1
 
-
 def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
     prefixes = defaultdict(DuCounter)
@@ -562,8 +561,6 @@ def print_du(root):
                           path))
         if ct==20:
             break
-
-
 
 if __name__ == "__main__":
     t0 = time.time()
