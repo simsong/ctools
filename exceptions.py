@@ -1,4 +1,4 @@
-""" Module for implementing exceptions
+""" Module for implementing exceptions """
 # 4/9/2019
 # Pavel Zhuravlev
 
