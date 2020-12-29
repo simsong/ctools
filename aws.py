@@ -1,17 +1,22 @@
+"""
+aws.py
+
+A collection of functions useful for working with aws.
+Originally written to use the aws cli, slowly being ported to boto3.
+(Originally boto3 would not run in the Census environment.)
+
+Also includes support for the Census proxy. We discovered through
+trial-and-error that we wanted to proxy https but not http for some but not all services.
+"""
+
+
 import json
 import os
 import subprocess
 import urllib.request
 import socket
+import boto3
 
-
-################################################################
-###
-### Proxy Control
-###
-### Please create an environment variable called BCC_PROXY with the IP address of your proxy server for the EMR commands
-###
-################################################################
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'

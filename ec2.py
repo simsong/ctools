@@ -1,6 +1,7 @@
 import json
 import subprocess
-
+import boto3
+import aws
 
 Ec2InstanceId='Ec2InstanceId'
 Status='Status'
@@ -27,3 +28,14 @@ def describe_instances(*,groupid=None):
     if groupid:
         cmd += ['--filters',f'Name=instance.group-id,Values={groupid}']
     return sum([reservation['Instances'] for reservation in json.loads(subprocess.check_output(cmd))['Reservations']], [])
+
+def get_instance_tags(instanceId=aws.instanceId()):
+    """Return a dictionary of all the tags for a given instance, default this instance."""
+    with aws.Proxy(https=True, http=False) as p:
+        ec2_client = boto3.client('ec2')
+        response = ec2_client.describe_instances(InstanceIds=[aws.instanceId()])
+        return response['Reservations'][0]['Instances'][0]['Tags']
+
+
+if __name__=="__main__":
+    print("Instance tags:\n",json.dumps(get_instance_tags(),indent=4))
