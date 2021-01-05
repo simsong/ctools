@@ -9,10 +9,11 @@ import sys
 import zipfile
 import subprocess
 import time
+import warnings
 
 DOC_MAGIC=b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"
 DOCX_MAGIC=b"PK"
-SOFFICE_DARWIN='/Applications/LibreOffice.app/Contents/MacOS/soffice'
+SOFFICE_DARWIN=b'/Applications/LibreOffice.app/Contents/MacOS/soffice'
 
 
 def check_magic(filepath,magic):
@@ -53,9 +54,12 @@ def valid_convertable_document_file(fname):
 # https://stackoverflow.com/questions/6011115/doc-to-pdf-using-python
 def quit_word():
     """Quit Microsoft Word"""
+    import win32com.client
     if sys.platform=='win32':
         word = win32com.client.Dispatch("Word.Application")
         word.Quit()
+    else:
+        warnings.warn("Cannot quit word on non-windows platform")
 
 def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
     """Convert a .doc, .docx, or .rtf file to PDF. Converted file has the
@@ -69,12 +73,14 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
     outfile = os.path.splitext(infile)[0] + ".pdf"
     if os.path.exists(outfile):
         raise FileExistsError
-    
+
     print("CONVERT {}".format(infile))
     print("    --> {}".format(outfile))
     if sys.platform=='win32':
         try:
-            import os,win32com.client,pywintypes
+            import os
+            import win32com.client
+            import pywintypes
         except ModuleNotFoundError as e:
             print(e)
             print("Cannot convert {} --- please convert it manually".format(infile))
@@ -84,7 +90,7 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
         in_file  = os.path.abspath(infile)
         out_file = os.path.abspath(outfile)
         word     = win32com.client.Dispatch("Word.Application")
-        
+
         try:
             doc = word.Documents.Open(in_file)
             if TopMargin is not None:
@@ -139,7 +145,6 @@ if __name__=="__main__":
     # Command to test the conversion
     #
     import sys
-    ofn = convert_doc_to_pdf(sys.argv[1])
+    ofn = convert_document_to_pdf(sys.argv[1])
     print("Converted {} to {}".format(sys.argv[1],ofn))
     exit(0)
-    

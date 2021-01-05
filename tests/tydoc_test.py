@@ -11,8 +11,9 @@ from os.path import dirname
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-from ctools.tydoc import *
-from ctools.latex_tools import run_latex,no_latex
+from ctools.tydoc import tydoc,TyTag, tytable, ET, tytable, ATTRIB_ALIGN, ALIGN_CENTER, \
+    ALIGN_RIGHT, OPTION_TABLE, OPTION_LONGTABLE, TAG_X_TOC, TAG_BODY, TAG_H1, TAG_A, TAG_TD
+from ctools.latex_tools import run_latex,no_latex,LatexException
 
 def test_tytag_option():
     t = TyTag('demo')
@@ -80,8 +81,11 @@ def test_tydoc_latex(tmpdir):
 
     if no_latex():
         warnings.warn("Cannot run LaTeX tests")
-    else:
+        return
+    try:
         run_latex(os.path.join(tmpdir, "tydoc.tex"))
+    except LatexException as e:
+        warnings.warn("LatexException: "+str(e))
 
 def test_tydoc_toc():
     """Test the Tydoc table of contents feature."""
@@ -116,7 +120,7 @@ def test_tydoc_toc():
     # Make sure that they both have the same ID
     id1 = toc.find('.//{}'.format(TAG_A)).attrib['HREF']
     id2 = h1.find('.//{}'.format(TAG_A)).attrib['NAME']
-    
+
     assert id1==('#'+id2)
 
 def test_tytable_autoid():
@@ -129,7 +133,7 @@ def test_tytable_autoid():
     with tempfile.NamedTemporaryFile(suffix='.autoid.html', mode='w') as tf:
         t.save( tf, format="html")
     # Should read it and do something with it here.
-    
+
 def test_tytable_colspan():
     """test the colspan feature"""
     t = tytable()
@@ -144,20 +148,19 @@ def test_tytable_colspan():
     assert t.get_cell(0,1).text == 'bar'
     assert t.get_cell(0,2).text == 'baz'
     assert t.get_cell(0,3).text == 'bif'
-    
+
     assert t.get_cell(1,0).text == '1'
     assert t.get_cell(1,1).text == '2'
     assert t.get_cell(1,2).text == '3'
     assert t.get_cell(1,3).text == '4'
-    
+
     assert t.get_cell(2,0).text == '2'
     assert t.get_cell(2,1).text == 'Wide Column'
     assert t.get_cell(2,2).text == None
     assert t.get_cell(2,3).text == '5'
-    
+
     with tempfile.NamedTemporaryFile(suffix='.html', mode='w') as tf:
         t.save( tf, format="html")
     with tempfile.NamedTemporaryFile(suffix='.json', mode='w') as tf:
         t.save( tf, format="json")
     # Should read it and do something with it here.
-    

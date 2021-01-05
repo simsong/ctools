@@ -2,7 +2,7 @@
 # Tools for representing a database schema
 #
 # Developed by Simson Garfinkel at the US Census Bureau
-# 
+#
 # Classes:
 #   Range     - Describes a range that a value can have, from a to be inclusive. Includes a description of the range
 #   Variable - An individual variable. Can have multiple ranges and possible values, as well as type
@@ -12,21 +12,30 @@
 
 ### NOTE: requires ctools, which must be in your PYTHONPATH
 
-import os
+
 import re
 import logging
-import random
-import json
 import decimal
-from collections import OrderedDict
 
 unquote_re         = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
-type_width_re      = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]") # matches a type and width specification
-note_re            = re.compile(r"Note([ 0-9])*:",re.I)
+type_width_re      = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]")  # matches a type and width specification
+note_re            = re.compile(r"Note([ 0-9])*:", re.I)
 assignVal_re       = re.compile(r"([^=]*)\s*=\s*(.*)")
 assignRange_re     = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
-range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)") # handles unicode dashes
-integer_re         = re.compile(r"INTEGER ?\((\d+)\)",re.I)
+range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)")  # handles unicode dashes
+integer_re         = re.compile(r"INTEGER ?\((\d+)\)", re.I)
+
+
+SAS_TEMPLATE = """OPTIONS NOCENTER PAGENO=1 SOURCE MPRINT;
+FILENAME RAWDATA "{}";
+DATA {};
+  INFILE RAWDATA DELIMITER='|' DSD;
+  INPUT {};
+RUN;
+PROC PRINT DATA={};
+RUN;
+"""
+
 
 TYPE_NUMBER        = "NUMBER"
 TYPE_INTEGER       = "INTEGER"
@@ -39,22 +48,22 @@ TYPE_DATE          = "DATE"
 TYPE_SDO_GEOMETRY  = "SDO_GEOMETRY"
 TYPE_STRING        = "STRING"
 # map SQL names to Python types
-PYTHON_TYPE_MAP= {TYPE_NUMBER:int,
-                  TYPE_INTEGER:int,
-                  TYPE_INT:int,
-                  TYPE_VARCHAR:str,
-                  TYPE_CHAR:str,
-                  TYPE_FLOAT:float,
-                  TYPE_DATE:str,
-                  TYPE_SDO_GEOMETRY:str,
-                  TYPE_STRING:str,
-                  TYPE_DECIMAL:decimal.Decimal }
+PYTHON_TYPE_MAP = {TYPE_NUMBER: int,
+                   TYPE_INTEGER: int,
+                   TYPE_INT: int,
+                   TYPE_VARCHAR: str,
+                   TYPE_CHAR: str,
+                   TYPE_FLOAT: float,
+                   TYPE_DATE: str,
+                   TYPE_SDO_GEOMETRY: str,
+                   TYPE_STRING: str,
+                   TYPE_DECIMAL: decimal.Decimal}
 # Python types to SQL names
-SQL_TYPE_MAP = { int: {'type': TYPE_INTEGER,'width':8},
-                 str: {'type': TYPE_VARCHAR,'width':254},
-                 float: {'type': TYPE_FLOAT,'width': 15},
-                 decimal.Decimal: {'type': TYPE_DECIMAL, 'width':15}}
-    
+SQL_TYPE_MAP = {int: {'type': TYPE_INTEGER, 'width': 8},
+                str: {'type': TYPE_VARCHAR, 'width': 254},
+                float: {'type': TYPE_FLOAT, 'width': 15},
+                decimal.Decimal: {'type': TYPE_DECIMAL, 'width': 15}}
+
 
 DEFAULT_VARIABLE_WIDTH = 8
 WIDTH_MAX       = 255
@@ -62,7 +71,7 @@ WIDTH_MAX       = 255
 SAS7BDAT_EXT   = ".sas7bdat"
 CSV_EXT        = ".csv"
 TXT_EXT        = ".txt"
-PANDAS_EXTS    = set([SAS7BDAT_EXT,CSV_EXT,TXT_EXT])
+PANDAS_EXTS    = {SAS7BDAT_EXT, CSV_EXT, TXT_EXT}
 PANDAS_CHUNKSIZE = 1000
 
 # Special ranges
@@ -71,12 +80,12 @@ RANGE_ANY  = "N/A"            # if N/A, allow any
 
 SQLITE3 = 'sqlite3'
 MYSQL = 'mysql'
-SQL_SCHEMA = {MYSQL : {'param':'%s'},
-              SQLITE3 : {'param':'?'}
+SQL_SCHEMA = {MYSQL: {'param': '%s'},
+              SQLITE3: {'param': '?'}
               }
 
 # Included in programmatically-generated output
-SCHEMA_SUPPORT_FUNCTIONS="""
+SCHEMA_SUPPORT_FUNCTIONS = """
 def leftpad(x,width):
     return '0'*(width-len(str(x)))+str(x)
 
@@ -111,17 +120,19 @@ def safe_str(i):
         return None
 """
 
+
 def valid_sql_name(name):
     for ch in name:
-        if ch.isalnum()==False and ch not in ['_']:
+        if ch.isalnum() is False and ch not in ['_']:
             return False
     return True
 
+
 def decode_vtype(t):
     """Given VARCHAR(2) or VARCHAR or VARCHAR2(2) or INTEGER(2), return the type and width"""
-    if t==None:
-        return (None,None)
-    t = t.upper().replace("VARCHAR2","VARCHAR")
+    if t is None:
+        return None, None
+    t = t.upper().replace("VARCHAR2", "VARCHAR")
     m = type_width_re.search(t)
     if m:
         vtype = m.group(1)
@@ -131,25 +142,27 @@ def decode_vtype(t):
         width = DEFAULT_VARIABLE_WIDTH
     if vtype not in PYTHON_TYPE_MAP:
         raise ValueError("vtype {} is not in PYTHON_TYPE_MAP".format(vtype))
-    return (vtype,width)
-    
+    return vtype, width
+
 
 def vtype_for_numpy_type(t):
     import numpy
     try:
-        return {bytes:TYPE_CHAR,
-                float:TYPE_NUMBER,
-                numpy.float64:TYPE_NUMBER,
-                str:TYPE_CHAR,
-                int:TYPE_NUMBER,
+        return {bytes: TYPE_CHAR,
+                float: TYPE_NUMBER,
+                numpy.float64: TYPE_NUMBER,
+                str: TYPE_CHAR,
+                int: TYPE_NUMBER,
                 }[t]
     except KeyError as e:
         logging.error("Unknown type: {}".format(t))
         raise e
 
+
 def sql_type_for_python_value(val):
     stm = SQL_TYPE_MAP[type(val)]
     return f"{stm['type']}({stm['width']})"
+
 
 def unquote(s):
     m = unquote_re.match(s)
@@ -162,21 +175,23 @@ def unquote(s):
 #
 # Simson's cut-rate SQL parser
 #
-create_re = re.compile(r'CREATE TABLE (\S*) \(( .* )\)',re.I)
+create_re = re.compile(r'CREATE TABLE (\S*) \(( .* )\)', re.I)
 var_re    = re.compile(r'(\S+) (\S+)')
 
 SQL_TABLE = 'table'
 SQL_COLUMNS = 'cols'
 
+
 def sql_parse_create(stmt):
     if "--" in stmt:
         raise RuntimeError("Currently cannot handle comments in SQL")
-    ret = {}
-    ret[SQL_TABLE] = None
-    ret[SQL_COLUMNS]  = []
-    
+    ret = {
+        SQL_TABLE: None,
+        SQL_COLUMNS: [],
+    }
+
     # make all spaces a single space
-    stmt = re.sub(r"\s+"," ",stmt).strip()
+    stmt = re.sub(r"\s+", " ", stmt).strip()
 
     m = create_re.search(stmt)
     if m:
@@ -184,21 +199,19 @@ def sql_parse_create(stmt):
         for vdef in m.group(2).split(","):
             vdef = vdef.strip()
             m = var_re.search(vdef)
-            (vtype,name) = m.group(1,2)
-            ret[SQL_COLUMNS].append({'vtype':vtype, 'name':name})
+            (vtype, name) = m.group(1, 2)
+            ret[SQL_COLUMNS].append({'vtype': vtype, 'name': name})
     return ret
-
-
 
 
 def clean_int(s):
     """ Clean an integer """
-    while len(s)>0:
-        if s[0]==' ':
-            s=s[1:]
+    while len(s) > 0:
+        if s[0] == ' ':
+            s = s[1:]
             continue
         if s[-1] in " ,":
-            s=s[0:-1]
+            s = s[0:-1]
             continue
         break
     return int(s)
@@ -207,16 +220,14 @@ def clean_int(s):
 def convertValue(val, vtype=None):
     """Make the value better"""
     try:
-        if vtype not in [TYPE_VARCHAR,TYPE_CHAR]:
+        if vtype not in [TYPE_VARCHAR, TYPE_CHAR]:
             return clean_int(val)
     except ValueError:
         pass
     val = val.strip()
-    if val.lower()=="null" or val=="EMPTY-STRING":
+    if val.lower() == "null" or val == "EMPTY-STRING":
         val = ""
     return val
 
 
 DEFAULT_VARIABLE_FORMAT = '{}'
-
-

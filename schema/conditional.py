@@ -24,9 +24,11 @@ class Conditional:
         self.desc        = desc          # description
         self.attrib      = attrib
         self.condition   = condition
-        #assert isinstance(self.condition, BooleanExpression)
 
+        assert isinstance(self.condition, BooleanExpression)
 
+        if len(consequent) == 0:
+            consequent.append(default_expression)
         self.consequent = consequent
 
         self.elif_arr = elif_arr
@@ -51,7 +53,7 @@ class Conditional:
                    ])
         str_data = [conditional]
 
-        if_expressions = [single_level_indent + line
+        if_expressions = [single_level_indent + line \
             for exp in self.consequent for line in str(exp).split('\n')]
         str_data.extend(if_expressions)
 
@@ -67,9 +69,10 @@ class Conditional:
         return '\n'.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ',
-                str([repr(exp) for exp in self.consequent]), 'elif_arr: ',
-                str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ',
+
+        return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ', \
+                str([repr(exp) for exp in self.consequent]), 'elif_arr: ', \
+                str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ', \
                 str([repr(exp) for exp in self.alternative]), ')'])
 
     def json_dict(self):
@@ -91,7 +94,6 @@ def main():
     # print(repr(conditional))
     # print(conditional.json_dict())
     print(conditional)
-
 
 if __name__ == '__main__':
     main()

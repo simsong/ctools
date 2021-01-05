@@ -6,11 +6,12 @@ import sys
 import subprocess
 import time
 import re
+import string
 from collections import defaultdict
 
 from urllib.parse import urlparse
 
-# 
+#
 # This creates an S3 file that supports seeking and caching.
 # We keep this file at Python2.7 for legacy reasons
 
@@ -31,6 +32,17 @@ READTHROUGH_CACHE_DIR = '/mnt/tmp/s3cache'
 
 AWS_CLI_LIST = ['/usr/bin/aws', '/usr/local/bin/aws', '/usr/local/aws/bin/aws']
 AWS_CLI  = None
+
+def is_hexadecimal(s):
+    """Return true if s is hexadecimal string"""
+    if isinstance(s,str)==False:
+        return False
+    elif len(s)==0:
+        return False
+    elif len(s)==1:
+        return s in string.hexdigits
+    else:
+        return all([is_hexadecimal(ch) for ch in s])
 
 def awscli():
     global AWS_CLI
@@ -94,16 +106,18 @@ def aws_s3api(cmd, debug=False):
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, data))
 
 
-def put_object(bucket, key, fname):
+def put_object(bucket, key, fname, use_acl=False):
     """Given a bucket and a key, upload a file"""
     assert os.path.exists(fname)
+    if use_acl:
+        return aws_s3api(['put-object', '--bucket', bucket, '--key', key, '--body', fname, '--acl', 'bucket-owner-full-control'])
+
     return aws_s3api(['put-object', '--bucket', bucket, '--key', key, '--body', fname])
 
-
-def put_s3url(s3url, fname):
+def put_s3url(s3url, fname, use_acl=False):
     """Upload a file to a given s3 URL"""
     (bucket, key) = get_bucket_key(s3url)
-    return put_object(bucket, key, fname)
+    return put_object(bucket, key, fname, use_acl)
 
 def get_object(bucket, key, fname):
     """Given a bucket and a key, download a file"""
@@ -385,7 +399,7 @@ class S3File:
 # Tools for reading and write files from Amazon S3 without boto or boto3
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
-# 
+#
 # This could be redesigned to simply use the S3File() below
 # Todo: redesign so that it can be used in a "with" statement
 
@@ -393,10 +407,13 @@ class s3open:
     def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), cache=False, fsync=False):
         """
         Open an s3 file for reading or writing. Can handle any size, but cannot seek.
-        We could use boto.
-        http://boto.cloudhackers.com/en/latest/s3_tut.html
-        but it is easier to use the aws cli, since it is present and more likely to work.
-        @param fsync - if True and mode is writing, use object-exists to wait for the object to be created.
+        We could use boto3 or one of these packages:
+               * https://s3fs.readthedocs.io/en/latest/
+               * http://boto.cloudhackers.com/en/latest/s3_tut.html
+
+        This is legacy code from when we had systems that would not work with boto3.
+
+        :param fsync: if True and mode is writing, use object-exists to wait for the object to be created on exit.
         """
         if not path.startswith("s3://"):
             raise ValueError("Invalid path: " + path)
@@ -412,7 +429,7 @@ class s3open:
 
         cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/", "_"))
 
-        # If not caching and a cache file is present, delete it. 
+        # If not caching and a cache file is present, delete it.
         if not cache and os.path.exists(cache_name):
             os.unlink(cache_name)
 
@@ -482,8 +499,14 @@ def s3rm(path):
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
     print("res:",type(res))
-    if res['DeleteMarker'] != True:
-        raise RuntimeError("Unknown response from delete-object: {}".format(res))
+    # delete-object return no output in Staging, even though it successfully deleted the key
+    # This is likely because bucket versioning is not enabled in Staging
+    # See https://wiki.outscale.net/display/EN/Removing+Objects+from+a+Bucket
+    # This results in an empty byte string when returned from aws_s3api
+    if res == b'' or res['DeleteMarker'] == True:
+        return
+
+    raise RuntimeError("Unknown response from delete-object: {}".format(res))
 
 class DuCounter:
     def __init__(self):
@@ -492,7 +515,6 @@ class DuCounter:
     def count(self, bytes_):
         self.total_bytes += bytes_
         self.total_files += 1
-        
 
 def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
@@ -501,7 +523,7 @@ def print_du(root):
     cmd = [awscli(),'s3','ls','--recursive',root]
     print(" ".join(cmd))
     p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
-    part_re = re.compile(f"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
+    part_re = re.compile(r"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
     MiB = 1024*1024
     try:
@@ -539,8 +561,6 @@ def print_du(root):
                           path))
         if ct==20:
             break
-        
-
 
 if __name__ == "__main__":
     t0 = time.time()

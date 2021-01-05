@@ -9,7 +9,7 @@ from os.path import dirname
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-from ctools.tydoc import *
+from ctools.tydoc import tytable
 from ctools.tytable import ttable
 
 def test_ttable():
@@ -31,5 +31,3 @@ def test_tytable():
     a.add_data(['a','b','c','d','e'])
     assert len(a.rows()) == 4
     assert a.max_cols() == 5
-
-    

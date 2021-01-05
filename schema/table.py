@@ -2,14 +2,15 @@ import os
 import logging
 import time
 
-from ctools.schema import valid_sql_name,SCHEMA_SUPPORT_FUNCTIONS,SQL_SCHEMA, MYSQL, SQLITE3, SQL_TYPE_MAP, sql_type_for_python_value
+from ctools.schema import valid_sql_name,SAS_TEMPLATE,SCHEMA_SUPPORT_FUNCTIONS,SQL_SCHEMA, MYSQL, SQLITE3, SQL_TYPE_MAP, sql_type_for_python_value
 from ctools.schema.variable import Variable
 from collections import OrderedDict
 
+import ctools.schema as schema
 
 class Table:
-    """A class to represent a table in a database. 
-    Tables consist of variables, comments, overrides, and other data. 
+    """A class to represent a table in a database.
+    Tables consist of variables, comments, overrides, and other data.
     Table definitions can be learned from many sources, including:
        * SQL statements
        * A Microsoft Word table
@@ -22,7 +23,7 @@ class Table:
 
     def __init__(self,*,name,desc=None,attrib={},csv_file=None,csv_writer=None,delimiter=None):
         if not valid_sql_name(name):
-            raise RuntimeError("invalid SQL Table name: {}".format(name)) 
+            raise RuntimeError("invalid SQL Table name: {}".format(name))
         self.filename   = None    # filename from which table was read
         self.name       = name.replace(" ","_").replace(".","_")       # name of this table, change spaces to dots
         self.version    = None
@@ -34,7 +35,7 @@ class Table:
         self.csv_file   = csv_file
         self.csv_writer = csv_writer
         self.delimiter  = delimiter
-        
+
     def __repr__(self):
         return f"<schema.table name:{self.name} {len(self.vardict)} vars>"
 
@@ -126,7 +127,7 @@ class Table:
             if not (v.default is None):
                 ret[v.name] = v.default
         return ret
-        
+
     ###
     ### Reverse compilers (create code that is compiled)
     ###
@@ -153,7 +154,7 @@ class Table:
         for (i,v) in enumerate(self.vars(), 1):
             if v.name in ignore_vars:
                 continue
-            ret.append("        if {}(fields[{}]) == False: return False".
+            ret.append("        if self.{}(fields[{}]) == False: return False".
                            format(v.python_validator_name(),i))
         ret.append("        return True")
         ret.append("")
@@ -163,7 +164,7 @@ class Table:
         ret.append("        return '{}<".format(self.python_name()) +
                    ",".join(["%s:{}" % var.name for var in self.vars()]) + ">'.format(" +
                    ",".join(["self.%s" % var.name for var in self.vars()]) + ')')
-        
+
         ret.append("    def __init__(self,line=None):")
         ret.append("        if line: ")
         ret.append("            if '|' in line: ")
@@ -247,6 +248,7 @@ class Table:
         ret.append("        return row\n")
         return "\n".join(ret) + "\n"
 
+
     def sql_schema(self, extra={}):
         """Generate CREATE TABLE statement for this schema"""
         ret = []
@@ -270,7 +272,7 @@ class Table:
         return "INSERT INTO {} ".format(self.name) +\
             "(" + ",".join( list(self.varnames()) + list(extra)) + ") " +\
             "VALUES (" + ",".join( [param] * (len(self.vars())  + len(extra))) + ");"
-        
+
     def sql_prepare(self):
         lines = []
         i = 0
@@ -291,7 +293,7 @@ class Table:
                 raise RuntimeError("Cannot compile {} type {}".format(v.name,v.vtype))
             lines.append(s)
         return "\\\n".join(lines)
-                
+
     def write_sql_scanner(self,f):
         data_line_len = max([v.column[1] if (v.column is not None) else 0 for v in self.vars()])
 
@@ -299,7 +301,7 @@ class Table:
         f.write('#define SQL_INSERT "{}"\n'.format(self.sql_insert()))
         f.write("#define SQL_PREPARE(s,line)\\\n{}\n".format(self.sql_prepare()))
         f.write("#define DATA_LINE_LEN {}\n".format( data_line_len ))
-    
+
     ###
     ### Methods for working with data defined by this schema
     ###
@@ -321,8 +323,8 @@ class Table:
     ###
 
     def parse_line_to_row(self, line, delimiter=None):
-        """Parse a line using the current table schema and return an array of values. 
-        Much more efficient than extracting variables one at a time.""" 
+        """Parse a line using the current table schema and return an array of values.
+        Much more efficient than extracting variables one at a time."""
         assert len(self.vars()) > 0
         if delimiter is None:
             delimiter = self.delimiter
@@ -337,7 +339,7 @@ class Table:
         return [ v.python_type(line[ v.start -1: v.end]) for v in self.vars() if (v.start is not None and v.end is not None)]
 
     def parse_line_to_dict(self, line, delimiter=None):
-        """Parse a line (that was probably read from a text file) 
+        """Parse a line (that was probably read from a text file)
         using the current table schema and return a dictionary of values.
         If no delimiter is specified, assumes that the line is column-specified.
         """
@@ -393,6 +395,3 @@ class Table:
     def write_row(self,row,extra=[]):
         """Write a row using the CSV writer"""
         self.csv_writer.write_row( row + extra)
-
-
-

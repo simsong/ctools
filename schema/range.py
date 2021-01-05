@@ -32,7 +32,7 @@ class Range:
     RANGE_RE_LIST = [
         re.compile(r"^(?P<a>!+)(?P<desc>.*)"), # used for grabbing vals with ! as that is a legal val
         re.compile(r"^.*(?P<a>\balphanumeric\b)(?P<desc>.*)"), # some descriptions mention alphanumeric vals legal
-        re.compile(r"^.*(?P<a>hitespace)(?P<desc>.*)"),  # grabs w/Whitespace, and returns none, white handled elsewhere
+        re.compile(r"^.*(?P<a>[Ww]hitespace)(?P<desc>.*)"),  # grabs w/Whitespace, and returns none, white handled elsewhere
         re.compile(r"^.*(?P<a>\bnull\b)(?P<desc>.*)"), # if val is null, return None
         re.compile(r"^.*(?P<a>integers?)(?P<desc>.*)"), # some descs just say integer, this catches that
         re.compile(r"^(?P<a>\-?\+?\d+.?\d+) ?to ?(?P<b>\-?\+?\d+.?\d+) ?(?P<desc>.*)"), # catch ranges built like 1 to 3

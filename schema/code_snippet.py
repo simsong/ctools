@@ -12,12 +12,19 @@ class CodeSnippet:
     """
     Code Snippet
 
+<<<<<<< HEAD
     desc          = description of code snippet
     attrib        = user defined attributes
     name          = code snippet name
     expressions   = ordered list of loops, conditionals, and variable assignments
     indent_spaces = number of spaces in an indent
-    
+=======
+    desc        = description of code snippet
+    attrib      = user defined attributes
+    name        = code snippet name
+    expressions = ordered list of loops, conditionals, and variable assignments
+>>>>>>> master
+
     note - there is no indent level for code snippets. if this is to be added later,
             you can use an indent_level=1 and indent_spaces=4, etc.
     """
@@ -25,6 +32,7 @@ class CodeSnippet:
     __slots__ = ('desc','attrib','name','expressions','indent_spaces', 'variables', 'variable_to_validate')
 
     def __init__(self,*,desc="",attrib={},name='',expressions=[], indent_spaces=4):
+
         self.desc        = desc          # description
         self.attrib      = attrib
         assert isinstance(name, str)
@@ -35,6 +43,7 @@ class CodeSnippet:
         self.name = name
 
         self.indent_spaces = indent_spaces
+
         self.expressions = []
         for exp in expressions:
             self.add_expression(exp)
@@ -65,10 +74,12 @@ class CodeSnippet:
 
         str_data += [f'    return row']
 
+
         return '\n'.join(str_data)
 
     def __repr__(self):
         return ''.join([f'Code Snippet(name: {self.name}, expressions: ', \
+
                 str([repr(exp) for exp in self.expressions]), ')'])
 
     def json_dict(self):
