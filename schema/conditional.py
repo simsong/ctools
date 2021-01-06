@@ -6,6 +6,7 @@ from .boolean_expression import BooleanExpression
 default_condition = BooleanExpression()
 default_expression = 'pass'
 
+
 class Conditional:
     """If else conditional.
     desc        = description of conditional.
@@ -69,7 +70,6 @@ class Conditional:
         return '\n'.join(str_data)
 
     def __repr__(self):
-
         return ''.join([f'Conditional(condition: {repr(self.condition)}, consequent: ', \
                 str([repr(exp) for exp in self.consequent]), 'elif_arr: ', \
                 str([repr(elif_cond) for elif_cond in self.elif_arr]), ', alternative: ', \

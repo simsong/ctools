@@ -71,7 +71,6 @@ class CodeSnippet:
 
     def __repr__(self):
         return ''.join([f'Code Snippet(name: {self.name}, expressions: ', \
-
                 str([repr(exp) for exp in self.expressions]), ')'])
 
     def json_dict(self):
