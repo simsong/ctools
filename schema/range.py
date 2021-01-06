@@ -8,7 +8,7 @@ from ctools.schema import clean_int
 IN_INTEGER = "integer"
 IN_NULL = "null"
 IN_ALPHANUMERIC = "alphanumeric"
-IN_WHITESPACE = "whitespace"
+IN_WHITESPACE = "hitespace"
 
 def all_ints(ranges):
     for r in ranges:
