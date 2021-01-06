@@ -11,19 +11,11 @@ valid_expression_types = [WhileLoop, Conditional, VariableAssignment]
 class CodeSnippet:
     """
     Code Snippet
-
-<<<<<<< HEAD
     desc          = description of code snippet
     attrib        = user defined attributes
     name          = code snippet name
     expressions   = ordered list of loops, conditionals, and variable assignments
     indent_spaces = number of spaces in an indent
-=======
-    desc        = description of code snippet
-    attrib      = user defined attributes
-    name        = code snippet name
-    expressions = ordered list of loops, conditionals, and variable assignments
->>>>>>> master
 
     note - there is no indent level for code snippets. if this is to be added later,
             you can use an indent_level=1 and indent_spaces=4, etc.
