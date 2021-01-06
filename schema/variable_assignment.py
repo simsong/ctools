@@ -16,10 +16,10 @@ class VariableAssignment:
     value    = value of variable
     solver   = z3 solver object
     """
-    __slots__ = ('desc','attrib','variable','value','solver','z3_obj', 'second_element_is_variable')
+    __slots__ = ('desc','attrib','variable','value','solver','z3_obj', 'second_element_is_variable', 'z3_enabled')
 
     def __init__(self,variable,value,desc="",attrib={},\
-                solver=None, second_element_is_variable=False):
+                solver=None, second_element_is_variable=False, z3_enabled=False):
         self.desc        = desc          # description
         self.attrib      = attrib
         assert isinstance(variable, Variable)
@@ -31,6 +31,7 @@ class VariableAssignment:
         if solver:
             self.solver = solver
 
+        self.z3_enabled = z3_enabled
         self.set_value(value)
 
     def check_range(self):
@@ -44,7 +45,8 @@ class VariableAssignment:
             self.solver.add(self.z3_obj <= rangeval.b)
 
     def set_value(self, value):
-        import z3
+        if self.z3_enabled:
+            import z3
         if value is None:
             raise ValueError('value cannot be none in assignment')
         self.value = value
@@ -53,16 +55,17 @@ class VariableAssignment:
             return
         if not isinstance(value, self.variable.python_type):
             raise ValueError(f'value is not of type {self.variable.python_type}')
-        if self.python_type == int:
-            self.z3_obj = z3.Int(int(value))
-        elif self.python_type == bool:
-            self.z3_obj = z3.Bool(bool(value))
-        elif self.python_type == float:
-            self.z3_obj = z3.Float(float(value))
-        elif self.python_type == str:
-            self.z3_obj = z3.String(str(value))
-        else:
-            raise ValueError('invalid python type provided')
+        if self.z3_enabled:
+            if self.variable.python_type == int:
+                self.z3_obj = z3.Int(int(value))
+            elif self.variable.python_type == bool:
+                self.z3_obj = z3.Bool(bool(value))
+            elif self.variable.python_type == float:
+                self.z3_obj = z3.Float(float(value))
+            elif self.variable.python_type == str:
+                self.z3_obj = z3.String(str(value))
+            else:
+                raise ValueError('invalid python type provided')
 
     def __str__(self):
         if not self.second_element_is_variable:
