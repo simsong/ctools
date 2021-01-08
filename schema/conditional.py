@@ -6,6 +6,7 @@ from .boolean_expression import BooleanExpression
 default_condition = BooleanExpression()
 default_expression = 'pass'
 
+
 class Conditional:
     """If else conditional.
     desc        = description of conditional.
@@ -24,6 +25,7 @@ class Conditional:
         self.desc        = desc          # description
         self.attrib      = attrib
         self.condition   = condition
+
         assert isinstance(self.condition, BooleanExpression)
 
         if len(consequent) == 0:
@@ -59,10 +61,11 @@ class Conditional:
         elif_expressions = [str(exp) for exp in self.elif_arr]
         str_data.extend(elif_expressions)
 
-        str_data.append('else:')
-        else_expressions = [single_level_indent + line \
-            for exp in self.consequent for line in str(exp).split('\n')]
-        str_data.extend(else_expressions)
+        if len(self.consequent) > 0:
+            str_data.append('else:')
+            else_expressions = [single_level_indent + line
+                for exp in self.consequent for line in str(exp).split('\n')]
+            str_data.extend(else_expressions)
 
         return '\n'.join(str_data)
 
@@ -84,6 +87,7 @@ class Conditional:
 
     def dump(self,func=print):
         func(str(self))
+
 
 def main():
     conditional = Conditional()

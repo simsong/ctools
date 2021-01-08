@@ -19,6 +19,7 @@ class WhileLoop:
 
     __slots__ = ('desc','attrib','condition','consequent','indent_spaces')
 
+
     def __init__(self,*,desc="",attrib={},condition=default_condition,consequent=[],\
                 indent_spaces=4):
         self.desc        = desc          # description
@@ -64,8 +65,6 @@ class WhileLoop:
 
 def main():
     loop = WhileLoop()
-    # print(repr(loop))
-    # print(loop.json_dict())
     print(loop)
 
 if __name__ == '__main__':

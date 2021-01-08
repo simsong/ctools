@@ -40,12 +40,16 @@ class BooleanExpression:
 
     def __str__(self):
         elements = []
-        elements.append(str(self.first_element.strip()))
+        first_element = f"row['{self.first_element.strip()}']"
+        elements.append(str(first_element))
+
         elements.append(str(self.operator))
         if self.operator in operators_before_first_element:
             elements.reverse()
         if self.second_element is not None:
-            elements.append(str(self.second_element).strip())
+            second_element = f"row['{self.second_element.strip()}']"
+            elements.append(str(second_element))
+
         res = ' '.join(elements)
         return res
 
@@ -67,8 +71,6 @@ class BooleanExpression:
 
 def main():
     exp = BooleanExpression()
-    # print(repr(exp))
-    # print(exp.json_dict())
     print(exp)
 
 if __name__ == '__main__':
