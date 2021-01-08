@@ -4,7 +4,7 @@ import time
 def print_stderr(s):
     print(s,file=sys.stderr)
 
-class Timer:    
+class Timer:
     def __init__(self,message='Elapsed time:',notifier=print_stderr):
         self.notifier = notifier
         if '%' in message:
@@ -19,6 +19,5 @@ class Timer:
     def __exit__(self, *args):
         self.end = time.time()
         self.interval = self.end - self.start
-        if self.message:
+        if (self.message is not None) and (self.notifier is not None):
             self.notifier(self.message % self.interval)
-            
