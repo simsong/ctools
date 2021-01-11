@@ -434,9 +434,14 @@ class DBMySQL(DBSQL):
                     ### Hopefully there is no semi-colon in a quoted string.
                     if setup is not None:
                         c.execute(setup, setup_vals)
+                    t0 = time.time()
                     c.execute(cmd,vals)
+                    t1 = time.time()
                     ###
                     ###
+
+                    if debug:
+                        logging.warning("TIME TO EXECUTE: %s",t1-t0)
 
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
