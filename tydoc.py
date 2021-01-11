@@ -1681,7 +1681,7 @@ def pre(*text, **kwargs):
 
 def b(*text, **kwargs):
     """Return a bold run"""
-    return tydoc.b(*text, **kwargs)
+    return tydoc().b(*text, **kwargs)
 
 
 def a(*text, href=None, attrib={}, **kwargs):
@@ -1689,7 +1689,7 @@ def a(*text, href=None, attrib={}, **kwargs):
     attrib = copy.copy(attrib)
     if href:
         attrib['href'] = href
-    return tydoc.a(*text, attrib=attrib, **kwargs)
+    return TyTag().a(*text, attrib=attrib, **kwargs)
 
 def i(text):
     """Return an itallic run """
@@ -1697,11 +1697,10 @@ def i(text):
     e.text = text
     return e
 
-def th(text):
-    """Return an td element """
-    e = ET.Element(TAG_TH)
-    e.text = text
-    return e
+def th(*text, attrib={}, **kwargs):
+    """Return an th element """
+    attrib = copy.copy(attrib)
+    return TyTag().th(*text, attrib=attrib, **kwargs)
 
 def td(text):
     """Return an td element """
