@@ -396,8 +396,6 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
-        if not isinstance(auth, DBMySQLAuth):
-            raise ValueError(f"auth is type {type(auth)} expecting type {DBMySQLAuth}")
         debug = (debug or auth.debug)
 
 
