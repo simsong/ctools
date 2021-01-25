@@ -444,7 +444,7 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (errors.ProgrammingError, errors.InternalError) as e:
+                except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError) as e:
                     logging.error("setup: %s",setup)
                     logging.error("setup_vals: %s", setup_vals)
                     logging.error("cmd: %s",cmd)
