@@ -26,7 +26,6 @@ NO_PROXY='NO_PROXY'
 debug=False
 
 def proxy_on(http=True,https=True):
-    print(f"proxy_on({http},{https}",file=sys.stderr)
     if http:
         os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
     if https:
