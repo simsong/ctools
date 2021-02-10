@@ -398,7 +398,6 @@ class DBMySQL(DBSQL):
 
         debug = (debug or auth.debug)
 
-
         errors = sql_errors()
         for i in range(1,RETRIES):
             try:
@@ -420,7 +419,6 @@ class DBMySQL(DBSQL):
                         logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
                         logging.warning("EXPLAIN:")
                         logging.warning(DBMySQL.explain(cmd,vals))
-
 
                     ###
                     ###
@@ -444,7 +442,7 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError) as e:
+                except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
                     logging.error("setup: %s",setup)
                     logging.error("setup_vals: %s", setup_vals)
                     logging.error("cmd: %s",cmd)
@@ -482,12 +480,6 @@ class DBMySQL(DBSQL):
                 if i>2:
                     logging.warning(f"Success with i={i}")
                 return result
-            except errors.InterfaceError as e:
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cache_clear()
-                pass
             except errors.OperationalError as e:
                 if i>1:
                     logging.warning(e)
@@ -496,7 +488,7 @@ class DBMySQL(DBSQL):
                 pass
             except errors.InternalError as e:
                 se = str(e)
-                if ("Unknown column" in se) or ("Column count" in se):
+                if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
                     logging.error(se)
                     raise e
                 if i>1:
