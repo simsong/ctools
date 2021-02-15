@@ -10,7 +10,6 @@ import sqlite3
 import socket
 import re
 import resource
-import psutil
 
 MY_DIR=os.path.dirname( os.path.abspath( __file__ ))
 if MY_DIR not in sys.path:
@@ -271,17 +270,15 @@ class DBSqlite3(DBSQL):
 
 class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the
-connection. If run under bottle, the bottle object can be passed in,
-and cached_db is stored in the request-local storage."""
+connection. """
 
-    def __init__(self,*,host,database,user,password,bottle=None,debug=False):
+    def __init__(self,*,host,database,user,password,debug=False):
         self.host     = host
         self.database = database
         self.user     = user
         self.password = password
         self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
-        self.bottle   = bottle
 
     def __eq__(self,other):
         return ((self.host==other.host) and (self.database==other.database)
@@ -565,15 +562,13 @@ def mem_info(what,df,dump=True):
     print("==============================")
 
 
-def get_free_mem():
-    return psutil.virtual_memory().available
-
 REPORT_FREQUENCY = 60           # report this often
 last_report = 0                 # last time we reported
 def report_load_memory(auth, quiet=True):
     """Report and print the load and free memory; return free memory"""
+    import psutil
     global last_report
-    free_mem = get_free_mem()
+    free_mem = psutil.virtual_memory().available
     GiB = 1024*1024*1024
     # print current tasks
     # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
