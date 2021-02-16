@@ -488,6 +488,12 @@ class DBMySQL(DBSQL):
                 auth.cache_clear()
                 pass
             except errors.OperationalError as e:
+                if e.args[0]==1045: # access denied
+                    print(f"Access denied: auth:{auth}",file=sys.stderr)
+                    raise(e)
+                elif e.args[0]==1054: # invalid column
+                    print(f"Invalid Column in CMD: {cmd}")
+                    raise(e)
                 if i>1:
                     logging.warning(e)
                     logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
