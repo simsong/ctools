@@ -16,7 +16,7 @@ import subprocess
 import urllib.request
 import socket
 import boto3
-
+import sys
 
 HTTP_PROXY='HTTP_PROXY'
 HTTPS_PROXY='HTTPS_PROXY'
@@ -26,9 +26,9 @@ NO_PROXY='NO_PROXY'
 debug=False
 
 def proxy_on(http=True,https=True):
-    if http and (BCC_HTTP_PROXY in os.environ):
+    if http:
         os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
-    if https and (BCC_HTTPS_PROXY in os.environ):
+    if https:
         os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
 
 def proxy_off():

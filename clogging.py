@@ -139,12 +139,12 @@ def syslog_default_address():
     elif os.path.exists(DEVLOG_MAC):
         return DEVLOG_MAC
     else:
-        raise RuntimeError("No default syslog address configured")
+        raise RuntimeError(f"Neither {DEVLOG} nor {DEVLOG_MAC} are present.")
 
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
                  syslog_address = None,
                  syslog_format = YEAR+" "+SYSLOG_FORMAT,
-                 use_tcp=True):
+                 use_tcp=False):
     global added_syslog
     if not added_syslog:
         # Make a second handler that logs to syslog
