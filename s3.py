@@ -300,7 +300,14 @@ class S3File:
         self.fpos = 0
         self.tf = tempfile.NamedTemporaryFile()
         cmd = [awscli(), 's3api', 'list-objects', '--bucket', self.bucket, '--prefix', self.key, '--output', 'json']
-        data = json.loads(subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0])
+        jdata = subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0]
+        try:
+            data = json.loads(jdata)
+        except json.decoder.JSONDecodeError as e:
+            print("jdata:",jdata,file=sys.stderr)
+            print(e,file=sys.stderr)
+            raise e
+
         file_info = data['Contents'][0]
         self.length = file_info['Size']
         self.ETag = file_info['ETag']

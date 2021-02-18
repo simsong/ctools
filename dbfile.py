@@ -393,10 +393,7 @@ class DBMySQL(DBSQL):
         @param asDict    - True to return each row as a dictionary
         """
 
-        if not isinstance(auth, DBMySQLAuth):
-            raise ValueError(f"auth is type {type(auth)} expecting type {DBMySQLAuth}")
         debug = (debug or auth.debug)
-
 
         errors = sql_errors()
         for i in range(1,RETRIES):
@@ -420,7 +417,6 @@ class DBMySQL(DBSQL):
                         logging.warning("EXPLAIN:")
                         logging.warning(DBMySQL.explain(cmd,vals))
 
-
                     ###
                     ###
                     if dry_run:
@@ -443,7 +439,7 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (errors.ProgrammingError, errors.InternalError) as e:
+                except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
                     logging.error("setup: %s",setup)
                     logging.error("setup_vals: %s", setup_vals)
                     logging.error("cmd: %s",cmd)
@@ -481,12 +477,6 @@ class DBMySQL(DBSQL):
                 if i>2:
                     logging.warning(f"Success with i={i}")
                 return result
-            except errors.InterfaceError as e:
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"InterfaceError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cache_clear()
-                pass
             except errors.OperationalError as e:
                 if e.args[0]==1045: # access denied
                     print(f"Access denied: auth:{auth}",file=sys.stderr)
@@ -501,7 +491,7 @@ class DBMySQL(DBSQL):
                 pass
             except errors.InternalError as e:
                 se = str(e)
-                if ("Unknown column" in se) or ("Column count" in se):
+                if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
                     logging.error(se)
                     raise e
                 if i>1:

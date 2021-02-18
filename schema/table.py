@@ -151,7 +151,7 @@ class Table:
         ret.append("    def validate_pipe_delimited(self,x):".format(self.python_name()))
         ret.append("        fields = x.split('|')")
         ret.append("        if len(fields)!={}: return False".format(len(self.vars())))
-        for (i,v) in enumerate(self.vars(), 1):
+        for (i,v) in enumerate(self.vars(), 0):
             if v.name in ignore_vars:
                 continue
             ret.append("        if self.{}(fields[{}]) == False: return False".
