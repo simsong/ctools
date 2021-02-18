@@ -313,7 +313,6 @@ class S3File:
         self.ETag = file_info['ETag']
 
         # Load the caches
-
         self.frontcache = self._readrange(0, READ_CACHE_SIZE)  # read the first 1024 bytes and get length of the file
         if self.length > READ_CACHE_SIZE:
             self.backcache_start = self.length - READ_CACHE_SIZE
@@ -407,11 +406,11 @@ class S3File:
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
 #
-# This could be redesigned to simply use the S3File() below
+# This could be redesigned to simply use the S3File() above
 # Todo: redesign so that it can be used in a "with" statement
 
 class s3open:
-    def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), cache=False, fsync=False):
+    def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), fsync=False):
         """
         Open an s3 file for reading or writing. Can handle any size, but cannot seek.
         We could use boto3 or one of these packages:
@@ -420,6 +419,7 @@ class s3open:
 
         This is legacy code from when we had systems that would not work with boto3.
 
+        2020-02-17 - Removed file cache
         :param fsync: if True and mode is writing, use object-exists to wait for the object to be created on exit.
         """
         if not path.startswith("s3://"):
@@ -431,27 +431,12 @@ class s3open:
         self.path = path
         self.mode = mode
         self.encoding = encoding
-        self.cache = cache
         self.fsync = fsync
-
-        cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/", "_"))
-
-        # If not caching and a cache file is present, delete it.
-        if not cache and os.path.exists(cache_name):
-            os.unlink(cache_name)
-
-        if cache and ('w' not in mode):
-            os.makedirs(READTHROUGH_CACHE_DIR, exist_ok=True)
-            if os.path.exists(cache_name):
-                self.file_obj = open(cache_name, mode=mode, encoding=encoding)
 
         assert 'a' not in mode
         assert '+' not in mode
 
         if "r" in mode:
-            if cache:
-                subprocess.check_call([awscli(), 's3', 'cp', '--quiet', path, cache_name])
-                open(cache_name, mode=mode, encoding=encoding)
             self.p = subprocess.Popen([awscli(), 's3', 'cp', '--quiet', path, '-'],
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
@@ -470,9 +455,10 @@ class s3open:
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.file_obj.close()
-        if self.p.wait() != 0:
-            raise RuntimeError(self.p.stderr.read())
-        self.waitObjectExists()
+        if self.fsync and "w" in self.mode:
+            if self.p.wait() != 0:
+                raise RuntimeError(self.p.stderr.read())
+            self.waitObjectExists()
 
     def waitObjectExists(self):
         if self.fsync and "w" in self.mode:
@@ -505,7 +491,7 @@ def s3rm(path):
     """Remove an S3 object"""
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
-    print("res:",type(res))
+    print("res:",res)
     # delete-object return no output in Staging, even though it successfully deleted the key
     # This is likely because bucket versioning is not enabled in Staging
     # See https://wiki.outscale.net/display/EN/Removing+Objects+from+a+Bucket

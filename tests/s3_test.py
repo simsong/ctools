@@ -6,6 +6,7 @@ import sys
 import warnings
 import pytest
 import uuid
+import logging
 
 from os.path import abspath
 from os.path import dirname
@@ -36,6 +37,7 @@ def s3root():
 @pytest.fixture
 def s3_tempfile():
     path = os.path.join( s3root(), f"tmp/tmp.{uuid.uuid4()}")
+    logging.info("s3_tempfile: %s",path)
     yield path
     s3.s3rm(path)
 
