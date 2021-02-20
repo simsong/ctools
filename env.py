@@ -1,5 +1,12 @@
-"""manage the census environment"""
+"""
+env.py:
 
+Read a bash script and learn the environment variables into a python dictionary.
+This allows MySQL database host, database, username and password to be set in
+environment variables for both bash scripts and Python programs.
+
+Todo: remove CENSUS_DAS_SH or find it.
+"""
 
 import os
 import re
@@ -23,7 +30,6 @@ def get_vars(fname):
                     value = value[1:-1]
                 ret[name] = value
     return ret
-                
 
 
 def get_env(pathname):
@@ -33,8 +39,7 @@ script as a subshell and then do a printenv and actually capture the
 variables"""
     for (key,val) in get_vars(pathname).items():
         os.environ[key] = os.path.expandvars(val)
-        
-    
+
 
 def get_census_env():
     """Read the file /etc/profile.d/census_das.sh and learn all of the
@@ -45,9 +50,19 @@ def get_home():
     """Return the current user's home directory without using the HOME variable. """
     return pwd.getpwuid(os.getuid()).pw_dir
 
-
 def dump(out):
     print("==== ENV ====",file=out)
     for (key,val) in os.environ.items():
         print(f"{key}={val}",file=out)
-    
+
+if __name__=="__main__":
+    """Read a file and print the learned variables"""
+    import argparse
+    parser = argparse.ArgumentParser(description='Import the Digital Corpora logs.',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("envfile",help="File with environment variables set by bash")
+    args = parser.parse_args()
+
+    d = get_vars(args.envfile)
+    for (k,v) in d.items():
+        print(f"{k}={v}")
