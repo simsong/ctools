@@ -567,23 +567,3 @@ def mem_info(what,df,dump=True):
         df.info(verbose=False,max_cols=160,memory_usage='deep',null_counts=True)
     print("elapsed time at {}: {:.2f}".format(what,time.time() - start_time))
     print("==============================")
-
-
-REPORT_FREQUENCY = 60           # report this often
-last_report = 0                 # last time we reported
-def report_load_memory(auth, quiet=True):
-    """Report and print the load and free memory; return free memory"""
-    import psutil
-    global last_report
-    free_mem = psutil.virtual_memory().available
-    GiB = 1024*1024*1024
-    # print current tasks
-    # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
-    # why we should not use "INSERT IGNORE"
-    if last_report < time.time() + REPORT_FREQUENCY:
-        DBMySQL.csfr(auth,"insert into sysload (t, host, min1, min5, min15, freegb) "
-                     "values (now(), %s, %s, %s, %s, %s) "
-                     "ON DUPLICATE KEY update min1=min1",
-                     [hostname()] + list(os.getloadavg()) + [get_free_mem()//GiB],
-                     quiet=quiet)
-        last_report = time.time()
