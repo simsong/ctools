@@ -11,13 +11,13 @@ import json
 # Because this is a demo, it's not really part of the ctools package.
 # So we need to manually add the parent directory to the path, so we can use it.
 
-from os.path import abspath
-from os.path import dirname
+from os.path import abspath,dirname
 
-sys.path.append(dirname(dirname(abspath(__file__))))
 
-from ctools import cspark
-from ctools import clogging
+sys.path.append(dirname(abspath(__file__)))
+
+import cspark
+import clogging
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -61,7 +61,10 @@ if __name__=="__main__":
         exit(0)
 
     print("Running spark with 16 executors.... My PID is {}".format(os.getpid()))
-    sc = cspark.spark_session(num_executors=16, pyfiles=[os.path.join(os.path.dirname(os.path.abspath(__file__)),'clogging.py')]).sparkContext
+    pyfiles = [clogging.__file__, cspark.__file__]
+
+
+    sc = cspark.spark_session(num_executors=16, pyfiles=pyfiles).sparkContext
     print("Spark Context Obtained. sc={}  My PID is now {}".format(sc, os.getpid()))
     print("application id:",sc.applicationId)
 
