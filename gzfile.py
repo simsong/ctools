@@ -25,26 +25,27 @@ class GZFile:
             if not os.path.exists(name):
                 raise FileNotFoundError(name)
             encoding     = None if 'b' in mode else 'utf-8'
-            self.p       = subprocess.Popen( ['gzip','-c','-q','-d'], stdin=open(name,'rb'), stdout=subprocess.PIPE, encoding=encoding )
+            self.p       = subprocess.Popen(['gzip', '-c', '-q', '-d'], stdin=open(name, 'rb'), stdout=subprocess.PIPE, encoding=encoding)
             self._fileno = self.p.stdout.fileno()
             self.name    = f'/dev/fd/{self._fileno}'
-            self.f       = open(self.name,mode)
+            self.f       = open(self.name, mode)
         if 'w' in mode:
-            self.p = subprocess.Popen(['gzip',f'-{level}'],stdin=subprocess.PIPE,stdout=open(name,'wb'))
+            self.p = subprocess.Popen(['gzip', f'-{level}'], stdin=subprocess.PIPE, stdout=open(name, 'wb'))
             self.name = name
+
     def fileno(self):
         return self._fileno
 
-    def read(self,count=-1):
+    def read(self, count=-1):
         return self.f.read(count)
 
     def readline(self, count=-1):
         return self.f.readline(count)
 
-    def write(self,text):
+    def write(self, text):
         if self.passthrough:
             return self.f.write(text)
-        if isinstance(text,bytes):
+        if isinstance(text, bytes):
             return self.p.stdin.write(text)
         else:
             return self.p.stdin.write(text.encode('utf-8'))
@@ -52,7 +53,7 @@ class GZFile:
     def __enter__(self):
         return self
 
-    def __exit__(self,err,msg,stack):
+    def __exit__(self, err, msg, stack):
         if err:
             raise err
         self.close()
@@ -80,9 +81,9 @@ class GZFile:
 
 
 if __name__=="__main__":
-    with GZFile("test.gz","w") as f:
+    with GZFile("test.gz", "w") as f:
         f.write("this is a test\n")
 
-    with GZFile("test.gz","r") as f:
+    with GZFile("test.gz", "r") as f:
         data = f.read()
-        print("data=",data)
+        print("data=", data)

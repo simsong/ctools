@@ -13,17 +13,16 @@ EXPORT_RE = re.compile(r"^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
 def get_vars(fname):
     """Read the variables in fname and return them in a dictionary"""
     ret = {}
-    with open(fname,'r') as f:
+    with open(fname, 'r') as f:
         for line in f:
             m = VARS_RE.search(line)
             if m:
                 name  = m.group('name')
                 value = m.group('value')
-                if (len(value)>0) and (value[0] in ['"',"'"]) and (value[0]==value[-1]):
+                if (len(value)>0) and (value[0] in ['"', "'"]) and (value[0]==value[-1]):
                     value = value[1:-1]
                 ret[name] = value
     return ret
-                
 
 
 def get_env(pathname):
@@ -31,10 +30,9 @@ def get_env(pathname):
 done with pattern matching. Another way would be to run the BASH
 script as a subshell and then do a printenv and actually capture the
 variables"""
-    for (key,val) in get_vars(pathname).items():
+    for (key, val) in get_vars(pathname).items():
         os.environ[key] = os.path.expandvars(val)
-        
-    
+
 
 def get_census_env():
     """Read the file /etc/profile.d/census_das.sh and learn all of the
@@ -47,7 +45,7 @@ def get_home():
 
 
 def dump(out):
-    print("==== ENV ====",file=out)
-    for (key,val) in os.environ.items():
-        print(f"{key}={val}",file=out)
-    
+    print("==== ENV ====", file=out)
+    for (key, val) in os.environ.items():
+        print(f"{key}={val}", file=out)
+

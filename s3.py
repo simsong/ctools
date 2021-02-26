@@ -35,7 +35,7 @@ AWS_CLI  = None
 
 def is_hexadecimal(s):
     """Return true if s is hexadecimal string"""
-    if isinstance(s,str)==False:
+    if isinstance(s, str)==False:
         return False
     elif len(s)==0:
         return False
@@ -51,7 +51,7 @@ def awscli():
             if os.path.exists(path):
                 AWS_CLI = path
                 return AWS_CLI
-        raise RuntimeError("Cannot find aws executable in "+str(AWS_CLI_LIST))
+        raise RuntimeError("Cannot find aws executable in " +str(AWS_CLI_LIST))
     return AWS_CLI
 
 
@@ -78,25 +78,24 @@ def aws_s3api(cmd, debug=False):
 
     try:
         p = subprocess.Popen(fcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out,err) = p.communicate()
+        (out, err) = p.communicate()
         if p.returncode==0:
             if out==b'':
                 return out
             try:
                 return json.loads(out.decode('utf-8'))
             except json.decoder.JSONDecodeError as e:
-                print(e,file=sys.stderr)
-                print("out=",out,file=sys.stderr)
+                print(e, file=sys.stderr)
+                print("out=", out, file=sys.stderr)
                 raise e
         else:
             err = err.decode('utf-8')
             if 'does not exist' in err:
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(cmd))
             else:
-                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
+                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd, out, err))
     except TypeError as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, e))
-
 
     if not data:
         return None
@@ -137,7 +136,8 @@ def delete_object(bucket, key):
 
 def delete_s3url(s3url):
     (bucket, key) = get_bucket_key(s3url)
-    return delete_object( bucket, key )
+    return delete_object(bucket, key)
+
 
 PAGE_SIZE = 1000
 MAX_ITEMS = 1000
@@ -192,7 +192,8 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
     @param threads - the number of Python threds to use. Note that this is all in the same process.
     """
 
-    import queue, threading
+    import queue
+    import threading
 
     if limit is None:
         limit = sys.maxsize  # should be big enough
@@ -304,8 +305,8 @@ class S3File:
         try:
             data = json.loads(jdata)
         except json.decoder.JSONDecodeError as e:
-            print("jdata:",jdata,file=sys.stderr)
-            print(e,file=sys.stderr)
+            print("jdata:", jdata, file=sys.stderr)
+            print(e, file=sys.stderr)
             raise e
 
         file_info = data['Contents'][0]
@@ -491,7 +492,7 @@ def s3rm(path):
     """Remove an S3 object"""
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
-    print("res:",res)
+    print("res:", res)
     # delete-object return no output in Staging, even though it successfully deleted the key
     # This is likely because bucket versioning is not enabled in Staging
     # See https://wiki.outscale.net/display/EN/Removing+Objects+from+a+Bucket
@@ -505,6 +506,7 @@ class DuCounter:
     def __init__(self):
         self.total_bytes = 0
         self.total_files = 0
+
     def count(self, bytes_):
         self.total_bytes += bytes_
         self.total_files += 1
@@ -513,25 +515,25 @@ def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
     prefixes = defaultdict(DuCounter)
 
-    cmd = [awscli(),'s3','ls','--recursive',root]
+    cmd = [awscli(), 's3', 'ls', '--recursive', root]
     print(" ".join(cmd))
-    p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, encoding='utf-8')
     part_re = re.compile(r"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
-    MiB = 1024*1024
+    MiB = 1024 *1024
     try:
-        for (ct,line) in enumerate(p.stdout):
+        for (ct, line) in enumerate(p.stdout):
             parts       = part_re.search(line)
             if parts is None:
-                print("Cannot parse: ",line,file=sys.stderr,flush=True)
+                print("Cannot parse: ", line, file=sys.stderr, flush=True)
                 continue
             bytes_      = int(parts.group(3))
             path        = parts.group(4)
             total_bytes += bytes_
-            prefixes[ os.path.dirname(path) ].count(bytes_)
+            prefixes[os.path.dirname(path)].count(bytes_)
 
-            if ct%1000==0:
-                print(f"files: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}",flush=True)
+            if ct %1000==0:
+                print(f"files: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}", flush=True)
     except KeyboardInterrupt as e:
         print("*** interrupted ***")
 
@@ -540,20 +542,21 @@ def print_du(root):
     fmt2 = "{:>10}{:>20,}  {}"
     print()
     print("Usage by prefix:")
-    print(fmt1.format('files','bytes','path'))
+    print(fmt1.format('files', 'bytes', 'path'))
     for path in sorted(prefixes):
         print(fmt2.format(prefixes[path].total_files,
-                         prefixes[path].total_bytes,
-                         path))
+                          prefixes[path].total_bytes,
+                          path))
     print("")
     print("Top 20 by size:")
-    print(fmt1.format('files','bytes','path'))
-    for (ct,path) in enumerate(sorted(prefixes, key=lambda path:prefixes[path].total_bytes, reverse=True),1):
+    print(fmt1.format('files', 'bytes', 'path'))
+    for (ct, path) in enumerate(sorted(prefixes, key=lambda path: prefixes[path].total_bytes, reverse=True), 1):
         print(fmt2.format(prefixes[path].total_files,
                           prefixes[path].total_bytes,
                           path))
         if ct==20:
             break
+
 
 if __name__ == "__main__":
     t0 = time.time()

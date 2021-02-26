@@ -14,6 +14,7 @@ ttable is the main typesetting class. It builds an abstract representation of a 
 It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
+import latex_tools
 from typing import List, Dict, Any, Iterable
 
 import os.path
@@ -30,7 +31,6 @@ import re
 
 sys.path.append(os.path.dirname(__file__))
 
-import latex_tools
 
 __version__ = "0.2.1"
 
@@ -116,7 +116,7 @@ def icomma(i):
 
 
 ################################################################
-### Legacy system follows
+# Legacy system follows
 ################################################################
 
 
@@ -234,7 +234,7 @@ class ttable:
     fontsize: int
 
     latex_colspec: Any
-    col_formatted_widths: List[int ]
+    col_formatted_widths: List[int]
 
     OPTION_LONGTABLE = 'longtable'
     OPTION_TABULARX = 'tabularx'
@@ -317,8 +317,8 @@ class ttable:
 
     def set_col_alignmnets(self, fmt):
         col = 0
-        for ch in re.split(r'(l)|(r)|(p\{[^}]*\})',fmt):
-            if isinstance(ch,str) and len(ch)>0:
+        for ch in re.split(r'(l)|(r)|(p\{[^}]*\})', fmt):
+            if isinstance(ch, str) and len(ch)>0:
                 if ch == 'r':
                     self.set_col_alignment(col, self.RIGHT)
                     col += 1
@@ -360,7 +360,7 @@ class ttable:
         self.data.append(Row(values, annotations=annotations))
 
     def add_raw(self, val, *, ncols):
-        self.data.append(Raw(val,ncols=ncols))
+        self.data.append(Raw(val, ncols=ncols))
 
     def ncols(self):
         """ Return the number of maximum number of cols in the data """

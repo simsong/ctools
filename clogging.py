@@ -87,7 +87,7 @@ def applicationId():
     try:
         import cspark
     except ImportError as e:
-        sys.path.append( os.path.dirname( __file__ ))
+        sys.path.append(os.path.dirname(__file__))
         import cspark
 
     if not cspark.spark_running():
@@ -121,7 +121,7 @@ def shutdown():
     called_basicConfig = False
 
 ################################################################
-### Support for ArgumentParser
+# Support for ArgumentParser
 
 
 def add_argument(parser, *, loglevel_default='INFO'):
@@ -142,8 +142,8 @@ def syslog_default_address():
         raise RuntimeError(f"Neither {DEVLOG} nor {DEVLOG_MAC} are present.")
 
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
-                 syslog_address = None,
-                 syslog_format = YEAR+" "+SYSLOG_FORMAT,
+                 syslog_address=None,
+                 syslog_format=YEAR +" " +SYSLOG_FORMAT,
                  use_tcp=False):
     global added_syslog
     if not added_syslog:
