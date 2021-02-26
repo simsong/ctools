@@ -83,9 +83,13 @@ command line, but hold that thought), you can then test out the dbreader account
 
 You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
 
-   auth = DBMySQLAUTH("/home/www/dbreader.bash")
+   auth = ctools.dbfile.DBMySQLAuth.FromEnv("/home/www/dbreader.bash")
 
 Then you can use auth as the first parameter in the .csfr() method.
+
+Other methods include:
+
+   auth = ctools.dbfile.DBMySQLAuth.FromConfig() # reads from a config.ini file
 
 Note: Currently, the end of this module also a methods for a remote system load
 management system that was used to debug the persistent
@@ -309,10 +313,17 @@ connection. """
     def FromEnv(filename):
         """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
         env = DBMySQLAuth.GetBashEnv(filename)
-        return DBMySQLAuth(host=env[MYSQL_HOST],
-                           user=env[MYSQL_USER],
-                           password=env[MYSQL_PASSWORD],
-                           database=env[MYSQL_DATABASE])
+        try:
+            return DBMySQLAuth(host = env[MYSQL_HOST],
+                               user = env[MYSQL_USER],
+                               password = env[MYSQL_PASSWORD],
+                               database = env[MYSQL_DATABASE])
+        except KeyError as e:
+            logging.error("filename: %s",filename)
+            for var in env:
+                logging.error("env[%s] = %s",var,env[var])
+            raise e
+
 
     @staticmethod
     def FromConfig(section, debug=None):
