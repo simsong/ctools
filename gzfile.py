@@ -10,13 +10,13 @@ import subprocess
 import os
 
 class GZFile:
-    def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None, 
+    def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None,
                  newline=None, closefd=True, opener=None, auto=False):
         if auto==True and name.endswith(".gz")==False:
             self.passthrough = True
             self.f = open(self.name, mode=mode, buffering=buffering, encoding=encoding, errors=errors,
                           newline=newline, closefd=closefd, opener=opener)
-            return 
+            return
         self.passthrough = False
         self.mode        = mode
         if ('r' in mode) and ('w' in mode):
@@ -24,7 +24,7 @@ class GZFile:
         if 'r' in mode:
             if not os.path.exists(name):
                 raise FileNotFoundError(name)
-            encoding     = None if 'b' in mode else 'utf-8' 
+            encoding     = None if 'b' in mode else 'utf-8'
             self.p       = subprocess.Popen( ['gzip','-c','-q','-d'], stdin=open(name,'rb'), stdout=subprocess.PIPE, encoding=encoding )
             self._fileno = self.p.stdout.fileno()
             self.name    = f'/dev/fd/{self._fileno}'
@@ -34,12 +34,12 @@ class GZFile:
             self.name = name
     def fileno(self):
         return self._fileno
-    
-    def read(self,size=-1):
-        return self.f.read(size)
 
-    def readline(self, size=-1):
-        return self.f.readline(size)
+    def read(self,count=-1):
+        return self.f.read(count)
+
+    def readline(self, count=-1):
+        return self.f.readline(count)
 
     def write(self,text):
         if self.passthrough:
@@ -56,7 +56,7 @@ class GZFile:
         if err:
             raise err
         self.close()
-    
+
     def __iter__(self):
         return self
 
@@ -77,7 +77,7 @@ class GZFile:
             self.p.stdin.close()
             self.p.wait()
             del self.p
-    
+
 
 if __name__=="__main__":
     with GZFile("test.gz","w") as f:
@@ -86,5 +86,3 @@ if __name__=="__main__":
     with GZFile("test.gz","r") as f:
         data = f.read()
         print("data=",data)
-
-    
