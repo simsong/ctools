@@ -8,14 +8,14 @@ import time
 import re
 import string
 from collections import defaultdict
+import queue, threading
 
 from urllib.parse import urlparse
 
+import boto3
+
 #
 # This creates an S3 file that supports seeking and caching.
-# We keep this file at Python2.7 for legacy reasons
-
-global debug
 
 _LastModified = 'LastModified'
 _ETag = 'ETag'
@@ -26,6 +26,7 @@ _Prefix = 'Prefix'
 
 READ_CACHE_SIZE = 4096  # big enough for front and back caches
 MAX_READ = 65536 * 16
+global debug
 debug = False
 
 READTHROUGH_CACHE_DIR = '/mnt/tmp/s3cache'
@@ -125,7 +126,6 @@ def get_object(bucket, key, fname):
         raise FileExistsError(fname)
     return aws_s3api(['get-object', '--bucket', bucket, '--key', key, fname])
 
-
 def head_object(bucket, key):
     """Wrap the head-object api"""
     return aws_s3api(['head-object', '--bucket', bucket, '--key', key])
@@ -192,12 +192,12 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
     @param threads - the number of Python threds to use. Note that this is all in the same process.
     """
 
-    import queue, threading
 
     if limit is None:
         limit = sys.maxsize  # should be big enough
-    ret = []
 
+    found = []
+    s3client = boto3.client('s3')
     def worker():
         while True:
             prefix = q.get()
@@ -205,18 +205,18 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
                 break
             found_prefixes = []
             found_names = 0
-            for obj in list_objects(bucket, prefix=prefix, delimiter=delimiter):
-                if _Prefix in obj:
-                    found_prefixes.append(obj[_Prefix])
-                if (_Key in obj) and obj[_Key].split(delimiter)[-1] == name:
-                    if len(ret) < limit:
-                        ret.append(obj)
-                if len(ret) > limit:
-                    break
-            if found_names == 0 or searchFoundPrefixes:
-                if len(ret) < limit:
-                    for lp in found_prefixes:
-                        q.put(lp)
+            paginator = s3client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=bucket, Prefix=prefix, Delimiter=delimiter)
+            for page in pages:
+                for obj in page.get('Contents',[]):
+                    if len(found) > limit:
+                        break
+                    if (name is None) or (os.path.basename(obj['Key'])==name):
+                        found.append(obj)
+                for obj in page.get('CommonPrefixes',[]):
+                    if len(found) > limit:
+                        break
+                    q.put(obj['Prefix'])
             q.task_done()
 
     q = queue.Queue()
@@ -235,7 +235,7 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
         q.put(None)
     for t in thread_pool:
         t.join()
-    return ret
+    return found
 
 
 def etag(obj):
@@ -579,7 +579,10 @@ if __name__ == "__main__":
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
         if args.search:
-            for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
+            what = args.search
+            if what=='all':
+                what=None
+            for data in search_objects(bucket, prefix, name=what, searchFoundPrefixes=False, threads=args.threads):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
         if args.du:
