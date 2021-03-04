@@ -17,10 +17,9 @@ import warnings
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-import ctools.clogging as clogging
-
-
 LOCAL1_LOG = '/var/log/local1.log'
+
+import clogging
 
 def test_logging_to_syslog():
     if platform.system()=='Windows' or platform.system()=='Darwin':
@@ -49,11 +48,5 @@ def test_logging_to_syslog():
         warnings.warn("local1 is not logging to /var/log/local1.log")
 
     assert count in [0,1,2]
-    # Turned off shutting down logging because it breaks subsequent pytests that rely on TCP logging 
+    # Turned off shutting down logging because it breaks subsequent pytests that rely on TCP logging
     #clogging.shutdown()
-
-    
-
-
-
-    
