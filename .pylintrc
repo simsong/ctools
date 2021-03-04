@@ -14,8 +14,7 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook="import sys; sys.path += ['.','/usr/lib/spark/python', '/usr/lib/spark/python/lib/py4j-src.zip',
-                                    '/mnt/das_python'];"
+init-hook="import sys; sys.path += ['.'];"
 
 # Use multiple processes to speed up Pylint.
 jobs=1
