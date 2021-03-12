@@ -1,18 +1,38 @@
-"""manage the census environment"""
+"""Interface between environment variables, configuration variables, and Python.
 
+Can read environment variables in bash scripts such as:
+
+export FOO=bar
+export BAR=biff
+
+and return an associative array of {'FOO':'bar','BAR':biff}
+
+Can find variables in /etc/profile.d/*.bash.
+
+Can process JSON configuration files in the form:
+  { "*": {'name':'val',...},
+    "E1": {'name':'val',...},
+    "E2": {'name':'val',...}}
+
+and search for the value of 'name' going to the current environment (e.g. E1), and then to the default environemnt (e.g. *)
+"""
 
 import os
 import re
 import pwd
 import sys
 import glob
+import json
+import logging
+from os.path import dirname,basename,abspath
 
-CENSUS_DAS_SH='/etc/profile.d/census_das.sh'
 VARS_RE   = re.compile(r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
 EXPORT_RE = re.compile(r"^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
 
 def get_vars(fname):
-    """Read the variables in fname and return them in a dictionary"""
+    """Read the bash EXPORT variables in fname and return them in a dictionary
+    :param fname: the name of a bash script
+    """
     ret = {}
     with open(fname,'r') as f:
         for line in f:
@@ -24,7 +44,6 @@ def get_vars(fname):
                     value = value[1:-1]
                 ret[name] = value
     return ret
-
 
 
 def get_env(pathname=None, *, profile_dir=None, prefix=None):
@@ -54,7 +73,9 @@ variables
 
 
 def get_census_env():
-    """Legacy to be deleted"""
+    """Legacy to be deleted.
+    Look for a script in /etc/profile.d/ beginning with 'census' and read the variables in it.
+    """
     return get_env(profile_dir = '/etc/profile.d', prefix = 'census')
 
 def get_home():
@@ -66,3 +87,75 @@ def dump(out):
     print("==== ENV ====",file=out)
     for (key,val) in os.environ.items():
         print(f"{key}={val}",file=out)
+
+
+class JSONConfigReader:
+    @classmethod
+    def searchFile(self,path):
+        """Search for the file named by path in the current directory, and then in every directory up to the root.
+        Then every directory from ctool's directory to root.
+        When found, return it. Otherwise return path if the file exists, otherwise raise an exception
+        """
+        checked = []
+        name = os.path.join( os.getcwd(), basename(path))
+        while dirname(name) != '/':
+            checked.append(name)
+            if os.path.exists(name):
+                return name
+            name = os.path.join( dirname(dirname(name)), basename(name))
+
+        name = os.path.join( dirname(abspath(__file__)), basename(path))
+        while dirname(name) != '/':
+            checked.append(name)
+            if os.path.exists(name):
+                return name
+            name = os.path.join( dirname(dirname(name)), basename(name))
+
+
+        if os.path.exists(path):
+            return path
+        for check in checked:
+            logging.error(f"checked {check}")
+        raise FileNotFoundError(path)
+
+
+    def __init__(self, *, path=None, search=True, config=None, environment=None, envar=None ):
+        self.environment= '*'
+        self.path = None
+        if (path is not None) and (config is not None):
+            raise ValueError("Only path or config can be specified")
+        if (environment is not None) and (envar is not None):
+            raise ValueError("Only environment or envar can be specified")
+        if path:
+            # If search is true, search for the named config file from the current directory to the root
+            # directory. If it isn't found, use the pathname
+            if search:
+                self.path = self.searchFile(path)
+            else:
+                self.path = path
+            self.config = json.load(open(self.path))
+        else:
+            self.path = 'provided dictionary'
+            self.config = config
+        if environment:
+            self.environment = environment
+        if envar:
+            self.environment = os.environ[envar]
+
+
+    def get_config(self, variable_name, environment=None):
+        # Handle one layer deep of FOO.BAR to search in FOO's directory for BAR.
+        if environment is None:
+            environment = self.environment
+
+        if "." in variable_name:
+            (name,ext) = variable_name.split(".",1)
+            val = self.get_config(name, environment)
+            return val[ext]
+
+        for check in [environment,'*']:
+            try:
+                return self.config[check][variable_name]
+            except KeyError:
+                pass
+        raise KeyError(f"{variable_name} not in {check} or '*' in {self.path}")
