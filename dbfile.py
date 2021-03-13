@@ -1,9 +1,5 @@
 # dbfile.py
 
-from os.path import basename, abspath, dirname
-from collections import OrderedDict
-from abc import ABC, abstractmethod
-import total_size
 import datetime
 import time
 import os
@@ -15,10 +11,9 @@ import socket
 import re
 import resource
 
-MY_DIR=os.path.dirname(os.path.abspath(__file__))
-if MY_DIR not in sys.path:
-    sys.path.append(MY_DIR)
-
+from os.path import basename, abspath, dirname
+from collections import OrderedDict
+from abc import ABC, abstractmethod
 
 """
 This is the dbfile.py (database file)
