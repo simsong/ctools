@@ -105,8 +105,7 @@ def applicationId():
         if "local" in sc.getConf().get("spark.master"):
             return f"local{os.getpid()}"
         # Note: make sure that the following map does not require access to any existing module.
-        appid = sc.parallelize([1]).map(lambda x: "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])).collect()
-        return appid[0]
+        return sc.applicationId
     except ImportError:
         pass
 
