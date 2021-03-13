@@ -54,7 +54,7 @@ import os
 import os.path
 import socket
 import sys
-
+import uuid
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -80,6 +80,7 @@ called_basicConfig = False
 def applicationIdFromEnvironment():
     return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
 
+FAKE_APPLICATION_ID='FAKE_APPLICATION_ID'
 def applicationId():
     """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
@@ -91,7 +92,9 @@ def applicationId():
         import cspark
 
     if not cspark.spark_running():
-        return f"NoSpark-or-local{os.getpid()}"
+        if FAKE_APPLICATION_ID not in os.environ:
+            os.environ[FAKE_APPLICATION_ID] = f"NoYarn-{str(uuid.uuid4())}"
+        return os.environ[FAKE_APPLICATION_ID]
 
     try:
         return applicationIdFromEnvironment()
