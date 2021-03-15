@@ -120,6 +120,13 @@ class JSONConfigReader:
 
 
     def __init__(self, *, path=None, search=True, config=None, environment=None, envar=None ):
+        """
+        :param path: location of JSON config file.
+        :param search: Search from current directory up to root for a file with the same filename as `path` before using `path`.
+        :param config: If provided, use the configuration specified in this dictionary, instead of path.
+        :param environment: Specifies the environment inside the JSON dictionary that should be used, and then default to '*'.
+        :param envar: Specifics an os.environ[] name that should be used for the environment.
+        """
         self.environment= '*'
         self.path = None
         if (path is not None) and (config is not None):
@@ -158,4 +165,5 @@ class JSONConfigReader:
                 return self.config[check][variable_name]
             except KeyError:
                 pass
+        print(f"config:\n{json.dumps(self.config,default=str,indent=4)}",file=sys.stderr)
         raise KeyError(f"{variable_name} not in {check} or '*' in {self.path}")
