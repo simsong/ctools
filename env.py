@@ -34,13 +34,13 @@ def get_vars(fname):
     :param fname: the name of a bash script
     """
     ret = {}
-    with open(fname,'r') as f:
+    with open(fname, 'r') as f:
         for line in f:
             m = VARS_RE.search(line)
             if m:
                 name  = m.group('name')
                 value = m.group('value')
-                if (len(value)>0) and (value[0] in ['"',"'"]) and (value[0]==value[-1]):
+                if (len(value)>0) and (value[0] in ['"', "'"]) and (value[0]==value[-1]):
                     value = value[1:-1]
                 ret[name] = value
     return ret
@@ -167,3 +167,4 @@ class JSONConfigReader:
                 pass
         print(f"config:\n{json.dumps(self.config,default=str,indent=4)}",file=sys.stderr)
         raise KeyError(f"{variable_name} not in {check} or '*' in {self.path}")
+

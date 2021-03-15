@@ -20,14 +20,14 @@ def total_size(o, handlers={}, verbose=False):
                     OtherContainerClass: OtherContainerClass.get_elements}
 
     """
-    dict_handler = lambda d: chain.from_iterable(d.items())
+    def dict_handler(d): return chain.from_iterable(d.items())
     all_handlers = {tuple: iter,
                     list: iter,
                     deque: iter,
                     dict: dict_handler,
                     set: iter,
                     frozenset: iter,
-                   }
+                    }
     all_handlers.update(handlers)     # user handlers take precedence
     seen = set()                      # track which object id's have already been seen
     default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
@@ -53,5 +53,5 @@ def total_size(o, handlers={}, verbose=False):
 ##### Example call #####
 
 if __name__ == '__main__':
-    d = dict(a=1, b=2, c=3, d=[4,5,6,7], e='a string of chars')
+    d = dict(a=1, b=2, c=3, d=[4, 5, 6, 7], e='a string of chars')
     print(total_size(d, verbose=True))

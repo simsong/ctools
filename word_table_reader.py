@@ -31,8 +31,8 @@ TBLPR = WORD_NAMESPACE + "tblPr"               # table properties?
 TBL      = WORD_NAMESPACE + "tbl"
 TBLGRID  = WORD_NAMESPACE + "tblGrid"          # table grid
 GRIDCOL = WORD_NAMESPACE + "gridCol"
-TR = WORD_NAMESPACE+"tr"                       # table row?
-TC = WORD_NAMESPACE+"tc"                       # table cell?
+TR = WORD_NAMESPACE +"tr"                       # table row?
+TC = WORD_NAMESPACE +"tc"                       # table cell?
 
 def get_docx_table(path):
     """
@@ -59,7 +59,7 @@ def get_docx_table(path):
             row.append(text)
         rows.append(row)
     return rows
-            
+
 def get_text_for_table(table):
     """
     Find the table inside the .docx file and return it in an array
@@ -80,7 +80,7 @@ def get_text_for_table(table):
             row.append(text)
         rows.append(row)
     return rows
-            
+
 def get_docx_tables(path):
     """
     Find the table inside the .docx file and return it in an array
@@ -113,6 +113,7 @@ def get_docx_text(path):
             text.append(current_paragraphs)
     return text
 
+
 if __name__=="__main__":
     import sys
     print("get_docx_tables:")
@@ -123,15 +124,11 @@ if __name__=="__main__":
         print("=====================")
     exit(0)
 
-
-
     for table in get_docx_tables(sys.argv[1]):
         for row in get_text_for_table(table):
             print(row)
         print("=====================")
     exit(1)
-            
-
 
     for row in get_docx_table(sys.argv[1]):
         print(row)

@@ -2,9 +2,9 @@
 #
 """
 geo.py: some information about geographies.  This should be recast to use an official Census publication.
-"""          
+"""
 #
-# 
+#
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -61,10 +61,10 @@ STATE_DATA=[
     "Washington/,Washington,WA,53",
     "West_Virginia/,West_Virginia,WV,54",
     "Wisconsin/,Wisconsin,WI,55",
-    "Wyoming/,Wyoming,WY,56" ]
-STATES=[dict(zip("dir_name,state_name,state_abbr,fips_state".split(","),line.split(","))) for line in STATE_DATA]
+    "Wyoming/,Wyoming,WY,56"]
+STATES=[dict(zip("dir_name,state_name,state_abbr,fips_state".split(","), line.split(","))) for line in STATE_DATA]
 
-def state_rec(name=None,fips=None):
+def state_rec(name=None, fips=None):
     for rec in STATES:
         if name:
             if name.lower()==rec['state_name'].lower() or name.lower()==rec['state_abbr'].lower():
@@ -84,5 +84,5 @@ def state_abbr(fips):
     return state_rec(fips=fips)['state_abbr']
 
 def all_state_abbrs():
-    # Return a list of all the states 
+    # Return a list of all the states
     return [rec['state_abbr'].lower() for rec in STATES]

@@ -39,21 +39,21 @@ CVIOLETBG2 = '\33[105m'
 CBEIGEBG2  = '\33[106m'
 CWHITEBG2  = '\33[107m'
 if __name__=="__main__":
-    from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser( formatter_class = ArgumentDefaultsHelpFormatter,
-                             description="Set the text color" )
+    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
+                            description="Set the text color")
     parser.add_argument("color", nargs="*", help="set color")
     parser.add_argument("--demo", action='store_true')
     parser.add_argument("--message", type=str)
     args = parser.parse_args()
     if args.color:
         for c in args.color:
-            print(getattr(sys.modules[__name__],c),end='')
+            print(getattr(sys.modules[__name__], c), end='')
     if args.message:
-        print(args.message+CEND)
+        print(args.message +CEND)
     if args.demo:
-        print(CEND,"Plain text")
-        print(CBLACK,CYELLOWBG,"Black on Yellow")
-        print(CRED,CWHITEBG,"Red on Grey")
-        print(CRED,CWHITEBG2,"Red on White")
-        print(CEND,"Back")
+        print(CEND, "Plain text")
+        print(CBLACK, CYELLOWBG, "Black on Yellow")
+        print(CRED, CWHITEBG, "Red on Grey")
+        print(CRED, CWHITEBG2, "Red on White")
+        print(CEND, "Back")
