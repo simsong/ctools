@@ -9,21 +9,18 @@
 #
 # Currently we manually sync the two; perhaps it should be moved to ctools.
 
-import aws
-import os
-import sys
 from pathlib import Path
+from subprocess import Popen, PIPE, call, check_call, check_output
 import json
+import logging
+import multiprocessing
+import os
+import subprocess
+import sys
+import time
 import urllib.request
 
-import subprocess
-from subprocess import Popen, PIPE, call, check_call, check_output
-import multiprocessing
-import time
-import logging
-
-# Bring in aws from the current directory
-sys.path.append(os.path.dirname(__file__))
+from os.path import abspath,dirname,basename
 
 # Beware!  An error occurred (ThrottlingException) in complete_cluster_info()
 # when calling the ListInstances operation (reached max retries: 4): Rate exceeded
