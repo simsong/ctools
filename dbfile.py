@@ -3,7 +3,6 @@
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
 from abc import ABC, abstractmethod
-import total_size
 import datetime
 import time
 import os
@@ -358,6 +357,7 @@ class DBMySQL(DBSQL):
 
     def __init__(self, auth, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
         self.internalError = sql_InternalError()
@@ -527,3 +527,7 @@ class DBMySQL(DBSQL):
         """Return a dictionary of the schema. This should probably be upgraded to return the ctools schema"""
         return [row[0] for row in DBMySQL.csfr(auth, "describe " +table_name)]
 
+
+    def sfr(self, *vals, **args):
+        """Select and fetchall and retry. Similar to above, but assumes we already have a connection."""
+        self.csfr(self.auth, *vals, **args)
