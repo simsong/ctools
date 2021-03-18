@@ -179,6 +179,7 @@ class DBSQL(ABC):
         self.conn.close()
 
     def execute(self, cmd, *args, debug=False, **kwargs):
+        """Execute a SQL command and return the the iterator"""
         if self.debug or debug:
             print(f"execute: {cmd}", file=sys.stderr)
             t0 = time.time()
@@ -526,4 +527,3 @@ class DBMySQL(DBSQL):
     def table_columns(auth, table_name):
         """Return a dictionary of the schema. This should probably be upgraded to return the ctools schema"""
         return [row[0] for row in DBMySQL.csfr(auth, "describe " +table_name)]
-
