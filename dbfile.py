@@ -3,7 +3,6 @@
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
 from abc import ABC, abstractmethod
-import total_size
 import datetime
 import time
 import os
@@ -359,6 +358,7 @@ class DBMySQL(DBSQL):
 
     def __init__(self, auth, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
         self.internalError = sql_InternalError()
