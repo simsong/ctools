@@ -4,6 +4,11 @@
 ## memory profiling tools
 ##
 
+import resource
+import time
+
+import total_size
+
 def maxrss():
     """Return maxrss in bytes, not KB"""
     return resource.getrusage(resource.RUSAGE_SELF)[2]*1024
@@ -40,4 +45,3 @@ def mem_info(what,df,dump=True):
         df.info(verbose=False,max_cols=160,memory_usage='deep',null_counts=True)
     print("elapsed time at {}: {:.2f}".format(what,time.time() - start_time))
     print("==============================")
-
