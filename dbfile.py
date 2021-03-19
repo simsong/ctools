@@ -359,7 +359,8 @@ class DBMySQL(DBSQL):
         self.conn = self.mysql.connect(host=auth.host,
                                        database=auth.database,
                                        user=auth.user,
-                                       password=auth.password)
+                                       password=auth.password,
+                                       autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
         # Census standard TZ is America/New_York
@@ -367,7 +368,6 @@ class DBMySQL(DBSQL):
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
         except self.internalError as e:
             pass
-        self.cursor().execute('SET autocommit = 1')  # autocommit
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
