@@ -1,5 +1,6 @@
 # dbfile.py
 
+
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
 from abc import ABC, abstractmethod
@@ -14,10 +15,9 @@ import socket
 import re
 import resource
 
-MY_DIR=os.path.dirname(os.path.abspath(__file__))
-if MY_DIR not in sys.path:
-    sys.path.append(MY_DIR)
-
+from os.path import basename, abspath, dirname
+from collections import OrderedDict
+from abc import ABC, abstractmethod
 
 """
 This is the dbfile.py (database file)
@@ -365,7 +365,8 @@ class DBMySQL(DBSQL):
         self.conn = self.mysql.connect(host=auth.host,
                                        database=auth.database,
                                        user=auth.user,
-                                       password=auth.password)
+                                       password=auth.password,
+                                       autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
         # Census standard TZ is America/New_York
@@ -373,7 +374,6 @@ class DBMySQL(DBSQL):
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
         except self.internalError as e:
             pass
-        self.cursor().execute('SET autocommit = 1')  # autocommit
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
@@ -395,17 +395,18 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
              setup=None, setup_vals=(),
-             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True):
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[]):
         """Connect, select, fetchall, and retry as necessary.
-        @param auth      - authentication otken
-        @param cmd       - SQL query
-        @param vals      - values for SQL parameters
-        @param setup     - An SQL statement that runs before cmd (typcially setting a variable)
-        @param setup_vals - Values for SQL parameters for setup
-        @param time_zone - if provided, set the session.time_zone to this value
-        @param quiet     - don't print anything
-        @param get_column_names - an array in which to return the column names.
-        @param asDict    - True to return each row as a dictionary
+        :param auth:      - authentication otken
+        :param cmd:       - SQL query
+        :param vals:      - values for SQL parameters
+        :param setup:     - An SQL statement that runs before cmd (typcially setting a variable)
+        :param setup_vals: - Values for SQL parameters for setup
+        :param time_zone: - if provided, set the session.time_zone to this value
+        :param quiet:     - don't print anything
+        :param get_column_names: - an array in which to return the column names.
+        :param asDict:    - True to return each row as a dictionary
+        :param nolog:     - array of error codes that shouldn't be logged with logging.errror
         """
 
         debug = (debug or auth.debug)
@@ -455,12 +456,13 @@ class DBMySQL(DBSQL):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
                 except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
-                    logging.error("setup: %s", setup)
-                    logging.error("setup_vals: %s", setup_vals)
-                    logging.error("cmd: %s", cmd)
-                    logging.error("vals: %s", vals)
-                    logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
-                    logging.error(str(e))
+                    if e.args[0] not in nolog:
+                        logging.error("setup: %s", setup)
+                        logging.error("setup_vals: %s", setup_vals)
+                        logging.error("cmd: %s", cmd)
+                        logging.error("vals: %s", vals)
+                        logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
+                        logging.error(str(e))
                     raise e
 
                 except TypeError as e:
