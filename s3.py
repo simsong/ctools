@@ -106,6 +106,9 @@ def aws_s3api(cmd, debug=False):
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, data))
 
 
+def getsize(bucket, key):
+    return boto3.resource('s3').Object(bucket,key).content_length
+
 def put_object(bucket, key, fname, use_acl=False):
     """Given a bucket and a key, upload a file"""
     assert os.path.exists(fname)
@@ -244,6 +247,7 @@ def etag(obj):
     if etag[0] == '"':
         return etag[1:-1]
     return etag
+
 
 
 def object_sizes(sobjs):
@@ -385,6 +389,9 @@ class S3File:
         if debug:
             print("   ={}  (self.length={})".format(self.fpos, self.length))
 
+    def seekable(self):
+        return True
+
     def tell(self):
         return self.fpos
 
@@ -473,6 +480,9 @@ class s3open:
 
     def write(self, *args, **kwargs):
         return self.file_obj.write(*args, **kwargs)
+
+    def readline(self, *args, **kwargs):
+        return self.file_obj.readline(*args, **kwargs)
 
     def close(self):
         self.waitObjectExists()
