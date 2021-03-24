@@ -84,7 +84,6 @@ Things still needed:
 
 """
 
-from latex_tools import latex_escape
 __version__ = "0.2.0"
 
 import xml.etree.ElementTree as ET
@@ -108,7 +107,13 @@ from collections import defaultdict
 
 from pprint import pformat
 
-sys.path.append(os.path.dirname(__file__))
+from os.path import dirname,abspath
+MY_DIR = dirname(abspath(__file__))
+if MY_DIR not in sys.path:
+    sys.path.append( MY_DIR )
+
+from latex_tools import latex_escape
+
 
 TAG_HEAD = 'HEAD'
 TAG_BODY = 'BODY'
