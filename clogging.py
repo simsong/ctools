@@ -54,7 +54,7 @@ import os
 import os.path
 import socket
 import sys
-
+import uuid
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -80,6 +80,7 @@ called_basicConfig = False
 def applicationIdFromEnvironment():
     return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
 
+FAKE_APPLICATION_ID='FAKE_APPLICATION_ID'
 def applicationId():
     """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
@@ -87,11 +88,13 @@ def applicationId():
     try:
         import cspark
     except ImportError as e:
-        sys.path.append( os.path.dirname( __file__ ))
+        sys.path.append(os.path.dirname(__file__))
         import cspark
 
     if not cspark.spark_running():
-        return f"NoSpark-or-local{os.getpid()}"
+        if FAKE_APPLICATION_ID not in os.environ:
+            os.environ[FAKE_APPLICATION_ID] = f"NoYarn-{str(uuid.uuid4())}"
+        return os.environ[FAKE_APPLICATION_ID]
 
     try:
         return applicationIdFromEnvironment()
@@ -105,8 +108,7 @@ def applicationId():
         if "local" in sc.getConf().get("spark.master"):
             return f"local{os.getpid()}"
         # Note: make sure that the following map does not require access to any existing module.
-        appid = sc.parallelize([1]).map(lambda x: "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])).collect()
-        return appid[0]
+        return sc.applicationId
     except ImportError:
         pass
 
@@ -121,7 +123,7 @@ def shutdown():
     called_basicConfig = False
 
 ################################################################
-### Support for ArgumentParser
+# Support for ArgumentParser
 
 
 def add_argument(parser, *, loglevel_default='INFO'):
@@ -142,8 +144,8 @@ def syslog_default_address():
         raise RuntimeError(f"Neither {DEVLOG} nor {DEVLOG_MAC} are present.")
 
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
-                 syslog_address = None,
-                 syslog_format = YEAR+" "+SYSLOG_FORMAT,
+                 syslog_address=None,
+                 syslog_format=YEAR +" " +SYSLOG_FORMAT,
                  use_tcp=False):
     global added_syslog
     if not added_syslog:

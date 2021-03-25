@@ -8,14 +8,14 @@ import time
 import re
 import string
 from collections import defaultdict
+import queue, threading
 
 from urllib.parse import urlparse
 
+import boto3
+
 #
 # This creates an S3 file that supports seeking and caching.
-# We keep this file at Python2.7 for legacy reasons
-
-global debug
 
 _LastModified = 'LastModified'
 _ETag = 'ETag'
@@ -26,6 +26,7 @@ _Prefix = 'Prefix'
 
 READ_CACHE_SIZE = 4096  # big enough for front and back caches
 MAX_READ = 65536 * 16
+global debug
 debug = False
 
 READTHROUGH_CACHE_DIR = '/mnt/tmp/s3cache'
@@ -35,7 +36,7 @@ AWS_CLI  = None
 
 def is_hexadecimal(s):
     """Return true if s is hexadecimal string"""
-    if isinstance(s,str)==False:
+    if isinstance(s, str)==False:
         return False
     elif len(s)==0:
         return False
@@ -51,7 +52,7 @@ def awscli():
             if os.path.exists(path):
                 AWS_CLI = path
                 return AWS_CLI
-        raise RuntimeError("Cannot find aws executable in "+str(AWS_CLI_LIST))
+        raise RuntimeError("Cannot find aws executable in " +str(AWS_CLI_LIST))
     return AWS_CLI
 
 
@@ -78,25 +79,24 @@ def aws_s3api(cmd, debug=False):
 
     try:
         p = subprocess.Popen(fcmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out,err) = p.communicate()
+        (out, err) = p.communicate()
         if p.returncode==0:
             if out==b'':
                 return out
             try:
                 return json.loads(out.decode('utf-8'))
             except json.decoder.JSONDecodeError as e:
-                print(e,file=sys.stderr)
-                print("out=",out,file=sys.stderr)
+                print(e, file=sys.stderr)
+                print("out=", out, file=sys.stderr)
                 raise e
         else:
             err = err.decode('utf-8')
             if 'does not exist' in err:
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(cmd))
             else:
-                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd,out,err))
+                raise RuntimeError("aws_s3api. cmd={} out={} err={}".format(cmd, out, err))
     except TypeError as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, e))
-
 
     if not data:
         return None
@@ -105,6 +105,9 @@ def aws_s3api(cmd, debug=False):
     except (TypeError, json.decoder.JSONDecodeError) as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, data))
 
+
+def getsize(bucket, key):
+    return boto3.resource('s3').Object(bucket,key).content_length
 
 def put_object(bucket, key, fname, use_acl=False):
     """Given a bucket and a key, upload a file"""
@@ -125,7 +128,6 @@ def get_object(bucket, key, fname):
         raise FileExistsError(fname)
     return aws_s3api(['get-object', '--bucket', bucket, '--key', key, fname])
 
-
 def head_object(bucket, key):
     """Wrap the head-object api"""
     return aws_s3api(['head-object', '--bucket', bucket, '--key', key])
@@ -137,7 +139,8 @@ def delete_object(bucket, key):
 
 def delete_s3url(s3url):
     (bucket, key) = get_bucket_key(s3url)
-    return delete_object( bucket, key )
+    return delete_object(bucket, key)
+
 
 PAGE_SIZE = 1000
 MAX_ITEMS = 1000
@@ -193,16 +196,13 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
     @param threads - the number of Python threds to use. Note that this is all in the same process.
     """
 
-    import queue, threading
-
     if limit is None:
         limit = sys.maxsize  # should be big enough
 
     # accumulates all the objects to be returned by the main thread
     # It's added to by the worker thread.
-    ret = []
-
-
+    found = []
+    s3client = boto3.client('s3')
     def worker():
         while True:
             prefix = q.get()
@@ -210,21 +210,21 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
                 break
             found_prefixes = []
             found_names = 0
-            for obj in list_objects(bucket, prefix=prefix, delimiter=delimiter):
-                if _Prefix in obj:
-                    found_prefixes.append(obj[_Prefix])
-                if (_Key in obj) and obj[_Key].split(delimiter)[-1] == name:
-                    if len(ret) < limit:
+            paginator = s3client.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=bucket, Prefix=prefix, Delimiter=delimiter)
+            for page in pages:
+                for obj in page.get('Contents',[]):
+                    if len(found) > limit:
+                        break
+                    if (name is None) or (os.path.basename(obj['Key'])==name):
                         if callback:
                             callback(obj)
                         else:
-                            ret.append(obj)
-                if len(ret) > limit:
-                    break
-            if found_names == 0 or searchFoundPrefixes:
-                if len(ret) < limit:
-                    for lp in found_prefixes:
-                        q.put(lp)
+                            found.append(obj)
+                for obj in page.get('CommonPrefixes',[]):
+                    if len(found) > limit:
+                        break
+                    q.put(obj['Prefix'])
             q.task_done()
 
     q = queue.Queue()
@@ -243,7 +243,7 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
         q.put(None)
     for t in thread_pool:
         t.join()
-    return ret
+    return found
 
 
 def etag(obj):
@@ -253,6 +253,7 @@ def etag(obj):
     if etag[0] == '"':
         return etag[1:-1]
     return etag
+
 
 
 def object_sizes(sobjs):
@@ -307,21 +308,12 @@ class S3File:
         self.key = self.url.path[1:]
         self.fpos = 0
         self.tf = tempfile.NamedTemporaryFile()
-        cmd = [awscli(), 's3api', 'list-objects', '--bucket', self.bucket, '--prefix', self.key, '--output', 'json']
-        jdata = subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0]
-        try:
-            data = json.loads(jdata)
-        except json.decoder.JSONDecodeError as e:
-            print("jdata:",jdata,file=sys.stderr)
-            print(e,file=sys.stderr)
-            raise e
-
-        file_info = data['Contents'][0]
-        self.length = file_info['Size']
-        self.ETag = file_info['ETag']
+        self.s3client = boto3.client('s3')
+        self.obj    = self.s3client.get_object(Bucket = self.bucket, Key=self.key)
+        self.length = self.obj['ContentLength']
+        self.ETag   = self.obj['ETag']
 
         # Load the caches
-
         self.frontcache = self._readrange(0, READ_CACHE_SIZE)  # read the first 1024 bytes and get length of the file
         if self.length > READ_CACHE_SIZE:
             self.backcache_start = self.length - READ_CACHE_SIZE
@@ -335,15 +327,9 @@ class S3File:
         # This is gross; we copy everything to the named temporary file, rather than a pipe
         # because the pipes weren't showing up in /dev/fd/?
         # We probably want to cache also... That's coming
-        cmd = [awscli(), 's3api', 'get-object', '--bucket', self.bucket, '--key', self.key, '--output', 'json',
-               '--range', 'bytes={}-{}'.format(start, start + length - 1), self.tf.name]
-        if debug:
-            print(cmd)
-        data = json.loads(subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0])
-        if debug:
-            print(data)
-        self.tf.seek(0)  # go to the beginning of the data just read
-        return self.tf.read(length)  # and read that much
+        resp = self.s3client.get_object(Bucket = self.bucket, Key=self.key, Range=f'bytes={start}-{start+length-1}')
+        data = resp['Body'].read()
+        return data
 
     def __repr__(self):
         return "FakeFile<name:{} url:{}>".format(self.name, self.url)
@@ -395,6 +381,9 @@ class S3File:
         if debug:
             print("   ={}  (self.length={})".format(self.fpos, self.length))
 
+    def seekable(self):
+        return True
+
     def tell(self):
         return self.fpos
 
@@ -415,11 +404,11 @@ class S3File:
 # http://boto.cloudhackers.com/en/latest/s3_tut.html
 # but it is easier to use the AWS cli, since it's configured to work.
 #
-# This could be redesigned to simply use the S3File() below
+# This could be redesigned to simply use the S3File() above
 # Todo: redesign so that it can be used in a "with" statement
 
 class s3open:
-    def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), cache=False, fsync=False):
+    def __init__(self, path, mode="r", encoding=sys.getdefaultencoding(), fsync=False):
         """
         Open an s3 file for reading or writing. Can handle any size, but cannot seek.
         We could use boto3 or one of these packages:
@@ -428,6 +417,7 @@ class s3open:
 
         This is legacy code from when we had systems that would not work with boto3.
 
+        2020-02-17 - Removed file cache
         :param fsync: if True and mode is writing, use object-exists to wait for the object to be created on exit.
         """
         if not path.startswith("s3://"):
@@ -439,27 +429,12 @@ class s3open:
         self.path = path
         self.mode = mode
         self.encoding = encoding
-        self.cache = cache
         self.fsync = fsync
-
-        cache_name = os.path.join(READTHROUGH_CACHE_DIR, path.replace("/", "_"))
-
-        # If not caching and a cache file is present, delete it.
-        if not cache and os.path.exists(cache_name):
-            os.unlink(cache_name)
-
-        if cache and ('w' not in mode):
-            os.makedirs(READTHROUGH_CACHE_DIR, exist_ok=True)
-            if os.path.exists(cache_name):
-                self.file_obj = open(cache_name, mode=mode, encoding=encoding)
 
         assert 'a' not in mode
         assert '+' not in mode
 
         if "r" in mode:
-            if cache:
-                subprocess.check_call([awscli(), 's3', 'cp', '--quiet', path, cache_name])
-                open(cache_name, mode=mode, encoding=encoding)
             self.p = subprocess.Popen([awscli(), 's3', 'cp', '--quiet', path, '-'],
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
@@ -478,9 +453,10 @@ class s3open:
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.file_obj.close()
-        if self.p.wait() != 0:
-            raise RuntimeError(self.p.stderr.read())
-        self.waitObjectExists()
+        if self.fsync and "w" in self.mode:
+            if self.p.wait() != 0:
+                raise RuntimeError(self.p.stderr.read())
+            self.waitObjectExists()
 
     def waitObjectExists(self):
         if self.fsync and "w" in self.mode:
@@ -496,6 +472,9 @@ class s3open:
 
     def write(self, *args, **kwargs):
         return self.file_obj.write(*args, **kwargs)
+
+    def readline(self, *args, **kwargs):
+        return self.file_obj.readline(*args, **kwargs)
 
     def close(self):
         self.waitObjectExists()
@@ -513,7 +492,7 @@ def s3rm(path):
     """Remove an S3 object"""
     (bucket, key) = get_bucket_key(path)
     res = aws_s3api(['delete-object', '--bucket', bucket, '--key', key])
-    print("res:",type(res))
+    print("res:", res)
     # delete-object return no output in Staging, even though it successfully deleted the key
     # This is likely because bucket versioning is not enabled in Staging
     # See https://wiki.outscale.net/display/EN/Removing+Objects+from+a+Bucket
@@ -527,6 +506,7 @@ class DuCounter:
     def __init__(self):
         self.total_bytes = 0
         self.total_files = 0
+
     def count(self, bytes_):
         self.total_bytes += bytes_
         self.total_files += 1
@@ -535,25 +515,25 @@ def print_du(root):
     """Print a DU output using aws cli to generate the usage"""
     prefixes = defaultdict(DuCounter)
 
-    cmd = [awscli(),'s3','ls','--recursive',root]
+    cmd = [awscli(), 's3', 'ls', '--recursive', root]
     print(" ".join(cmd))
-    p = subprocess.Popen(cmd,stdout=subprocess.PIPE, encoding='utf-8')
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, encoding='utf-8')
     part_re = re.compile(r"(\d\d\d\d-\d\d-\d\d) (\d\d:\d\d:\d\d)\s+(\d+) (.*)")
     total_bytes = 0
-    MiB = 1024*1024
+    MiB = 1024 *1024
     try:
-        for (ct,line) in enumerate(p.stdout):
+        for (ct, line) in enumerate(p.stdout):
             parts       = part_re.search(line)
             if parts is None:
-                print("Cannot parse: ",line,file=sys.stderr,flush=True)
+                print("Cannot parse: ", line, file=sys.stderr, flush=True)
                 continue
             bytes_      = int(parts.group(3))
             path        = parts.group(4)
             total_bytes += bytes_
-            prefixes[ os.path.dirname(path) ].count(bytes_)
+            prefixes[os.path.dirname(path)].count(bytes_)
 
-            if ct%1000==0:
-                print(f"files: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}",flush=True)
+            if ct %1000==0:
+                print(f"files: {ct}  MiB: {int(total_bytes/MiB):,}  {parts.group(4)}", flush=True)
     except KeyboardInterrupt as e:
         print("*** interrupted ***")
 
@@ -562,20 +542,21 @@ def print_du(root):
     fmt2 = "{:>10}{:>20,}  {}"
     print()
     print("Usage by prefix:")
-    print(fmt1.format('files','bytes','path'))
+    print(fmt1.format('files', 'bytes', 'path'))
     for path in sorted(prefixes):
         print(fmt2.format(prefixes[path].total_files,
-                         prefixes[path].total_bytes,
-                         path))
+                          prefixes[path].total_bytes,
+                          path))
     print("")
     print("Top 20 by size:")
-    print(fmt1.format('files','bytes','path'))
-    for (ct,path) in enumerate(sorted(prefixes, key=lambda path:prefixes[path].total_bytes, reverse=True),1):
+    print(fmt1.format('files', 'bytes', 'path'))
+    for (ct, path) in enumerate(sorted(prefixes, key=lambda path: prefixes[path].total_bytes, reverse=True), 1):
         print(fmt2.format(prefixes[path].total_files,
                           prefixes[path].total_bytes,
                           path))
         if ct==20:
             break
+
 
 if __name__ == "__main__":
     t0 = time.time()
@@ -601,7 +582,10 @@ if __name__ == "__main__":
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
         if args.search:
-            for data in search_objects(bucket, prefix, name=args.search, searchFoundPrefixes=False, threads=args.threads):
+            what = args.search
+            if what=='all':
+                what=None
+            for data in search_objects(bucket, prefix, name=what, searchFoundPrefixes=False, threads=args.threads):
                 print("{:18,} {}".format(data[_Size], data[_Key]))
                 count += 1
         if args.du:

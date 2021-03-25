@@ -1,5 +1,9 @@
 # dbfile.py
 
+
+from os.path import basename, abspath, dirname
+from collections import OrderedDict
+from abc import ABC, abstractmethod
 import datetime
 import time
 import os
@@ -11,15 +15,9 @@ import socket
 import re
 import resource
 
-MY_DIR=os.path.dirname( os.path.abspath( __file__ ))
-if MY_DIR not in sys.path:
-    sys.path.append(MY_DIR)
-
-import total_size
-
-
-from abc import ABC, abstractmethod
+from os.path import basename, abspath, dirname
 from collections import OrderedDict
+from abc import ABC, abstractmethod
 
 """
 This is the dbfile.py (database file)
@@ -84,9 +82,13 @@ command line, but hold that thought), you can then test out the dbreader account
 
 You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
 
-   auth = DBMySQLAUTH("/home/www/dbreader.bash")
+   auth = ctools.dbfile.DBMySQLAuth.FromEnv("/home/www/dbreader.bash")
 
 Then you can use auth as the first parameter in the .csfr() method.
+
+Other methods include:
+
+   auth = ctools.dbfile.DBMySQLAuth.FromConfig() # reads from a config.ini file
 
 Note: Currently, the end of this module also a methods for a remote system load
 management system that was used to debug the persistent
@@ -103,8 +105,7 @@ MYSQL_DATABASE = 'MYSQL_DATABASE'
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
 
-from os.path import basename,abspath,dirname
-sys.path.append( dirname(dirname( abspath( __file__ ))))
+sys.path.append(dirname(dirname(abspath(__file__))))
 
 def sql_InternalError():
     try:
@@ -118,7 +119,7 @@ def sql_InternalError():
         return pymysql.err.InternalError
     except ImportError as e:
         pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
     raise ImportError()
 
 def sql_errors():
@@ -133,7 +134,7 @@ def sql_errors():
         return errors
     except ImportError as e:
         pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
     raise ImportError()
 
 
@@ -152,7 +153,7 @@ def sql_mysql():
         return pymysql
     except ImportError as e:
         pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
+    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
     raise ImportError()
 
 def timet_iso(t=time.time()):
@@ -165,7 +166,7 @@ def hostname():
 
 
 class DBSQL(ABC):
-    def __init__(self,dicts=True,debug=False):
+    def __init__(self, dicts=True, debug=False):
         self.dicts = dicts
         self.debug = debug
         self.MySQLError = sql_MySQLError()
@@ -173,22 +174,23 @@ class DBSQL(ABC):
     def __enter__(self):
         return self
 
-    def __exit__(self,a,b,c):
+    def __exit__(self, a, b, c):
         self.conn.close()
 
     def execute(self, cmd, *args, debug=False, **kwargs):
+        """Execute a SQL command and return the the iterator"""
         if self.debug or debug:
-            print(f"execute: {cmd}",file=sys.stderr)
+            print(f"execute: {cmd}", file=sys.stderr)
             t0 = time.time()
         try:
             res = self.conn.cursor().execute(cmd, *args, **kwargs)
         except (sqlite3.Error, self.MySQLError) as e:
-            print(cmd,*args,file=sys.stderr)
-            print(e,file=sys.stderr)
+            print(cmd, *args, file=sys.stderr)
+            print(e, file=sys.stderr)
             exit(1)
         if self.debug or debug:
             t1 = time.time()
-            print(f"time: {t1-t0}",file=sys.stderr)
+            print(f"time: {t1-t0}", file=sys.stderr)
         return res
 
     def cursor(self):
@@ -223,7 +225,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self,fname=None,*args,**kwargs):
+    def __init__(self, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
@@ -234,35 +236,35 @@ class DBSqlite3(DBSQL):
             print(f"Cannot open database file: {fname}")
             exit(1)
 
-    def set_cache_bytes(self,b):
-        self.execute(f"PRAGMA cache_size = {-b/1024}") # negative numbers are multiples of 1024
+    def set_cache_bytes(self, b):
+        self.execute(f"PRAGMA cache_size = {-b/1024}")  # negative numbers are multiples of 1024
 
     # For sqlite3, csfr doesn't need to be a static method, because we don't disconnect from the database
     # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
-    def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
+    def csfr(self, auth, cmd, vals=[], quiet=True, rowcount=None, time_zone=None,
              get_column_names=None, asDicts=False, debug=False, cache=True):
         assert auth is None
-        assert get_column_names is None # not implemented yet
-        cmd = cmd.replace("%s","?")
-        cmd = cmd.replace("INSERT IGNORE","INSERT OR IGNORE")
+        assert get_column_names is None  # not implemented yet
+        cmd = cmd.replace("%s", "?")
+        cmd = cmd.replace("INSERT IGNORE", "INSERT OR IGNORE")
 
         if quiet==False:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
         if debug or self.debug:
-            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}",file=sys.stderr)
+            print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}", file=sys.stderr)
 
         try:
             c = self.conn.execute(cmd, vals)
-        except (sqlite3.OperationalError,sqlite3.InterfaceError) as e:
-            print(f"cmd: {cmd}",file=sys.stderr)
-            print(f"vals: {vals}",file=sys.stderr)
-            print(str(e),file=sys.stderr)
+        except (sqlite3.OperationalError, sqlite3.InterfaceError) as e:
+            print(f"cmd: {cmd}", file=sys.stderr)
+            print(f"vals: {vals}", file=sys.stderr)
+            print(str(e), file=sys.stderr)
             raise RuntimeError("Invalid SQL")
 
         verb = cmd.split()[0].upper()
-        if verb in ['INSERT','DELETE','UPDATE']:
+        if verb in ['INSERT', 'DELETE', 'UPDATE']:
             return
-        elif verb in ['SELECT','DESCRIBE','SHOW']:
+        elif verb in ['SELECT', 'DESCRIBE', 'SHOW']:
             return c.fetchall()
         else:
             raise RuntimeError(f"Unknown SQLite3 verb '{verb}'")
@@ -272,7 +274,7 @@ class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the
 connection. """
 
-    def __init__(self,*,host,database,user,password,debug=False):
+    def __init__(self, *, host, database, user, password, debug=False):
         self.host     = host
         self.database = database
         self.user     = user
@@ -280,7 +282,7 @@ connection. """
         self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
 
-    def __eq__(self,other):
+    def __eq__(self, other):
         return ((self.host==other.host) and (self.database==other.database)
                 and (self.user==other.user) and (self.password==other.password))
 
@@ -295,7 +297,7 @@ connection. """
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
         ret   = {}
-        with open( filename ) as f:
+        with open(filename) as f:
             for line in f:
                 m = DB_RE.search(line.strip())
                 if m:
@@ -311,66 +313,79 @@ connection. """
     def FromEnv(filename):
         """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
         env = DBMySQLAuth.GetBashEnv(filename)
-        return DBMySQLAuth(host = env[MYSQL_HOST],
-                           user = env[MYSQL_USER],
-                           password = env[MYSQL_PASSWORD],
-                           database = env[MYSQL_DATABASE])
+        try:
+            return DBMySQLAuth(host = env[MYSQL_HOST],
+                               user = env[MYSQL_USER],
+                               password = env[MYSQL_PASSWORD],
+                               database = env[MYSQL_DATABASE])
+        except KeyError as e:
+            logging.error("filename: %s",filename)
+            for var in env:
+                logging.error("env[%s] = %s",var,env[var])
+            raise e
+
 
     @staticmethod
-    def FromConfig(section,debug=None):
+    def FromConfig(section, debug=None):
         """Returns from the section of a config file"""
         try:
-            return DBMySQLAuth(host = section[MYSQL_HOST],
-                               user = section[MYSQL_USER],
-                               password = section[MYSQL_PASSWORD],
-                               database = section[MYSQL_DATABASE],
-                               debug    = debug )
+            return DBMySQLAuth(host=section[MYSQL_HOST],
+                               user=section[MYSQL_USER],
+                               password=section[MYSQL_PASSWORD],
+                               database=section[MYSQL_DATABASE],
+                               debug=debug)
         except KeyError as e:
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} sections")
 
-    def cache_store(self,db):
-        self.dbcache[ (os.getpid(), threading.get_ident()) ] = db
+    def cache_store(self, db):
+        self.dbcache[(os.getpid(), threading.get_ident())] = db
 
     def cache_get(self):
-        return self.dbcache[ (os.getpid(), threading.get_ident()) ]
+        return self.dbcache[(os.getpid(), threading.get_ident())]
 
     def cache_clear(self):
         try:
-            del self.dbcache[ (os.getpid(), threading.get_ident()) ]
+            del self.dbcache[(os.getpid(), threading.get_ident())]
         except KeyError as e:
             pass
+
 
 RETRIES = 10
 RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
+
     def __init__(self, auth, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.auth  = auth
+        self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
         self.internalError = sql_InternalError()
         self.conn = self.mysql.connect(host=auth.host,
                                        database=auth.database,
                                        user=auth.user,
-                                       password=auth.password)
+                                       password=auth.password,
+                                       autocommit=True)
         if self.debug:
-            print(f"Successfully connected to {auth}",file=sys.stderr)
+            print(f"Successfully connected to {auth}", file=sys.stderr)
         # Census standard TZ is America/New_York
         try:
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
         except self.internalError as e:
             pass
-        self.cursor().execute('SET autocommit = 1') # autocommit
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
+
     @staticmethod
-    def explain(cmd,vals):
-        if (not isinstance(vals,list)) and (not isinstance(vals,tuple)) and (not vals is None):
+    def explain(cmd, vals):
+        if (not isinstance(vals, list)) and (not isinstance(vals, tuple)) and (not vals is None):
             raise ValueError("vals is type %s expected list" % type(vals))
+
         def myquote(v):
-            if isinstance(v,str):
-                return "'"+v+"'"
+            if isinstance(v, str):
+                return "'" +v +"'"
             return str(v)
         if vals is not None:
             return cmd % tuple([myquote(v) for v in vals])
@@ -380,23 +395,24 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
              setup=None, setup_vals=(),
-             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True):
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[]):
         """Connect, select, fetchall, and retry as necessary.
-        @param auth      - authentication otken
-        @param cmd       - SQL query
-        @param vals      - values for SQL parameters
-        @param setup     - An SQL statement that runs before cmd (typcially setting a variable)
-        @param setup_vals - Values for SQL parameters for setup
-        @param time_zone - if provided, set the session.time_zone to this value
-        @param quiet     - don't print anything
-        @param get_column_names - an array in which to return the column names.
-        @param asDict    - True to return each row as a dictionary
+        :param auth:      - authentication otken
+        :param cmd:       - SQL query
+        :param vals:      - values for SQL parameters
+        :param setup:     - An SQL statement that runs before cmd (typcially setting a variable)
+        :param setup_vals: - Values for SQL parameters for setup
+        :param time_zone: - if provided, set the session.time_zone to this value
+        :param quiet:     - don't print anything
+        :param get_column_names: - an array in which to return the column names.
+        :param asDict:    - True to return each row as a dictionary
+        :param nolog:     - array of error codes that shouldn't be logged with logging.errror
         """
 
         debug = (debug or auth.debug)
 
         errors = sql_errors()
-        for i in range(1,RETRIES):
+        for i in range(1, RETRIES):
             try:
                 try:
                     db = auth.cache_get()
@@ -409,68 +425,69 @@ class DBMySQL(DBSQL):
                 c      = db.cursor()
                 c.execute('SET autocommit=1')
                 if time_zone is not None:
-                    c.execute('SET @@session.time_zone = "{}"'.format(time_zone)) # MySQL
+                    c.execute('SET @@session.time_zone = "{}"'.format(time_zone))  # MySQL
 
                 try:
                     if quiet==False or debug:
-                        logging.warning("quiet:%s debug: %s cmd: %s  vals: %s",quiet,debug,cmd,vals)
+                        logging.warning("quiet:%s debug: %s cmd: %s  vals: %s", quiet, debug, cmd, vals)
                         logging.warning("EXPLAIN:")
-                        logging.warning(DBMySQL.explain(cmd,vals))
+                        logging.warning(DBMySQL.explain(cmd, vals))
 
                     ###
                     ###
                     if dry_run:
-                        logging.warning("Would execute: %s,%s",cmd,vals)
+                        logging.warning("Would execute: %s,%s", cmd, vals)
                         return None
 
-                    ### If there are multiple queries, execute them all.
-                    ### Hopefully there is no semi-colon in a quoted string.
+                    # If there are multiple queries, execute them all.
+                    # Hopefully there is no semi-colon in a quoted string.
                     if setup is not None:
                         c.execute(setup, setup_vals)
                     t0 = time.time()
-                    c.execute(cmd,vals)
+                    c.execute(cmd, vals)
                     t1 = time.time()
                     ###
                     ###
 
                     if debug:
-                        logging.warning("TIME TO EXECUTE: %s",t1-t0)
+                        logging.warning("TIME TO EXECUTE: %s", t1 -t0)
 
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
                 except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
-                    logging.error("setup: %s",setup)
-                    logging.error("setup_vals: %s", setup_vals)
-                    logging.error("cmd: %s",cmd)
-                    logging.error("vals: %s",vals)
-                    logging.error("explained: %s ",DBMySQL.explain(cmd,vals))
-                    logging.error(str(e))
+                    if e.args[0] not in nolog:
+                        logging.error("setup: %s", setup)
+                        logging.error("setup_vals: %s", setup_vals)
+                        logging.error("cmd: %s", cmd)
+                        logging.error("vals: %s", vals)
+                        logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
+                        logging.error(str(e))
                     raise e
 
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
                     if 'not enough' in str(e):
-                        logging.error("Count of parameters: %s  count of values: %s",cmd.count("%"),len(vals))
+                        logging.error("Count of parameters: %s  count of values: %s", cmd.count("%"), len(vals))
                     raise e
 
                 verb = cmd.split()[0].upper()
-                if verb in ['SELECT','DESCRIBE','SHOW']:
+                if verb in ['SELECT', 'DESCRIBE', 'SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
                         get_column_names = []
                     if get_column_names is not None:
                         get_column_names.clear()
-                        for (name,type_code,display_size,internal_size,precision,scale,null_ok) in c.description:
+                        for (name, type_code, display_size, internal_size, precision, scale, null_ok) in c.description:
                             get_column_names.append(name)
                     if asDicts:
                         result =[OrderedDict(zip(get_column_names, row)) for row in result]
                     if debug:
-                        logging.warning("   SELECTED ROWS count=%s  row[0]=%s",len(result), result[0] if len(result)>0 else None)
+                        logging.warning("   SELECTED ROWS count=%s  row[0]=%s", len(result), result[0] if len(result)>0 else None)
                 if verb in ['INSERT']:
                     result = c.lastrowid
                     if debug:
-                        logging.warning("   INSERT c.lastworid=%s",c.lastrowid)
+                        logging.warning("   INSERT c.lastworid=%s", c.lastrowid)
                 if verb in ['UPDATE']:
                     result = c.rowcount
                 c.close()  # close the cursor
@@ -478,10 +495,10 @@ class DBMySQL(DBSQL):
                     logging.warning(f"Success with i={i}")
                 return result
             except errors.OperationalError as e:
-                if e.args[0]==1045: # access denied
-                    print(f"Access denied: auth:{auth}",file=sys.stderr)
+                if e.args[0]==1045:  # access denied
+                    print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise(e)
-                elif e.args[0]==1054: # invalid column
+                elif e.args[0]==1054:  # invalid column
                     print(f"Invalid Column in CMD: {cmd}")
                     raise(e)
                 if i>1:
@@ -508,71 +525,7 @@ class DBMySQL(DBSQL):
             time.sleep(RETRY_DELAY_TIME)
         raise RuntimeError("Retries Exceeded")
 
-
     @staticmethod
     def table_columns(auth, table_name):
         """Return a dictionary of the schema. This should probably be upgraded to return the ctools schema"""
-        return [row[0] for row in DBMySQL.csfr(auth, "describe "+table_name)]
-
-
-################################################################
-##
-## memory profiling tools
-##
-
-def maxrss():
-    """Return maxrss in bytes, not KB"""
-    return resource.getrusage(resource.RUSAGE_SELF)[2]*1024
-
-def print_maxrss():
-    for who in ['RUSAGE_SELF','RUSAGE_CHILDREN']:
-        rusage = resource.getrusage(getattr(resource,who))
-        print(who,'utime:',rusage[0],'stime:',rusage[1],'maxrss:',rusage[2])
-
-def mem_info(what,df,dump=True):
-    import pandas as pd
-    start_time = time.time()
-    print(f'mem_info {what} ({type(df)}):')
-    if type(df)!=pd.core.frame.DataFrame:
-        print("Total {} memory usage: {:}".format(what,total_size(df)))
-    else:
-        if dump:
-            pd.options.display.max_columns  = 240
-            pd.options.display.max_rows     = 5
-            pd.options.display.max_colwidth = 240
-            print(df)
-        for dtype in ['float','int','object']:
-            selected_dtype = df.select_dtypes(include=[dtype])
-            mean_usage_b = selected_dtype.memory_usage(deep=True).mean()
-            mean_usage_mb = mean_usage_b / 1024 ** 2
-            print("Average {} memory usage for {} columns: {:03.2f} MB".format(what,dtype,mean_usage_mb))
-        for dt in ['object','int64']:
-            for c in df.columns:
-                try:
-                    if df[c].dtype==dt:
-                        print(f"{dt} column: {c}")
-                except AttributeError:
-                    pass
-        df.info(verbose=False,max_cols=160,memory_usage='deep',null_counts=True)
-    print("elapsed time at {}: {:.2f}".format(what,time.time() - start_time))
-    print("==============================")
-
-
-REPORT_FREQUENCY = 60           # report this often
-last_report = 0                 # last time we reported
-def report_load_memory(auth, quiet=True):
-    """Report and print the load and free memory; return free memory"""
-    import psutil
-    global last_report
-    free_mem = psutil.virtual_memory().available
-    GiB = 1024*1024*1024
-    # print current tasks
-    # See https://stackoverflow.com/questions/2366813/on-duplicate-key-ignore regarding
-    # why we should not use "INSERT IGNORE"
-    if last_report < time.time() + REPORT_FREQUENCY:
-        DBMySQL.csfr(auth,"insert into sysload (t, host, min1, min5, min15, freegb) "
-                     "values (now(), %s, %s, %s, %s, %s) "
-                     "ON DUPLICATE KEY update min1=min1",
-                     [hostname()] + list(os.getloadavg()) + [get_free_mem()//GiB],
-                     quiet=quiet)
-        last_report = time.time()
+        return [row[0] for row in DBMySQL.csfr(auth, "describe " +table_name)]

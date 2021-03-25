@@ -16,19 +16,19 @@ DOCX_MAGIC=b"PK"
 SOFFICE_DARWIN=b'/Applications/LibreOffice.app/Contents/MacOS/soffice'
 
 
-def check_magic(filepath,magic):
-    head = open(filepath,"rb").read(len(magic))
+def check_magic(filepath, magic):
+    head = open(filepath, "rb").read(len(magic))
     if head!=magic:
-        print("{} != {}".format(head,magic))
+        print("{} != {}".format(head, magic))
         return False
     return True
 
 def valid_docx(fname):
-    if check_magic(fname,DOCX_MAGIC)==False:
+    if check_magic(fname, DOCX_MAGIC)==False:
         return False
     # Make sure it's a valid ZIP file
     try:
-        with zipfile.ZipFile(fname,"r") as zf:
+        with zipfile.ZipFile(fname, "r") as zf:
             return True
     except zipfile.BadZipFile as e:
         return False
@@ -37,17 +37,16 @@ def valid_convertable_document_file(fname):
     if not os.path.exists(fname):
         return False            # doesn't exist
 
-    (name,ext) = os.path.splitext(fname.lower())
+    (name, ext) = os.path.splitext(fname.lower())
     if ext=='.doc':
         if os.path.getsize(fname) % 512 !=0:
             return False
-        return  check_magic(fname,DOC_MAGIC)
+        return check_magic(fname, DOC_MAGIC)
     if ext=='.docx':
         return valid_docx(fname)
     if ext=='.rtf':
         return True
     return False
-
 
 
 # https://stackoverflow.com/questions/30481136/pywin32-save-docx-as-pdf
@@ -61,7 +60,7 @@ def quit_word():
     else:
         warnings.warn("Cannot quit word on non-windows platform")
 
-def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
+def convert_document_to_pdf(infile, TopMargin=None, BottomMargin=None):
     """Convert a .doc, .docx, or .rtf file to PDF. Converted file has the
     same pathname, except .docx and been changed to .pdf. Throws an
     exception if it can't convert.  TopMargin and BottomMargin are in points.
@@ -120,10 +119,10 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
         # libreoffice --headless --convert-to pdf filename.doc
 
         if not os.path.exists(SOFFICE_DARWIN):
-            print("{} not found.".format(SOFFICE_DARWIN),file=sys.stderr)
+            print("{} not found.".format(SOFFICE_DARWIN), file=sys.stderr)
             raise RuntimeError("DOCX conversion on MacOS requires LibreOffice to be installed")
         outdir = os.path.dirname(infile)
-        cmd = [SOFFICE_DARWIN,'--headless','--convert-to','pdf','--outdir',outdir,infile]
+        cmd = [SOFFICE_DARWIN, '--headless', '--convert-to', 'pdf', '--outdir', outdir, infile]
         r = subprocess.call(cmd)
         outfile = os.path.splitext(infile)[0] + ".pdf"
         #
@@ -132,7 +131,7 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
             if os.path.exists(outfile):
                 return outfile
             time.sleep(.01)
-        raise RuntimeError("{}: {} not created".format(" ".join(cmd),outfile))
+        raise RuntimeError("{}: {} not created".format(" ".join(cmd), outfile))
     raise RuntimeError("unknown how to do PDF conversion on {}".format(sys.platform))
 
 #
@@ -140,11 +139,12 @@ def convert_document_to_pdf(infile,TopMargin=None,BottomMargin=None):
 # libreoffice --headless --convert-to pdf filename.doc
 #    raise RuntimeError("Please manually convert {}".format(infile))
 
+
 if __name__=="__main__":
     #
     # Command to test the conversion
     #
     import sys
     ofn = convert_document_to_pdf(sys.argv[1])
-    print("Converted {} to {}".format(sys.argv[1],ofn))
+    print("Converted {} to {}".format(sys.argv[1], ofn))
     exit(0)

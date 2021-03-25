@@ -78,7 +78,7 @@ class Table:
         return self.vardict.keys()
 
     def fields(self):
-        return {v.field:v for v in self.vardict.values()}
+        return {v.position:v for v in self.vardict.values()}
 
     def python_name(self):
         return self.name.replace(".","_").replace(" ","_")
@@ -94,11 +94,11 @@ class Table:
             raise RuntimeError("Variable {} already in table {}".format(var.name,self.name))
 
         if self.delimiter is not None:
-            if var.field is None:
+            if var.position is None:
                 raise RuntimeError("Table has delimiter, so variable {} requires a field".format(var))
-            if var.field in [v.field for v in self.vars()]:
+            if var.position in [v.position for v in self.vars()]:
                 raise RuntimeError("Field {} is already taken, so variable {} cannot be added".
-                                   format( var.field, var ))
+                                   format( var.position, var ))
 
         self.vardict[var.name] = var
         logging.info(f"Table {self.name}: Added variable {var}")
@@ -330,7 +330,7 @@ class Table:
             delimiter = self.delimiter
         if delimiter is not None:
             fields = line.split(delimiter)
-            return [v.python_type( fields[v.field] ) for v in self.vars() ]
+            return [v.python_type( fields[v.position] ) for v in self.vars() ]
         for v in self.vars():
             if v.start is not None and v.end is not None and v.width is not None:
                 if v.width - 1 + v.start != v.end:
@@ -348,7 +348,7 @@ class Table:
             delimiter = self.delimiter
         if delimiter is not None:
             fields = line.split(delimiter)
-            return { v.name:v.python_type( fields[ v.field] ) for v in self.vars() }
+            return { v.name:v.python_type( fields[ v.position] ) for v in self.vars() }
         return { v.name:v.python_type(line[ v.column: v.column+v.width]) for v in self.vars() if (v.column is not None)}
 
     def parse_and_write_line(self, line,extra=[]):
