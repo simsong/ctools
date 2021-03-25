@@ -181,7 +181,8 @@ def list_objects(bucket, prefix=None, limit=None, delimiter=None):
             return
 
 
-def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, searchFoundPrefixes=True, threads=20):
+def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, searchFoundPrefixes=True, threads=20,
+                   callback = Null):
     """Search for occurences of a name. Returns a list of all found keys as dictionaries.
     @param bucket - the bucket to search
     @param prefix - the prefix to start with
@@ -196,7 +197,11 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
 
     if limit is None:
         limit = sys.maxsize  # should be big enough
+
+    # accumulates all the objects to be returned by the main thread
+    # It's added to by the worker thread.
     ret = []
+
 
     def worker():
         while True:
@@ -210,7 +215,10 @@ def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, sear
                     found_prefixes.append(obj[_Prefix])
                 if (_Key in obj) and obj[_Key].split(delimiter)[-1] == name:
                     if len(ret) < limit:
-                        ret.append(obj)
+                        if callback:
+                            callback(obj)
+                        else:
+                            ret.append(obj)
                 if len(ret) > limit:
                     break
             if found_names == 0 or searchFoundPrefixes:
