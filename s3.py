@@ -185,7 +185,7 @@ def list_objects(bucket, prefix=None, limit=None, delimiter=None):
 
 
 def search_objects(bucket, prefix=None, *, name, delimiter='/', limit=None, searchFoundPrefixes=True, threads=20,
-                   callback = Null):
+                   callback = None):
     """Search for occurences of a name. Returns a list of all found keys as dictionaries.
     @param bucket - the bucket to search
     @param prefix - the prefix to start with
