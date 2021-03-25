@@ -302,18 +302,10 @@ class S3File:
         self.key = self.url.path[1:]
         self.fpos = 0
         self.tf = tempfile.NamedTemporaryFile()
-        cmd = [awscli(), 's3api', 'list-objects', '--bucket', self.bucket, '--prefix', self.key, '--output', 'json']
-        jdata = subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0]
-        try:
-            data = json.loads(jdata)
-        except json.decoder.JSONDecodeError as e:
-            print("jdata:", jdata, file=sys.stderr)
-            print(e, file=sys.stderr)
-            raise e
-
-        file_info = data['Contents'][0]
-        self.length = file_info['Size']
-        self.ETag = file_info['ETag']
+        self.s3client = boto3.client('s3')
+        self.obj    = self.s3client.get_object(Bucket = self.bucket, Key=self.key)
+        self.length = self.obj['ContentLength']
+        self.ETag   = self.obj['ETag']
 
         # Load the caches
         self.frontcache = self._readrange(0, READ_CACHE_SIZE)  # read the first 1024 bytes and get length of the file
@@ -329,15 +321,9 @@ class S3File:
         # This is gross; we copy everything to the named temporary file, rather than a pipe
         # because the pipes weren't showing up in /dev/fd/?
         # We probably want to cache also... That's coming
-        cmd = [awscli(), 's3api', 'get-object', '--bucket', self.bucket, '--key', self.key, '--output', 'json',
-               '--range', 'bytes={}-{}'.format(start, start + length - 1), self.tf.name]
-        if debug:
-            print(cmd)
-        data = json.loads(subprocess.Popen(cmd, encoding='utf8', stdout=subprocess.PIPE).communicate()[0])
-        if debug:
-            print(data)
-        self.tf.seek(0)  # go to the beginning of the data just read
-        return self.tf.read(length)  # and read that much
+        resp = self.s3client.get_object(Bucket = self.bucket, Key=self.key, Range=f'bytes={start}-{start+length-1}')
+        data = resp['Body'].read()
+        return data
 
     def __repr__(self):
         return "FakeFile<name:{} url:{}>".format(self.name, self.url)
