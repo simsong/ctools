@@ -9,13 +9,44 @@ import re
 import string
 from collections import defaultdict
 import queue, threading
+import random
 
 from urllib.parse import urlparse
 
 import boto3
+import botocore
+import botocore.exceptions
+
+# note: boto3.resource acquire is not threadsafe, so we create this mutex
+boto3_resource_mutex = threading.Lock()
+s3_resources = {}               # per thread
+
+def s3_resource():
+    """Return an s3 resource for this thread."""
+    if threading.get_ident() not in s3_resources:
+        boto3_resource_mutex.acquire()
+        s3_resources[ threading.get_ident() ] = boto3.resource('s3')
+        boto3_resource_mutex.release()
+    return s3_resources[ threading.get_ident() ]
+
+def s3_object(bucket,key):
+    """This sometimes get NoCredentialsError, in which case we retry"""
+    retries = 0
+    while True:
+        try:
+            return s3_resource().Object(bucket,key)
+        except botocore.exceptions.NoCredentialsError as e:
+            print("NoCredentialsError. Waiting and retrying",file=sys.stderr)
+            if retries>10:
+                raise
+            time.sleep( random.uniform(0,0.5))
+            retries += 1
+
+
 
 #
 # This creates an S3 file that supports seeking and caching.
+#
 
 _LastModified = 'LastModified'
 _ETag = 'ETag'
@@ -105,9 +136,8 @@ def aws_s3api(cmd, debug=False):
     except (TypeError, json.decoder.JSONDecodeError) as e:
         raise RuntimeError("s3 api {} failed data: {}".format(cmd, data))
 
-
 def getsize(bucket, key):
-    return boto3.resource('s3').Object(bucket,key).content_length
+    return s3_resource().Object(bucket,key).content_length
 
 def put_object(bucket, key, fname, use_acl=False):
     """Given a bucket and a key, upload a file"""
@@ -482,10 +512,20 @@ class s3open:
 
 
 def s3exists(path):
-    """Return True if the S3 file exists. Should be replaced with an s3api function"""
-    out = subprocess.Popen([awscli(), 's3', 'ls', '--page-size', '10', path],
-                           stdout=subprocess.PIPE, encoding='utf-8').communicate()[0]
-    return len(out) > 0
+    """
+    Return True if the S3 file exists.
+    https://stackoverflow.com/questions/33842944/check-if-a-key-exists-in-a-bucket-in-s3-using-boto3
+    """
+    (bucket,key) = get_bucket_key(path)
+    try:
+        s3_resource().Object(bucket, key).load()
+        return True
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code']=='404':
+            return False
+        else:
+            # Something else has gone wrong
+            raise
 
 
 def s3rm(path):
