@@ -190,10 +190,15 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
         cmd += ['--conf', 'spark.driver.extraJavaOptions=-Dlog4j.configuration=file:' +tfname,
                 '--conf', 'spark.executor.extraJavaOptions=-Dlog4j.configuration=file:' +tfname]
 
-    assert type(argv) == list
+    assert isinstance(argv,list)
     cmd += argv
+    assert isinstance(cmd,list)
+    for s in cmd:
+        assert isinstance(s,str)
 
-    print("=== RUNNING SPARK ===")
+
+    print("\n\n")
+    print("=== cspark.spark_submit RUNNING SPARK ===")
     print("$ cd {}".format(os.getcwd()))
     print("$ {}".format(" ".join(cmd)))
 
