@@ -161,7 +161,7 @@ def spark_set_logLevel(logLevel='error'):
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None, conf=[], configdict={},
+def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None, executor_cores=None, conf=[], configdict={},
                  properties_file=None, argv):
     """Provides support for the --spark command. To the caller, it looks
     like we just returned.  At that point, you can then import your pyspark libraries
@@ -182,7 +182,7 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     if spark_running():
         return True             # running inside Spark
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs,
-                           num_executors=num_executors, conf=conf,
+                           num_executors=num_executors, executor_cores=executor_cores, conf=conf,
                            configdict=configdict, properties_file=properties_file)
 
     if logLevel:
