@@ -95,6 +95,7 @@ def detach(logdir=os.getcwd()):
     # Most daemon implementations close all FDs. But that is not what we want, so just return
 
 def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
+                     executor_cores=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args.
     @param pydirs is a list of directories to recursively search for all python files.
@@ -117,6 +118,8 @@ def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
         cmd += ['--py-files', ",".join(pyfiles)]
     if num_executors:
         cmd += ['--num-executors', str(num_executors)]
+    if executor_cores:
+        cmd += ['--executor-cores', str(executor_cores)]
     for c in conf:
         assert '=' in c
         cmd += ['--conf', c]
