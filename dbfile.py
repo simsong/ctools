@@ -495,11 +495,14 @@ class DBMySQL(DBSQL):
                     logging.warning(f"Success with i={i}")
                 return result
             except errors.OperationalError as e:
-                if e.args[0]==1045:  # access denied
+                if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise(e)
                 elif e.args[0]==1054:  # invalid column
-                    print(f"Invalid Column in CMD: {cmd}")
+                    print(f"Invalid Column in CMD: {cmd}",file = sys.stderr)
+                    raise(e)
+                elif e.args[0]==1049:
+                    printf(f"Unknown database in CMD: {cmd}",file=sys.stderr)
                     raise(e)
                 if i>1:
                     logging.warning(e)
