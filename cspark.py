@@ -13,6 +13,9 @@ import time
 import glob
 import json
 import subprocess
+import copy
+import tempfile
+import zipfile
 
 SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
 AWS_PATH = 'AWS_PATH'
@@ -161,7 +164,7 @@ def spark_set_logLevel(logLevel='error'):
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None, executor_cores=None, conf=[], configdict={},
+def spark_submit(*, logLevel=None, files_to_zip=[], pyfiles=[], pydirs=[], num_executors=None, executor_cores=None, conf=[], configdict={},
                  properties_file=None, argv):
     """Provides support for the --spark command. To the caller, it looks
     like we just returned.  At that point, you can then import your pyspark libraries
@@ -169,18 +172,36 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     However, it reruns this program with
     spark-submit. It also takes all files and sends them to the
     executor. So basically, calling spark_submit() in a program engages spark and returns 0 if success and an error code if not.
-    @param pyfiles - a list of files that should be added to the --py-files argument
-    @param pydirs  - a list of file systme directories; add every .py file in each folder to the --py-files argument
-    @param logLevel - if specified, run at this log level
-    @param num_executors - The number of executors to use
-    @param conf    - a list containing name=value Spark properties to add to the --conf
-    @param properties_file - a file to be added as a --properties_file
-    @param configdict - a dictionary of configuration parameters, designed to be taken from the [spark] section of a config.ini file.
-    @param argv    - sys.argv (args[0] is script to run; remainder are arguments)
-    @return Returns True if Spark was successfully run
+
+    :param files_to_zip: a list of files that are added to a zip file that is then sent over
+    :param pyfiles:  a list of files that should be added to the --py-files argument. If you include foo.py and bar/foo.py, you get an error because all of the files, no matter where they are, end up at the top-level
+    :param pydirs :  a list of file systme directories; add every .py file in each folder to the --py-files argument. It's as if all of the files they include were added with pyfiles; directory structure is not preserved.
+    :param logLevel: - if specified, run at this log level
+    :param num_executors: - The number of executors to use
+    :param conf: - a list containing name=value Spark properties to add to the --conf
+    :param properties_file: - a file to be added as a --properties_file
+    :param configdict: - a dictionary of configuration parameters, designed to be taken from the [spark] section of a config.ini file.
+    :param argv: - sys.argv (args[0] is script to run; remainder are arguments)
+    :return: Returns True if Spark was successfully run
+
+    We could make this more efficient by building a zip file and send it over.
     """
     if spark_running():
         return True             # running inside Spark
+
+    pyfiles = copy.copy(pyfiles)
+
+    if files_to_zip:
+        td = tempfile.mkdtemp()
+        zfpath = os.path.join(td,'cspark.zip')
+        zf = zipfile.ZipFile( zfpath, 'w')
+        for path in files_to_zip:
+            zf.write( os.path.abspath(path), path)
+        pyfiles.append(zfpath)
+        zf.close()
+
+
+
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs,
                            num_executors=num_executors, executor_cores=executor_cores, conf=conf,
                            configdict=configdict, properties_file=properties_file)
@@ -210,7 +231,8 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
         os.execvp(cmd[0], cmd)
 
 
-def spark_session(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
+def spark_session(*, logLevel=None, pyfiles=[], pydirs=[], num_executors=None,
+                  files_to_zip=[],
                   conf=[], configdict={},
                   properties_file=None, appName='spark'):
     """If spark is running, return the Spark Context.
@@ -220,8 +242,10 @@ def spark_session(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_exec
     and before logging is started."""
 
     if not spark_running():
+
         spark_submit(logLevel=logLevel,
-                     zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs,
+                     pyfiles=pyfiles, pydirs=pydirs,
+                     files_to_zip=files_to_zip,
                      num_executors=num_executors,
                      conf=conf, configdict=configdict, properties_file=properties_file,
                      argv=sys.argv)

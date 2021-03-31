@@ -336,7 +336,7 @@ connection. """
                                debug=debug)
         except KeyError as e:
             pass
-        raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} sections")
+        raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db
