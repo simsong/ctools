@@ -502,7 +502,7 @@ class DBMySQL(DBSQL):
                     print(f"Invalid Column in CMD: {cmd}",file = sys.stderr)
                     raise(e)
                 elif e.args[0]==1049:
-                    printf(f"Unknown database in CMD: {cmd}",file=sys.stderr)
+                    print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
                     raise(e)
                 if i>1:
                     logging.warning(e)
