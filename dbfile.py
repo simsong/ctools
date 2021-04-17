@@ -377,6 +377,7 @@ class DBMySQL(DBSQL):
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
+    IGNORED = 'IGNORED'
 
     @staticmethod
     def explain(cmd, vals):
@@ -395,7 +396,7 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
              setup=None, setup_vals=(),
-             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[]):
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[], ignore=[]):
         """Connect, select, fetchall, and retry as necessary.
         :param auth:      - authentication otken
         :param cmd:       - SQL query
@@ -407,6 +408,7 @@ class DBMySQL(DBSQL):
         :param get_column_names: - an array in which to return the column names.
         :param asDict:    - True to return each row as a dictionary
         :param nolog:     - array of error codes that shouldn't be logged with logging.errror
+        :param ignore:    - array of error codes to silently ignore.
         """
 
         debug = (debug or auth.debug)
@@ -456,6 +458,8 @@ class DBMySQL(DBSQL):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
                 except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
+                    if e.args[0] in ignore:
+                        return DBMySQL.IGNORED
                     if e.args[0] not in nolog:
                         logging.error("setup: %s", setup)
                         logging.error("setup_vals: %s", setup_vals)
