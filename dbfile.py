@@ -243,7 +243,7 @@ class DBSqlite3(DBSQL):
 
     # For sqlite3, csfr doesn't need to be a static method, because we don't disconnect from the database
     # Notice that we try to keep API compatiability, but we lose 'auth'. We also change '%s' into '?'
-    def csfr(self, auth, cmd,vals=[],quiet=True, rowcount=None, time_zone=None,
+    def csfr(self, auth, cmd, vals=[], *, quiet=True, rowcount=None, time_zone=None,
              get_column_names=None, asDicts=False, debug=False, cache=True):
         assert auth is None
         assert get_column_names is None # not implemented yet
@@ -389,8 +389,8 @@ class DBMySQL(DBSQL):
             return cmd
 
     @staticmethod
-    def csfr(auth, cmd, vals=None, quiet=True, rowcount=None, time_zone=None,
-             setup=None, setup_vals=(),
+    def csfr(auth, cmd, vals=None, *,
+             quiet=True, rowcount=None, time_zone=None, setup=None, setup_vals=(),
              get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True):
         """Connect, select, fetchall, and retry as necessary.
         @param auth      - authentication otken
