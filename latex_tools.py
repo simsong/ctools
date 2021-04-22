@@ -5,7 +5,7 @@
 import sys
 import os
 import re
-from subprocess import call,Popen,PIPE,DEVNULL
+from subprocess import call, Popen, PIPE, DEVNULL
 import subprocess
 import glob
 import tempfile
@@ -42,6 +42,7 @@ else:
 def no_latex():
     """Return true if latex is not available"""
     return distutils.spawn.find_executable(LATEX_EXE) is None
+
 
 LATEX_QUOTE_TRANSFORMS = {
     "’": "'",
@@ -119,7 +120,7 @@ PAGECOUNTER_TEX=r"""
 \endinput
 """
 
-LATEX_EXTRA_DIR=os.path.join( os.path.dirname(__file__), "latex-windows")
+LATEX_EXTRA_DIR=os.path.join(os.path.dirname(__file__), "latex-windows")
 
 class LatexException(Exception):
     def __init__(self, message):
@@ -127,10 +128,10 @@ class LatexException(Exception):
 
 def latex_escape(msg):
     """Quote all special characters in msg"""
-    msg = "".join([LATEX_QUOTE_TRANSFORMS.get(ch,ch) for ch in msg])
+    msg = "".join([LATEX_QUOTE_TRANSFORMS.get(ch, ch) for ch in msg])
     for ch in msg:
         if ord(ch)>127:
-            logging.warning("**** Unescaped character: '%s'  dec:%s  hex:%s",ch,ord(ch),hex(ord(ch)))
+            logging.warning("**** Unescaped character: '%s'  dec:%s  hex:%s", ch, ord(ch), hex(ord(ch)))
     return msg
 
 def textbf(msg):
@@ -151,6 +152,7 @@ def parse_nested_braces(string):
             start = stack.pop()
             yield (len(stack), string[start + 1: i])
 
+
 label_re  = re.compile(r'\{([^}]*)\}\{\{([^}]*)\}\{([^}]*)\}\{([^}]*)\}\{([^}]*)\}\{([^}]*)\}')
 prefix_re = re.compile(r'^([A-Z]+)-(.*)')
 def label_parser(line):
@@ -158,29 +160,30 @@ def label_parser(line):
     if not line.startswith("\\newlabel"):
         return None
     parsed = list(parse_nested_braces(line))
-    def get(*,level,count):
-        for (l,v) in parsed:
+
+    def get(*, level, count):
+        for (l, v) in parsed:
             if level==l:
                 count -= 1
                 if count==0:
                     return v
         return None
 
-    label   = get(level=0,count=1)            # first level 0 is the filename
-    section = get(level=1,count=1)
-    page    = int(get(level=1,count=2))
+    label   = get(level=0, count=1)            # first level 0 is the filename
+    section = get(level=1, count=1)
+    page    = int(get(level=1, count=2))
 
-    if not all([label,section,page]):
+    if not all([label, section, page]):
         return None
 
     n = prefix_re.search(label)
     if n:
-        (prefix,fname) = n.group(1,2)
+        (prefix, fname) = n.group(1, 2)
     else:
-        (prefix,fname) = ("",label)
+        (prefix, fname) = ("", label)
     if fname[0]=='"':           # remove quotes if they are present
         fname = fname[1:-1]
-    return (prefix,fname,section,page)
+    return (prefix, fname, section, page)
 
 def extract_pages_from_aux(auxfile):
     """Given an auxfile, return an array of (prefix,filename,section,page,pages) values"""
@@ -193,45 +196,45 @@ def extract_pages_from_aux(auxfile):
             continue
         if pdata[1]=='LastPage':
             continue
-        assert pdata[0] in ["","END"]
+        assert pdata[0] in ["", "END"]
         if pdata[0]=="":
             data = pdata
         else:
-            ret.append((data[0],data[1],data[2],data[3],pdata[3]-data[3]))
+            ret.append((data[0], data[1], data[2], data[3], pdata[3] -data[3]))
     return ret
 
-def delete_temp_files(latex_source,verbose=False):
+def delete_temp_files(latex_source, verbose=False):
     # Delete LaTeX temp file
-    (name,ext) = os.path.splitext(latex_source)
-    for ext in ['.log','.aux','.bbl','.toc','.blg','.dvi']:
-        for nfn in glob.glob(name+ext):
+    (name, ext) = os.path.splitext(latex_source)
+    for ext in ['.log', '.aux', '.bbl', '.toc', '.blg', '.dvi']:
+        for nfn in glob.glob(name +ext):
             if verbose:
                 print("Deleting {}".format(nfn))
             os.unlink(nfn)
 
-TEXINPUTS='TEXINPUTS'
-def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
-              texinputs=None,
-              callback_aux=None,callback_log=None,ignore_ret=False,
-              chdir=True,verbose=False):
 
+TEXINPUTS='TEXINPUTS'
+def run_latex(pathname, repeat=1, start_run=1, delete_tempfiles=False,
+              texinputs=None,
+              callback_aux=None, callback_log=None, ignore_ret=False,
+              chdir=True, verbose=False):
     """Run LaTeX and return (name of file PDF file,# of pages)"""
 
     if DEBUG:
         verbose=True
 
     # Are we setting TEXINPUTS? If so, remember old value.
-    oldenv   = os.environ.get(TEXINPUTS,None)
+    oldenv   = os.environ.get(TEXINPUTS, None)
     if texinputs:
         os.environ[TEXINPUTS] = texinputs
         if DEBUG:
-            print("Set TEXINPUTS to",os.environ[TEXINPUTS])
+            print("Set TEXINPUTS to", os.environ[TEXINPUTS])
 
     # Are we changing the directory? If so, remember old value
     assert os.path.exists(pathname)
     assert repeat>=1
 
-    (dirname, filename) = os.path.split( pathname )
+    (dirname, filename) = os.path.split(pathname)
     dirname_ = dirname
 
     if chdir:
@@ -239,12 +242,12 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         if dirname:
             os.chdir(dirname)       # change to the directory where the file exists
             if DEBUG:
-                print("Changed directory to",dirname)
+                print("Changed directory to", dirname)
 
         # change dirname and pathname to reflect current directory
         dirname="."
         pathname=filename
-        assert os.path.exists(filename) # make sure we can still reach it
+        assert os.path.exists(filename)  # make sure we can still reach it
 
     # If we are on windows, copy the context of the LATEX_WINDOWS_EXTRA_DIR to the current directory
     delete_files = []
@@ -258,30 +261,30 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             delete_files.append(dest)
 
     if DEBUG:
-        print("==============",pathname,"===========")
+        print("==============", pathname, "===========")
         print(open(pathname).read())
         print("======================================")
         print("")
 
-    for i in range(start_run,start_run+repeat):
+    for i in range(start_run, start_run +repeat):
         assert os.path.exists(pathname)
         cmd = [LATEX_EXE, pathname, '-interaction=nonstopmode']
 
         if verbose:
-            print("LaTeX Run #{}: {}> {}".format(i, os.getcwd()," ".join(cmd)), flush=True)
+            print("LaTeX Run #{}: {}> {}".format(i, os.getcwd(), " ".join(cmd)), flush=True)
 
         r = subprocess.run(cmd, stdout=PIPE, stderr=PIPE, stdin=DEVNULL, encoding='utf8', shell=False)
         if r.returncode and (("I can't find the format file" in r.stderr) or
                              ("does not exist" in r.stderr)):
-            warnings.warn("Latex returns: "+r.stderr)
+            warnings.warn("Latex returns: " +r.stderr)
             raise LatexException("LaTeX not properly installed")
 
         if r.returncode and not ignore_ret:
-            print("r=",r,"r.returncode=",r.returncode)
+            print("r=", r, "r.returncode=", r.returncode)
             outlines = r.stdout.split("\n")
             print("***************************")
 
-            if len(outlines)<ERROR_LINES*2:
+            if len(outlines)<ERROR_LINES *2:
                 print("\n".join(outlines))
             else:
                 print("First {} lines of error:".format(ERROR_LINES))
@@ -294,7 +297,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
             exit(1)
 
         if r.returncode and DEBUG:
-            print("r.returncode=",r.returncode)
+            print("r.returncode=", r.returncode)
             print("STDOUT")
             print(r.stdout)
             print("STDERR")
@@ -306,37 +309,37 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
 
     #
     # The logfile and auxfile get written to the current directory
-    logfilename = os.path.splitext( os.path.basename(filename))[0] + ".log"
-    auxfilename = os.path.splitext( os.path.basename(filename))[0] + ".aux"
+    logfilename = os.path.splitext(os.path.basename(filename))[0] + ".log"
+    auxfilename = os.path.splitext(os.path.basename(filename))[0] + ".aux"
 
     if DEBUG:
-        print("Current directory:",os.getcwd())
-        print("filename:",filename,os.path.exists(filename))
-        print("logfilename:",logfilename,os.path.exists(logfilename))
-        print("auxfilename:",auxfilename,os.path.exists(auxfilename))
+        print("Current directory:", os.getcwd())
+        print("filename:", filename, os.path.exists(filename))
+        print("logfilename:", logfilename, os.path.exists(logfilename))
+        print("auxfilename:", auxfilename, os.path.exists(auxfilename))
 
     if not os.path.exists(logfilename):
         warnings.warn(f"chdir: {chdir} dirname_: {dirname_}")
         warnings.warn(f"cmd: {' '.join(cmd)}")
         raise FileNotFoundError("logfile {} not created. LaTeX failed. dir: {} filename: {}"
-                                .format(logfilename,os.getcwd(),filename))
+                                .format(logfilename, os.getcwd(), filename))
 
     if not os.path.exists(auxfilename):
         warnings.warn(f"chdir: {chdir} dirname_: {dirname_}")
         warnings.warn(f"cmd: {' '.join(cmd)}")
         raise FileNotFoundError("auxfile {} not created. LaTeX failed. dir: {} filename: {}"
-                                .format(auxfilename,os.getcwd(),filename))
+                                .format(auxfilename, os.getcwd(), filename))
 
     if callback_log:
-        callback_log(open(logfilename,"r"))
+        callback_log(open(logfilename, "r"))
 
     if callback_aux:
-        callback_aux(open(auxfilename,"r"))
+        callback_aux(open(auxfilename, "r"))
 
     # Read the log file to determine the number of pages
     # This should be done with the callback
 
-    log = open(logfilename).read().replace("\n","")
+    log = open(logfilename).read().replace("\n", "")
     pat = re.compile(r'Output written on .*[^\d](\d+) pages?')
     m = pat.search(log)
     if m:
@@ -348,7 +351,7 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
     if delete_tempfiles:
         delete_temp_files(pathname)
     # Figure out the PDF filename. It's in the current directory...
-    pdffile = os.path.join( os.getcwd(), os.path.basename(os.path.splitext(filename)[0])) + ".pdf"
+    pdffile = os.path.join(os.getcwd(), os.path.basename(os.path.splitext(filename)[0])) + ".pdf"
 
     # If we changed the current directory, change back
     if chdir:
@@ -361,9 +364,9 @@ def run_latex(pathname,repeat=1,start_run=1,delete_tempfiles=False,
         else:
             del os.environ[TEXINPUTS]
 
-    return (pdffile,pages)
+    return (pdffile, pages)
 
-def extract_pdf_pages(target,source,pagelist="-"):
+def extract_pdf_pages(target, source, pagelist="-"):
     """Use pdfpages.sty to extract pagelist from SOURCE and put the results in TARGET"""
     assert os.path.exists(source)
     assert not os.path.exists(target)
@@ -376,7 +379,7 @@ def extract_pdf_pages(target,source,pagelist="-"):
         # the dirname from source
         source = os.path.basename(source)
 
-    target_latex = target.replace(".pdf",".tex")
+    target_latex = target.replace(".pdf", ".tex")
 
     if type(pagelist)==str:
         pagelist_str = pagelist
@@ -385,14 +388,14 @@ def extract_pdf_pages(target,source,pagelist="-"):
 
     #
     # Generate an output file
-    with open(target_latex,"w") as f:
+    with open(target_latex, "w") as f:
         f.write("\\documentclass{book}\n")
         f.write("\\usepackage{pdfpages}\n")
         f.write("\\begin{document}\n")
-        f.write("\\includepdf[pages={"+pagelist_str+"}]{"+source+"}\n")
+        f.write("\\includepdf[pages={" +pagelist_str +"}]{" +source +"}\n")
         f.write("\\end{document}\n")
 
-    run_latex(target_latex,repeat=1,delete_tempfiles=True)
+    run_latex(target_latex, repeat=1, delete_tempfiles=True)
 
 
 def inspect_json_all_pages_have_same_orientation(info):
@@ -401,7 +404,7 @@ def inspect_json_all_pages_have_same_orientation(info):
         return info[PAGES][0][ORIENTATION]
     return None
 
-def inspect_pdf_latex(pdf_fname,texinputs=None):
+def inspect_pdf_latex(pdf_fname, texinputs=None):
     """Using PAGECOUNTER_TEX, run LaTeX on each page and determine each page's orientation and size.
     Returns a dictionary containing the following properties:
     [FILENAME] - filename
@@ -417,11 +420,11 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
     assert pdf_fname.lower().endswith(".pdf")
     requested_pat = re.compile(r"Requested size: ([\d.]+)pt x ([\d.]+)pt")
     page_pat = re.compile(r"^Page (\d+), (\w+), ([0-9.]+)pt, ([0-9.]+)pt, depth ([0-9.]+)pt")
-    ret = {VERSION:1,
-           FILENAME:pdf_fname,
-           UNITS:POINTS,
-           SHA256:hashlib.sha256( open(pdf_fname,"rb").read() ).hexdigest(),
-           PAGES:[]}
+    ret = {VERSION: 1,
+           FILENAME: pdf_fname,
+           UNITS: POINTS,
+           SHA256: hashlib.sha256(open(pdf_fname, "rb").read()).hexdigest(),
+           PAGES: []}
 
     def cb(auxfile):
         """Callback to search for orientation information in the logfile and extract it"""
@@ -435,27 +438,27 @@ def inspect_pdf_latex(pdf_fname,texinputs=None):
             m = page_pat.search(line)
             if m:
                 if width==None or height==None:
-                    logging.error("************  CANNOT COUNT PAGES IN '%s' **************",pdf_fname)
+                    logging.error("************  CANNOT COUNT PAGES IN '%s' **************", pdf_fname)
                     exit(1)
                 pageno = int(m.group(1))
                 orientation = LANDSCAPE if width>height else PORTRAIT
-                ret[PAGES].append({ORIENTATION:orientation, WIDTH:width,  HEIGHT:height, PAGE:pageno})
+                ret[PAGES].append({ORIENTATION: orientation, WIDTH: width, HEIGHT: height, PAGE: pageno})
 
     # Unfortunately, NamedTemporaryFile is not portable to windows, because when the file is open,
     # it cannot be used by other processes, as NamedTemporaryFile opens with exclusive access.
     # The code below fixes this problem
     # See https://bugs.python.org/issue14243
-    logging.info("inspect_pdf(%s)",format(pdf_fname))
+    logging.info("inspect_pdf(%s)", format(pdf_fname))
 
     if DEBUG:
         print("get_pdf_pages_and_orientation({})".format(pdf_fname))
-    with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',suffix='.tex',delete=False,
-                                     dir=os.path.dirname( os.path.abspath(pdf_fname))) as tmp:
-        tmp.write( PAGECOUNTER_TEX.replace( "%%FILENAME%%", os.path.basename( pdf_fname )))
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf8', suffix='.tex', delete=False,
+                                     dir=os.path.dirname(os.path.abspath(pdf_fname))) as tmp:
+        tmp.write(PAGECOUNTER_TEX.replace("%%FILENAME%%", os.path.basename(pdf_fname)))
         tmp.flush()             # Make sure contents are written out
         tmp.close()             # Windows compatability
-        run_latex( tmp.name, callback_log=cb,ignore_ret=True, delete_tempfiles=True, texinputs=texinputs)
-        os.unlink( tmp.name)
+        run_latex(tmp.name, callback_log=cb, ignore_ret=True, delete_tempfiles=True, texinputs=texinputs)
+        os.unlink(tmp.name)
     return ret
 
 def inspect_pdf_pypdf(pdf_fname):
@@ -464,32 +467,32 @@ def inspect_pdf_pypdf(pdf_fname):
         raise LatexException(f"{pdf_fname} is a zero-length file")
 
     import PyPDF2
-    with open(pdf_fname,"rb") as f:
+    with open(pdf_fname, "rb") as f:
         sha256 = hashlib.sha256(f.read()).hexdigest()
-    ret = {VERSION:1,
-           FILENAME:pdf_fname,
-           UNITS:POINTS,
-           SHA256:sha256,
-           PAGES:[]}
-    pdf = PyPDF2.PdfFileReader(open(pdf_fname,"rb"),strict=False)
+    ret = {VERSION: 1,
+           FILENAME: pdf_fname,
+           UNITS: POINTS,
+           SHA256: sha256,
+           PAGES: []}
+    pdf = PyPDF2.PdfFileReader(open(pdf_fname, "rb"), strict=False)
     for pageNumber in range(pdf.getNumPages()):
         page = pdf.getPage(pageNumber)
-        (x,y,width,height) = page['/MediaBox']
+        (x, y, width, height) = page['/MediaBox']
         ret[PAGES].append({ORIENTATION: PORTRAIT if width < height else LANDSCAPE,
-                           WIDTH:width,
-                           HEIGHT:height,
-                           PAGE:pageNumber+1})
+                           WIDTH: width,
+                           HEIGHT: height,
+                           PAGE: pageNumber +1})
     return ret
 
-def inspect_pdf(pdf_fname,texinputs=None):
+def inspect_pdf(pdf_fname, texinputs=None):
     try:
         return inspect_pdf_pypdf(pdf_fname)
-    except (ImportError,ModuleNotFoundError):
-        return inspect_pdf_latex(pdf_fname,texinputs=texinputs)
+    except (ImportError, ModuleNotFoundError):
+        return inspect_pdf_latex(pdf_fname, texinputs=texinputs)
 
 def count_pdf_pages_pypdf(pdf_fname):
     import PyPDF2
-    pdf = PyPDF2.PdfFileReader(open(pdf_fname,"rb"),strict=False)
+    pdf = PyPDF2.PdfFileReader(open(pdf_fname, "rb"), strict=False)
     return pdf.getNumPages()
 
 def count_pdf_pages(pdf_fname):
@@ -502,10 +505,11 @@ def count_pdf_pages(pdf_fname):
     try:
         return count_pdf_pages_pypdf(pdf_fname)
     except ImportError:
-        return len( inspect_pdf_latex( pdf_fname )[PAGES])
+        return len(inspect_pdf_latex(pdf_fname)[PAGES])
+
 
 if __name__=="__main__":
     import sys
     m = inspect_pdf(sys.argv[1])
     for info in sorted(m[PAGES].keys()):
-        print('page ',info, m[PAGES][info])
+        print('page ', info, m[PAGES][info])

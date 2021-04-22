@@ -32,9 +32,9 @@ def demo1():
 
     doc = tydoc()
     doc.h1("Matplotlib demo")
-    doc.p(["This demonstrates how you can add ",b"matplotlib",
+    doc.p(["This demonstrates how you can add ", b"matplotlib",
            " to your documents"])
-    doc.append_matplotlib(plt,dpi=72,pad_inches=0.1)
+    doc.append_matplotlib(plt, dpi=72, pad_inches=0.1)
     doc.p("Pretty neat, eh?")
     doc.save("demo1.html")
     doc.save("demo1.tex")
@@ -48,8 +48,8 @@ def demo2():
     doc.h1("sin(x) graph")
     doc.p("Here is a little graph of sin(x) from 0 to 4π")
     doc.p("A second paragraph")
-    x = np.linspace(0, np.pi*4)
-    fig = Figure(figsize=(4,2))
+    x = np.linspace(0, np.pi *4)
+    fig = Figure(figsize=(4, 2))
     FigureCanvasAgg(fig)
     ax = fig.add_subplot(111)
     ax.plot(x, np.sin(x))
@@ -59,16 +59,17 @@ def demo2():
     doc.h1("sin(2x) graph")
     doc.p("Here is a little graph of sin(2x) from 0 to π")
     x = np.linspace(0, np.pi)
-    fig = Figure(figsize=(4,2))
+    fig = Figure(figsize=(4, 2))
     FigureCanvasAgg(fig)
     ax = fig.add_subplot(111)
-    ax.plot(x, np.sin(2*x))
+    ax.plot(x, np.sin(2 *x))
     doc.append_matplotlib(fig, dpi=72, pad_inches=0.1)
     doc.save("demo2.html")
     doc.save("demo2.tex")
     doc.save("demo2.md")
     # Just for grins, let's also run LaTeX
     latex_tools.run_latex("demo2.tex", delete_tempfiles=True)
+
 
 if __name__=="__main__":
     demo1()
