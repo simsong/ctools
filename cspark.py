@@ -13,6 +13,9 @@ import time
 import glob
 import json
 import subprocess
+import copy
+import tempfile
+import zipfile
 
 SPARK_ENV_LOADED = "SPARK_ENV_LOADED"
 AWS_PATH = 'AWS_PATH'
@@ -95,6 +98,7 @@ def detach(logdir=os.getcwd()):
     # Most daemon implementations close all FDs. But that is not what we want, so just return
 
 def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
+                     executor_cores=None,
                      conf=[], configdict=None, properties_file=None):
     """Make the spark-submit command without the script name or script args.
     @param pydirs is a list of directories to recursively search for all python files.
@@ -104,19 +108,21 @@ def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
     for pydir in pydirs:
         if pydir=="":
             pydir="."
-        for (dirpath,dirnames,filenames) in os.walk(pydir):
+        for (dirpath, dirnames, filenames) in os.walk(pydir):
             for filename in filenames:
                 if filename.endswith(".py"):
-                    addfile = os.path.join(dirpath,filename)
+                    addfile = os.path.join(dirpath, filename)
                     if addfile.startswith("./"):
                         addfile = addfile[2:]
-                    pyfiles.append( addfile )
-    pyfiles.extend( zipfiles )
+                    pyfiles.append(addfile)
+    pyfiles.extend(zipfiles)
     cmd = ['spark-submit']
     if pyfiles:
         cmd += ['--py-files', ",".join(pyfiles)]
     if num_executors:
         cmd += ['--num-executors', str(num_executors)]
+    if executor_cores:
+        cmd += ['--executor-cores', str(executor_cores)]
     for c in conf:
         assert '=' in c
         cmd += ['--conf', c]
@@ -158,7 +164,7 @@ def spark_set_logLevel(logLevel='error'):
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
 
-def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None, conf=[], configdict={},
+def spark_submit(*, logLevel=None, files_to_zip=[], pyfiles=[], pydirs=[], num_executors=None, executor_cores=None, conf=[], configdict={},
                  properties_file=None, argv):
     """Provides support for the --spark command. To the caller, it looks
     like we just returned.  At that point, you can then import your pyspark libraries
@@ -166,43 +172,67 @@ def spark_submit(*, logLevel=None, zipfiles=[], pyfiles=[], pydirs=[], num_execu
     However, it reruns this program with
     spark-submit. It also takes all files and sends them to the
     executor. So basically, calling spark_submit() in a program engages spark and returns 0 if success and an error code if not.
-    @param pyfiles - a list of files that should be added to the --py-files argument
-    @param pydirs  - a list of file systme directories; add every .py file in each folder to the --py-files argument
-    @param logLevel - if specified, run at this log level
-    @param num_executors - The number of executors to use
-    @param conf    - a list containing name=value Spark properties to add to the --conf
-    @param properties_file - a file to be added as a --properties_file
-    @param configdict - a dictionary of configuration parameters, designed to be taken from the [spark] section of a config.ini file.
-    @param argv    - sys.argv (args[0] is script to run; remainder are arguments)
-    @return Returns True if Spark was successfully run
+
+    :param files_to_zip: a list of files that are added to a zip file that is then sent over
+    :param pyfiles:  a list of files that should be added to the --py-files argument. If you include foo.py and bar/foo.py, you get an error because all of the files, no matter where they are, end up at the top-level
+    :param pydirs :  a list of file systme directories; add every .py file in each folder to the --py-files argument. It's as if all of the files they include were added with pyfiles; directory structure is not preserved.
+    :param logLevel: - if specified, run at this log level
+    :param num_executors: - The number of executors to use
+    :param conf: - a list containing name=value Spark properties to add to the --conf
+    :param properties_file: - a file to be added as a --properties_file
+    :param configdict: - a dictionary of configuration parameters, designed to be taken from the [spark] section of a config.ini file.
+    :param argv: - sys.argv (args[0] is script to run; remainder are arguments)
+    :return: Returns True if Spark was successfully run
+
+    We could make this more efficient by building a zip file and send it over.
     """
     if spark_running():
         return True             # running inside Spark
+
+    pyfiles = copy.copy(pyfiles)
+
+    if files_to_zip:
+        td = tempfile.mkdtemp()
+        zfpath = os.path.join(td,'cspark.zip')
+        zf = zipfile.ZipFile( zfpath, 'w')
+        for path in files_to_zip:
+            zf.write( os.path.abspath(path), path)
+        pyfiles.append(zfpath)
+        zf.close()
+
+
+
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs,
-                           num_executors=num_executors, conf=conf,
+                           num_executors=num_executors, executor_cores=executor_cores, conf=conf,
                            configdict=configdict, properties_file=properties_file)
 
     if logLevel:
         tfname = spark_make_logLevel_file(logLevel)
-        cmd += ['--conf', 'spark.driver.extraJavaOptions=-Dlog4j.configuration=file:'+tfname,
-                '--conf', 'spark.executor.extraJavaOptions=-Dlog4j.configuration=file:'+tfname]
+        cmd += ['--conf', 'spark.driver.extraJavaOptions=-Dlog4j.configuration=file:' +tfname,
+                '--conf', 'spark.executor.extraJavaOptions=-Dlog4j.configuration=file:' +tfname]
 
-    assert type(argv) == list
+    assert isinstance(argv,list)
     cmd += argv
+    assert isinstance(cmd,list)
+    for s in cmd:
+        assert isinstance(s,str)
 
-    print("=== RUNNING SPARK ===")
+
+    print("\n\n")
+    print("=== cspark.spark_submit RUNNING SPARK ===")
     print("$ cd {}".format(os.getcwd()))
     print("$ {}".format(" ".join(cmd)))
 
-    ### If we are running under py.test, use `call`, so we return.
-    ### otherwise use execvp, so we do not return.
+    # If we are running under py.test, use `call`, so we return.
+    # otherwise use execvp, so we do not return.
     if 'PYTEST_CURRENT_TEST' in os.environ:
         subprocess.call(cmd)
     else:
-        os.execvp(cmd[0],cmd)
+        os.execvp(cmd[0], cmd)
 
 
-def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_executors=None,
+def spark_session(*, logLevel=None, pyfiles=[], pydirs=[], num_executors=None,
+                  files_to_zip=[],
                   conf=[], configdict={},
                   properties_file=None, appName='spark'):
     """If spark is running, return the Spark Context.
@@ -212,12 +242,14 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
     and before logging is started."""
 
     if not spark_running():
-        spark_submit(logLevel = logLevel,
-                     zipfiles=zipfiles, pyfiles=pyfiles, pydirs=pydirs,
+
+        spark_submit(logLevel=logLevel,
+                     pyfiles=pyfiles, pydirs=pydirs,
+                     files_to_zip=files_to_zip,
                      num_executors=num_executors,
                      conf=conf, configdict=configdict, properties_file=properties_file,
                      argv=sys.argv)
-        return None # spark_submit() will return if we are running under PYTEST
+        return None  # spark_submit() will return if we are running under PYTEST
 
     # Running inside spark
     from pyspark.sql import SparkSession
@@ -229,42 +261,42 @@ def spark_session(*,logLevel=None, zipfiles = [], pyfiles=[],pydirs=[],num_execu
 
 SPARK_PORT_START = 4040
 SPARK_PORT_END   = 4050
-def get_spark_info(host=None,port=None):
+def get_spark_info(host=None, port=None):
     import requests
     import ssl
-    from   urllib.request import urlopen
+    from urllib.request import urlopen
     import urllib3
     import urllib.error
     urllib3.disable_warnings()
 
     if not host:
-        host       = os.environ.get("SPARK_LOCAL_IP","localhost")
+        host       = os.environ.get("SPARK_LOCAL_IP", "localhost")
 
     if port:
         ports = [port]
     else:
-        ports = range(SPARK_PORT_START,SPARK_PORT_END+1)
+        ports = range(SPARK_PORT_START, SPARK_PORT_END +1)
 
     for port in ports:
         try:
-            url = 'http://{}:{}/api/v1/applications/'.format(host,port)
+            url = 'http://{}:{}/api/v1/applications/'.format(host, port)
             resp  = urlopen(url, context=ssl._create_unverified_context())
             spark_data = resp.read()
             break
-        except (ConnectionError, ConnectionRefusedError,urllib.error.URLError) as e:
+        except (ConnectionError, ConnectionRefusedError, urllib.error.URLError) as e:
             continue
     if port>=SPARK_PORT_END:
         raise RuntimeError(f"No spark listener found on {host} ports {SPARK_PORT_START}-{SPARK_PORT_END}")
         return
 
     # Looks like we have spark!
-    ret = {'spark':[]}
+    ret = {'spark': []}
     for app in json.loads(spark_data):
         app_id   = app['id']
         app_name = app['name']
 
-        r2 = {'application':app}
-        for param in ['jobs','allexecutors','storage/rdd']:
+        r2 = {'application': app}
+        for param in ['jobs', 'allexecutors', 'storage/rdd']:
             url = f'http://{host}:{port}/api/v1/applications/{app_id}/{param}'
             resp = urlopen(url, context=ssl._create_unverified_context())
             data = resp.read()
@@ -274,14 +306,13 @@ def get_spark_info(host=None,port=None):
     return ret
 
 
-
 if __name__ == "__main__":
     from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
-                             description="Demo program for cspark module")
-    parser.add_argument('--debug',  action='store_true')
+                            description="Demo program for cspark module")
+    parser.add_argument('--debug', action='store_true')
     parser.add_argument("--detach", action="store_true")
-    parser.add_argument("--spark",  action="store_true", help="Run a sample program with spark")
+    parser.add_argument("--spark", action="store_true", help="Run a sample program with spark")
 
     args = parser.parse_args()
     if args.detach:             # must be checked before Spark

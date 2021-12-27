@@ -17,10 +17,9 @@ import warnings
 #sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 #sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-import ctools.clogging as clogging
-
-
 LOCAL1_LOG = '/var/log/local1.log'
+
+import clogging
 
 def test_logging_to_syslog():
     if platform.system()=='Windows' or platform.system()=='Darwin':
