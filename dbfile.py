@@ -109,14 +109,14 @@ sys.path.append( dirname(dirname( abspath( __file__ ))))
 
 def sql_InternalError():
     try:
-        import mysql.connector as mysql
-        return RuntimeError
-    except ImportError as e:
-        pass
-    try:
         import pymysql
         import pymysql as mysql
         return pymysql.err.InternalError
+    except ImportError as e:
+        pass
+    try:
+        import mysql.connector as mysql
+        return RuntimeError
     except ImportError as e:
         pass
     print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
@@ -144,13 +144,13 @@ def sql_MySQLError():
 
 def sql_mysql():
     try:
-        import mysql
-        return mysql
+        import pymysql
+        return pymysql
     except ImportError as e:
         pass
     try:
-        import pymysql
-        return pymysql
+        import mysql
+        return mysql
     except ImportError as e:
         pass
     print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector",file=sys.stderr)
@@ -298,16 +298,20 @@ and cached_db is stored in the request-local storage."""
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
         ret   = {}
-        with open( filename ) as f:
-            for line in f:
-                m = DB_RE.search(line.strip())
-                if m:
-                    name = m.group(1)
-                    val  = m.group(2)
-                    # Check for quotes
-                    if val[0] in "'\"" and val[0]==val[-1]:
-                        val = val[1:-1]
-                    ret[name] = val
+        if filename is not None:
+            with open( filename ) as f:
+                for line in f:
+                    m = DB_RE.search(line.strip())
+                    if m:
+                        name = m.group(1)
+                        val  = m.group(2)
+                        # Check for quotes
+                        if val[0] in "'\"" and val[0]==val[-1]:
+                            val = val[1:-1]
+                        ret[name] = val
+        for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
+            if name not in ret:
+                ret[name] = os.environ[name]
         return ret
 
     @staticmethod
