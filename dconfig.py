@@ -21,7 +21,7 @@ This module also supports opening files on Amazon S3, with the s3:// notation.
 """
 
 from configparser import ConfigParser
-from subprocess import run,PIPE,Popen
+from subprocess import run, PIPE, Popen
 import os
 import os.path
 import logging
@@ -38,7 +38,7 @@ import re
 import socket
 import functools
 
-from .s3 import s3open,s3exists
+from .s3 import s3open, s3exists
 
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
@@ -59,31 +59,31 @@ CONFIG_PATHNAME  = os.path.join(SRC_DIRECTORY, CONFIG_FILENAME)    # can be chan
 # Get the config file. We would like to automate getting the config file and setting up logging.
 # We use lru_cache() so that only a single config file is returned
 @functools.lru_cache()
-def get_config(pathname=None,filename=None):
+def get_config(pathname=None, filename=None):
     if pathname and filename:
         raise RuntimeError("Cannot specify both pathname and filename")
     if not pathname:
         if not filename:
             filename = CONFIG_FILENAME
-        pathname = os.path.join(SRC_DIRECTORY, filename ) 
+        pathname = os.path.join(SRC_DIRECTORY, filename)
     config_file = ConfigParser(interpolation=None)
     if os.path.exists(pathname):
         config_file.read(pathname)
     else:
-        print("dopen: No config file found: {}".format(pathname),file=sys.stderr)
+        print("dopen: No config file found: {}".format(pathname), file=sys.stderr)
     # Add our source directory to the paths
     if SECTION_PATHS not in config_file:
         config_file.add_section(SECTION_PATHS)
-    config_file[SECTION_PATHS][OPTION_SRC] = SRC_DIRECTORY 
+    config_file[SECTION_PATHS][OPTION_SRC] = SRC_DIRECTORY
     return config_file
 
 
 # Our generic setup routine
 # https://stackoverflow.com/questions/8632354/python-argparse-custom-actions-with-additional-arguments-passed
-def setup_logging(*,config,level):
-    logfname = "{}-{}-{:06}.log".format(config[SECTION_RUN][OPTION_NAME],datetime.datetime.now().isoformat()[0:19],os.getpid())
+def setup_logging(*, config, level):
+    logfname = "{}-{}-{:06}.log".format(config[SECTION_RUN][OPTION_NAME], datetime.datetime.now().isoformat()[0:19], os.getpid())
     loglevel = logging.getLevelName(level)
-    logging.basicConfig(filename=logfname, 
+    logging.basicConfig(filename=logfname,
                         format="%(asctime)s.%(msecs)03d %(filename)s:%(lineno)d (%(funcName)s) %(message)s",
                         datefmt='%Y-%m-%dT%H:%M:%S',
                         level=loglevel)
@@ -92,18 +92,18 @@ def setup_logging(*,config,level):
                                            facility=logging.handlers.SysLogHandler.LOG_LOCAL1)
 
     logging.getLogger().addHandler(handler)
-    logging.info("START %s %s  log level: %s (%s)",sys.executable, " ".join(sys.argv), loglevel,loglevel)
+    logging.info("START %s %s  log level: %s (%s)", sys.executable, " ".join(sys.argv), loglevel, loglevel)
     atexit.register(logging_exit)
-        
+
 def logging_exit():
-    if hasattr(sys,'last_value'):
+    if hasattr(sys, 'last_value'):
         logging.error(sys.last_value)
 
-    
+
 def argparse_add_logging(parser):
     parser.add_argument('--loglevel', help='Set logging level',
-                        choices=['CRITICAL','ERROR','WARNING','INFO','DEBUG'],
-                        default='INFO')    
+                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'],
+                        default='INFO')
 
 
 var_re = re.compile(r"(\$[A-Z_0-9]+)")
@@ -136,7 +136,7 @@ def dpath_exists(path):
 
 def dopen(path, mode='r', encoding='utf-8'):
     """open data relatively to ROOT. Allows opening UFS files or S3 files."""
-    logging.info("dopen: path:{} mode:{} encoding:{}".format(path,mode,encoding))
+    logging.info("dopen: path:{} mode:{} encoding:{}".format(path, mode, encoding))
     path = dpath_expand(path)
 
     if path[0:5]=='s3://':
@@ -146,25 +146,25 @@ def dopen(path, mode='r', encoding='utf-8'):
         encoding=None
 
     # Check for full path name
-    logging.info("=>open(path={},mode={},encoding={})".format(path,mode,encoding))
+    logging.info("=>open(path={},mode={},encoding={})".format(path, mode, encoding))
 
     # If opening mode==r, and the file does not exist, see if it is present in a ZIP file
     if "r" in mode and (not os.path.exists(path)):
         # path does not exist; see if there is a single zip file in the directory
         # If there is, see if the zipfile has the requested file in it
-        (dirname,filename) = os.path.split(path)
-        zipnames = glob.glob(os.path.join(dirname,"*.zip"))
+        (dirname, filename) = os.path.split(path)
+        zipnames = glob.glob(os.path.join(dirname, "*.zip"))
         if len(zipnames)==1:
             zip_file  = zipfile.ZipFile(zipnames[0])
             zf        = zip_file.open(filename, 'r')
-            logging.info("  ({} found in {})".format(filename,zipnames[0]))
+            logging.info("  ({} found in {})".format(filename, zipnames[0]))
             if encoding==None and ("b" not in mode):
                 encoding='utf-8'
-            return io.TextIOWrapper(zf , encoding=encoding)
+            return io.TextIOWrapper(zf, encoding=encoding)
     if encoding==None:
-        return open(path,mode=mode)
+        return open(path, mode=mode)
     else:
-        return open(path,mode=mode,encoding=encoding)
+        return open(path, mode=mode, encoding=encoding)
 
 def dmakedirs(path):
     """Like os.makedirs, but just returns for s3"""
@@ -174,7 +174,7 @@ def dmakedirs(path):
     if path[0:5]=='s3://':
         return
     logging.info("mkdirs({})".format(path))
-    os.makedirs(path,exist_ok=True)
+    os.makedirs(path, exist_ok=True)
 
 
 def dsystem(x):
@@ -183,5 +183,5 @@ def dsystem(x):
     print("$ {}".format(x))
     r = os.system(x)
     if r!=0:
-        raise RuntimeError("{} RETURNED {}".format(x,r))
+        raise RuntimeError("{} RETURNED {}".format(x, r))
     return r

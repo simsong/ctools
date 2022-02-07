@@ -14,23 +14,25 @@ ttable is the main typesetting class. It builds an abstract representation of a 
 It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
-from typing import List, Dict, Any, Iterable
 
+from typing import List, Dict, Any, Iterable
 import os.path
-import sys
+import re
 import sqlite3
+import sys
+import xml.dom.minidom
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
-import xml.dom.minidom
-import re
 
-# not sure why this was put in, but it breaks calling tytable from this directory.
-# if __name__ == "__main__" or __package__=="":
-#    __package__ = "ctools"
+from os.path import abspath,dirname,basename
 
-sys.path.append(os.path.dirname(__file__))
+MY_DIR = dirname(__file__)
+
+if MY_DIR not in sys.path:
+    sys.path.append(MY_DIR)
 
 import latex_tools
+
 
 __version__ = "0.2.1"
 
@@ -116,7 +118,7 @@ def icomma(i):
 
 
 ################################################################
-### Legacy system follows
+# Legacy system follows
 ################################################################
 
 
@@ -234,7 +236,7 @@ class ttable:
     fontsize: int
 
     latex_colspec: Any
-    col_formatted_widths: List[int ]
+    col_formatted_widths: List[int]
 
     OPTION_LONGTABLE = 'longtable'
     OPTION_TABULARX = 'tabularx'
@@ -317,8 +319,8 @@ class ttable:
 
     def set_col_alignmnets(self, fmt):
         col = 0
-        for ch in re.split(r'(l)|(r)|(p\{[^}]*\})',fmt):
-            if isinstance(ch,str) and len(ch)>0:
+        for ch in re.split(r'(l)|(r)|(p\{[^}]*\})', fmt):
+            if isinstance(ch, str) and len(ch)>0:
                 if ch == 'r':
                     self.set_col_alignment(col, self.RIGHT)
                     col += 1
@@ -360,7 +362,7 @@ class ttable:
         self.data.append(Row(values, annotations=annotations))
 
     def add_raw(self, val, *, ncols):
-        self.data.append(Raw(val,ncols=ncols))
+        self.data.append(Raw(val, ncols=ncols))
 
     def ncols(self):
         """ Return the number of maximum number of cols in the data """

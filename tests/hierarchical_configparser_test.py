@@ -2,15 +2,15 @@
 #
 
 import os
+from os.path import dirname,abspath
 import sys
 import pytest
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+MYDIR=dirname( abspath( __file__))
+sys.path.append( dirname( MYDIR ))
 
-from ctools.hierarchical_configparser import *
+from hierarchical_configparser import *
 
-MYDIR=os.path.dirname(__file__)
 
 
 def fname(path):
@@ -215,3 +215,27 @@ def test_hierarchical_configparser6():
     assert hcf['d']['filename'] == 'hcf_file6'
     print("Explaination:")
     #hcf.explain(sys.stdout)
+
+
+def test_validator():
+    fname = MYDIR + "/hcf_validate_true.ini"
+    hcf = HierarchicalConfigParser()
+    hcf.read(fname, validate=True)
+    assert hcf['first']['colornumber']=='10'
+    assert hcf['first']['colornumber.re']==r'(\d+)'
+    assert hcf['first']['colornumber.required']=='True'
+
+    fname = MYDIR + "/hcf_validate_false1.ini"
+    hcf = HierarchicalConfigParser()
+    hcf.read(fname, validate=False)
+    assert hcf['first']['colornumber.re']==r'(\d+)'
+    assert hcf['first']['colornumber']=='10 eggs'
+    with pytest.raises(RegularExpressionValidationFailure):
+        hcf.validate()
+
+    fname = MYDIR + "/hcf_validate_false2.ini"
+    hcf = HierarchicalConfigParser()
+    hcf.read(fname, validate=False)
+    assert hcf['first']['colornumber.required']=='True'
+    with pytest.raises(RequiredOptionMissing):
+        hcf.validate()

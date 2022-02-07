@@ -9,21 +9,18 @@
 #
 # Currently we manually sync the two; perhaps it should be moved to ctools.
 
-import os
-import sys
 from pathlib import Path
+from subprocess import Popen, PIPE, call, check_call, check_output
 import json
+import logging
+import multiprocessing
+import os
+import subprocess
+import sys
+import time
 import urllib.request
 
-import subprocess
-from subprocess import Popen,PIPE,call,check_call,check_output
-import multiprocessing
-import time
-import logging
-
-# Bring in aws from the current directory
-sys.path.append( os.path.dirname(__file__))
-import aws
+from os.path import abspath,dirname,basename
 
 # Beware!  An error occurred (ThrottlingException) in complete_cluster_info()
 # when calling the ListInstances operation (reached max retries: 4): Rate exceeded
@@ -47,7 +44,7 @@ try:
     import ec2
 except ImportError as e:
     try:
-        sys.path.append( os.path.dirname(__file__) )
+        sys.path.append(os.path.dirname(__file__))
         import ec2
     except ImportError as e:
         raise RuntimeError("Cannot import ec2")
@@ -64,7 +61,7 @@ Status='Status'
 
 
 def show_credentials():
-    subprocess.call(['aws','configure','list'])
+    subprocess.call(['aws', 'configure', 'list'])
 
 def get_url(url):
     with urllib.request.urlopen(url) as response:
@@ -77,12 +74,14 @@ def decode_user_data(user_data_raw):
     except json.decoder.JSONDecodeError as e:
         pass
     try:
-        import yaml,gzip,base64
+        import yaml
+        import gzip
+        import base64
         # In later EMR version Amazon moved to distributing this as a YAML file
         y = yaml.load(user_data_raw, Loader=yaml.SafeLoader)
         return json.loads(gzip.decompress(base64.b64decode(y['write_files'][0]['content'])))
     except RuntimeError as e:
-        print(str(e),file=sys.stderr)
+        print(str(e), file=sys.stderr)
         raise RuntimeError("Cannot find user_data in YAML file")
 
 def user_data():
@@ -98,7 +97,7 @@ def user_data():
 
 
 def releaseLabel():
-    return json.loads(open("/emr/instance-controller/lib/info/extraInstanceData.json","r").read())['releaseLabel']
+    return json.loads(open("/emr/instance-controller/lib/info/extraInstanceData.json", "r").read())['releaseLabel']
 
 def encryptionEnabled():
     return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
@@ -112,7 +111,7 @@ def isSlave():
     return user_data()['isSlave']
 
 def decode_status(meminfo):
-    return { line[:line.find(":")] : line[line.find(":")+1:].strip() for line in meminfo.split("\n") }
+    return {line[:line.find(":")]: line[line.find(":") +1:].strip() for line in meminfo.split("\n")}
 
 def clusterId():
     return user_data()['clusterId']
@@ -122,11 +121,11 @@ def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     """run the command and return the JSON output. implements retries"""
     for retries in range(retries):
         try:
-            rcmd = ['aws','emr','--output','json'] + cmd
+            rcmd = ['aws', 'emr', '--output', 'json'] + cmd
             if debug:
                 print(f"aws_emr_cmd pid{os.getpid()}: {rcmd}")
-            p = subprocess.Popen(rcmd,encoding='utf-8',stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-            (out,err) = p.communicate()
+            p = subprocess.Popen(rcmd, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (out, err) = p.communicate()
             if p.poll()!=0:
                 raise subprocess.CalledProcessError(f"p={p.poll()})")
             if decode:
@@ -134,7 +133,7 @@ def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
             else:
                 return p.poll()
         except subprocess.CalledProcessError as e:
-            delay = (2**retries * RETRY_MS_DELAY/1000)
+            delay = (2**retries * RETRY_MS_DELAY /1000)
             logging.warning(f"aws emr subprocess.CalledProcessError. "
                             f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
@@ -144,22 +143,22 @@ def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     raise e
 
 
-def list_clusters(*,state=None):
+def list_clusters(*, state=None):
     """Returns the AWS Dictionary of cluster information"""
     cmd = ['list-clusters']
     if state is not None:
-        cmd += ['--cluster-states',state]
+        cmd += ['--cluster-states', state]
     data = aws_emr_cmd(cmd)
     return data['Clusters']
 
 def describe_cluster(clusterId):
-    data = aws_emr_cmd(['describe-cluster','--cluster',clusterId])
+    data = aws_emr_cmd(['describe-cluster', '--cluster', clusterId])
     return data['Cluster']
 
-def list_instances(clusterId = None):
+def list_instances(clusterId=None):
     if clusterId is None:
         clusterId = clusterId()
-    data = aws_emr_cmd(['list-instances','--cluster-id',clusterId])
+    data = aws_emr_cmd(['list-instances', '--cluster-id', clusterId])
     return data['Instances']
 
 def add_cluster_info(cluster):
@@ -180,7 +179,7 @@ def add_cluster_info(cluster):
         pass
     return cluster
 
-def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
+def complete_cluster_info(workers=DEFAULT_WORKERS, terminated=False):
     """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
     information about the terminated clusters as well.
@@ -190,10 +189,10 @@ def complete_cluster_info(workers=DEFAULT_WORKERS,terminated=False):
         if terminated==False and cluster['Status']['State']=='TERMINATED':
             clusters.remove(cluster)
     with multiprocessing.Pool(workers) as p:
-        clusters = p.map(add_cluster_info,clusters)
+        clusters = p.map(add_cluster_info, clusters)
 
     return clusters
 
 
 if __name__=="__main__":
-    print("user data test: ",user_data())
+    print("user data test: ", user_data())

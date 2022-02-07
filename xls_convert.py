@@ -1,11 +1,14 @@
 import os
 import os.path
-import sys,os,glob
+import sys
+import os
+import glob
 import warnings
 
 class NoExcel(Exception):
     def __init__(self, msg=''):
         Exception.__init__(self, msg)
+
     def __repr__(self):
         return self.message
     __str__ = __repr__
@@ -19,19 +22,19 @@ class NoExcel(Exception):
 # http://stackoverflow.com/questions/24023518/using-python-to-autofit-all-columns-of-an-excel-sheet
 
 # FileFormat numbers
-format_number = {'.xlsx':51,
-                 '.xlsm':52,
-                 '.xls':56,
-                 '.xlsb':50,
-                 '.pdf':57}
+format_number = {'.xlsx': 51,
+                 '.xlsm': 52,
+                 '.xls': 56,
+                 '.xlsb': 50,
+                 '.pdf': 57}
 
 def is_xls_xml(infile):
     if os.path.splitext(infile)[1].lower()=='.xml':
-        with open(infile,"r") as f:
+        with open(infile, "r") as f:
             lines = f.read(65536).split("\n")[0:5]
             if (len(lines)>3 and
                 lines[0].strip()=='<?xml version="1.0"?>' and
-                lines[1].strip()=='<?mso-application progid="Excel.Sheet"?>'):
+                    lines[1].strip()=='<?mso-application progid="Excel.Sheet"?>'):
                 return True
     return False
 
@@ -40,20 +43,20 @@ def is_xls_xml(infile):
 # Uses Excel to convert to .xlsx and to .pdf
 # https://stackoverflow.com/questions/16683376/print-chosen-worksheets-in-excel-files-to-pdf-in-python
 # https://github.com/mwhit74/excel/blob/master/excel_to_pdf.py
-def excel_convert(infile,out_ext):
+def excel_convert(infile, out_ext):
     import win32com.client
 
     if out_ext not in format_number:
-        raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
+        raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext, format_number.keys()))
 
     infile_fullpath = os.path.abspath(infile)
-    (base,in_ext) = os.path.splitext(infile_fullpath)
+    (base, in_ext) = os.path.splitext(infile_fullpath)
 
     wb = None
     if not os.path.isfile(infile_fullpath):
         raise FileNotFoundError(infile_fullpath)
 
-    outfile    = base+out_ext
+    outfile    = base +out_ext
     if os.path.exists(outfile):
         raise FileExistsError(outfile)
 
@@ -98,7 +101,7 @@ def excel_convert(infile,out_ext):
 
             excel.PrintCommunication    = True
 
-    print("{} => {}".format(infile_fullpath,outfile))
+    print("{} => {}".format(infile_fullpath, outfile))
 
     # Select all worksheets for the save process
     wb.Worksheets.Select()
@@ -107,6 +110,7 @@ def excel_convert(infile,out_ext):
     # Excel quits properly for PDF conversion but not other types
     excel.Quit()
     return True
+
 
 if __name__=="__main__":
     import argparse
@@ -117,6 +121,6 @@ if __name__=="__main__":
     args = parser.parse_args()
     if "*" or "?" in args.infile:
         for fn in glob.glob(args.infile):
-            excel_convert(fn,args.out_ext)
+            excel_convert(fn, args.out_ext)
     else:
-        excel_convert(args.infile,args.out_ext)
+        excel_convert(args.infile, args.out_ext)

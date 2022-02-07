@@ -22,16 +22,17 @@ class StackSurveillance:
         while True:
             frame = sys._current_frames().get(self.thread.ident, None)
             if frame:
-                print(frame,file=self.file)
-                print(frame.f_code.co_filename, frame.f_code.co_name, frame.f_code.co_firstlineno,file=self.file)
+                print(frame, file=self.file)
+                print(frame.f_code.co_filename, frame.f_code.co_name, frame.f_code.co_firstlineno, file=self.file)
                 if self.callback is not None:
                     self.callback(frame)
 
 
 if __name__=="__main__":
     print("demo program to show use with a slow fibinacci program.")
+
     def slow_fib(a):
         time.sleep(1)
         if a>2:
-            return slow_fib(a-1)+slow_fib(a-2)
+            return slow_fib(a -1) +slow_fib(a -2)
         return 1
