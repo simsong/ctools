@@ -10,10 +10,12 @@ import os
 import logging
 import sys
 import threading
+import json
 import sqlite3
 import socket
 import re
 import resource
+import pymysql
 
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
@@ -249,7 +251,6 @@ connection. """
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
         ret   = {}
-<<<<<<< HEAD
         if filename is not None:
             with open( filename ) as f:
                 for line in f:
@@ -264,18 +265,6 @@ connection. """
         for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
             if name not in ret:
                 ret[name] = os.environ[name]
-=======
-        with open(filename) as f:
-            for line in f:
-                m = DB_RE.search(line.strip())
-                if m:
-                    name = m.group(1)
-                    val  = m.group(2)
-                    # Check for quotes
-                    if val[0] in "'\"" and val[0]==val[-1]:
-                        val = val[1:-1]
-                    ret[name] = val
->>>>>>> origin/master
         return ret
 
     @staticmethod
@@ -380,7 +369,6 @@ class DBMySQL(DBSQL):
 
         debug = (debug or auth.debug)
 
-        errors = sql_errors()
         for i in range(1, RETRIES):
             try:
                 try:
@@ -424,8 +412,8 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (pymysql.errors.ProgrammingError, pymysql.errors.InternalError,
-                        pymysql.errors.IntegrityError, pymysql.errors.InterfaceError) as e:
+                except (pymysql.ProgrammingError, pymysql.InternalError,
+                        pymysql.IntegrityError, pymysql.InterfaceError) as e:
                     if e.args[0] in ignore:
                         return DBMySQL.IGNORED
                     if e.args[0] not in nolog:
@@ -444,6 +432,8 @@ class DBMySQL(DBSQL):
                     raise e
 
                 verb = cmd.split()[0].upper()
+                if debug:
+                    logging.warning(" verb=%s", verb)
                 if verb in ['SELECT', 'DESCRIBE', 'SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
@@ -465,8 +455,10 @@ class DBMySQL(DBSQL):
                 c.close()  # close the cursor
                 if i>2:
                     logging.warning(f"Success with i={i}")
+                if debug:
+                    logging.warning(" result=%s", json.dumps(result))
                 return result
-            except pymysql.errors.OperationalError as e:
+            except pymysql.OperationalError as e:
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise(e)
@@ -481,7 +473,7 @@ class DBMySQL(DBSQL):
                     logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
-            except pymysql.errors.InternalError as e:
+            except pymysql.InternalError as e:
                 se = str(e)
                 if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
                     logging.error(se)
