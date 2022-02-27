@@ -28,7 +28,7 @@ def test_get_env():
     assert len(d)==2
     assert d['FOO'] == 'bar'
     assert d['NOFOO'] == 'nope'
-    
+
 def test_get_env2():
     ret = env.get_env(TEST_BASH_FILE)
     assert ret['FIRST']=='1'
@@ -54,7 +54,7 @@ def test_searchFile():
     env_in_etc            = "/etc/env.py"
     assert env.JSONConfigReader.searchFile(env_in_test_files_dir) == abspath(env.__file__)
     assert env.JSONConfigReader.searchFile(env_in_etc) == abspath(env.__file__)
-    assert env.JSONConfigReader.searchFile("/etc/motd") == "/etc/motd"
+    assert env.JSONConfigReader.searchFile("/etc/hosts") == "/etc/hosts"
 
 
 def test_JSONConfigReader():

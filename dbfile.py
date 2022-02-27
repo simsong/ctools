@@ -309,15 +309,22 @@ connection. """
                     ret[name] = val
         return ret
 
-    @staticmethod
-    def FromEnv(filename):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
+    auth_cache = {}
+
+    @classmethod
+    def FromEnv(this, filename, cache=True):
+        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
+        if cache and filename in this.auth_cache:
+            return this.auth_cache[filename]
         env = DBMySQLAuth.GetBashEnv(filename)
         try:
-            return DBMySQLAuth(host = env[MYSQL_HOST],
+            auth = DBMySQLAuth(host = env[MYSQL_HOST],
                                user = env[MYSQL_USER],
                                password = env[MYSQL_PASSWORD],
                                database = env[MYSQL_DATABASE])
+            if cache:
+                this.auth_cache[filename] = auth
+            return auth
         except KeyError as e:
             logging.error("filename: %s",filename)
             for var in env:
@@ -507,6 +514,9 @@ class DBMySQL(DBSQL):
                     raise(e)
                 elif e.args[0]==1049:
                     print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
+                    raise(e)
+                elif e.args[0]==1298:
+                    print(e.args[1],file=sys.stderr)
                     raise(e)
                 if i>1:
                     logging.warning(e)

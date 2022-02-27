@@ -13,9 +13,9 @@ import logging
 import time
 import platform
 import warnings
+from os.path import dirname,abspath
 
-#sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append( dirname(dirname(abspath(__file__))))
 
 LOCAL1_LOG = '/var/log/local1.log'
 
