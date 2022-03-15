@@ -10,10 +10,12 @@ import os
 import logging
 import sys
 import threading
+import json
 import sqlite3
 import socket
 import re
 import resource
+import pymysql
 
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
@@ -107,54 +109,7 @@ SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
 
 sys.path.append(dirname(dirname(abspath(__file__))))
 
-def sql_InternalError():
-    try:
-        import mysql.connector as mysql
-        return RuntimeError
-    except ImportError as e:
-        pass
-    try:
-        import pymysql
-        import pymysql as mysql
-        return pymysql.err.InternalError
-    except ImportError as e:
-        pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
-    raise ImportError()
-
-def sql_errors():
-    try:
-        import mysql.connector.errors as errors
-        return errors
-    except ImportError as e:
-        pass
-
-    try:
-        import pymysql.err as errors
-        return errors
-    except ImportError as e:
-        pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
-    raise ImportError()
-
-
-def sql_MySQLError():
-    import pymysql
-    return pymysql.MySQLError
-
-def sql_mysql():
-    try:
-        import mysql
-        return mysql
-    except ImportError as e:
-        pass
-    try:
-        import pymysql
-        return pymysql
-    except ImportError as e:
-        pass
-    print(f"Please install MySQL connector with 'conda install mysql-connector-python' or the pure-python pymysql connector", file=sys.stderr)
-    raise ImportError()
+# 2022-02-06 update to be pure pymysql
 
 def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
@@ -169,7 +124,6 @@ class DBSQL(ABC):
     def __init__(self, dicts=True, debug=False):
         self.dicts = dicts
         self.debug = debug
-        self.MySQLError = sql_MySQLError()
 
     def __enter__(self):
         return self
@@ -184,7 +138,7 @@ class DBSQL(ABC):
             t0 = time.time()
         try:
             res = self.conn.cursor().execute(cmd, *args, **kwargs)
-        except (sqlite3.Error, self.MySQLError) as e:
+        except (sqlite3.Error, pymysql.MySQLError) as e:
             print(cmd, *args, file=sys.stderr)
             print(e, file=sys.stderr)
             exit(1)
@@ -209,7 +163,7 @@ class DBSQL(ABC):
                     print(f"{line};", file=sys.stderr)
                 try:
                     c.execute(line)
-                except (sqlite3.Error, self.MySQLError) as e:
+                except (sqlite3.Error, pymysql.MySQLError) as e:
                     print("SQL:", line, file=sys.stderr)
                     print("Error:", e, file=sys.stderr)
                     exit(1)
@@ -296,28 +250,39 @@ connection. """
     def GetBashEnv(filename):
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
-        ret = {}
-        with open(filename) as f:
-            for line in f:
-                m = DB_RE.search(line.strip())
-                if m:
-                    name = m.group(1)
-                    val  = m.group(2)
-                    # Check for quotes
-                    if val[0] in "'\"" and val[0]==val[-1]:
-                        val = val[1:-1]
-                    ret[name] = val
+        ret   = {}
+        if filename is not None:
+            with open( filename ) as f:
+                for line in f:
+                    m = DB_RE.search(line.strip())
+                    if m:
+                        name = m.group(1)
+                        val  = m.group(2)
+                        # Check for quotes
+                        if val[0] in "'\"" and val[0]==val[-1]:
+                            val = val[1:-1]
+                        ret[name] = val
+        for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
+            if name not in ret:
+                ret[name] = os.environ[name]
         return ret
 
-    @staticmethod
-    def FromEnv(filename):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
+    auth_cache = {}
+
+    @classmethod
+    def FromEnv(this, filename, cache=True):
+        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
+        if cache and filename in this.auth_cache:
+            return this.auth_cache[filename]
         env = DBMySQLAuth.GetBashEnv(filename)
         try:
-            return DBMySQLAuth(host = env[MYSQL_HOST],
+            auth = DBMySQLAuth(host = env[MYSQL_HOST],
                                user = env[MYSQL_USER],
                                password = env[MYSQL_PASSWORD],
                                database = env[MYSQL_DATABASE])
+            if cache:
+                this.auth_cache[filename] = auth
+            return auth
         except KeyError as e:
             logging.error("filename: %s",filename)
             for var in env:
@@ -360,9 +325,7 @@ class DBMySQL(DBSQL):
         super().__init__(*args, **kwargs)
         self.auth  = auth
         self.debug = self.debug or auth.debug
-        self.mysql = sql_mysql()
-        self.internalError = sql_InternalError()
-        self.conn = self.mysql.connect(host=auth.host,
+        self.conn = pymysql.connect(host=auth.host,
                                        database=auth.database,
                                        user=auth.user,
                                        password=auth.password,
@@ -372,7 +335,7 @@ class DBMySQL(DBSQL):
         # Census standard TZ is America/New_York
         try:
             self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except self.internalError as e:
+        except pymysql.err.InternalError as e:
             pass
 
     RETRIES = 10
@@ -413,7 +376,6 @@ class DBMySQL(DBSQL):
 
         debug = (debug or auth.debug)
 
-        errors = sql_errors()
         for i in range(1, RETRIES):
             try:
                 try:
@@ -457,7 +419,8 @@ class DBMySQL(DBSQL):
                     if (rowcount is not None) and (c.rowcount!=rowcount):
                         raise RuntimeError(f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (errors.ProgrammingError, errors.InternalError, errors.IntegrityError, errors.InterfaceError) as e:
+                except (pymysql.ProgrammingError, pymysql.InternalError,
+                        pymysql.IntegrityError, pymysql.InterfaceError) as e:
                     if e.args[0] in ignore:
                         return DBMySQL.IGNORED
                     if e.args[0] not in nolog:
@@ -476,6 +439,8 @@ class DBMySQL(DBSQL):
                     raise e
 
                 verb = cmd.split()[0].upper()
+                if debug:
+                    logging.warning(" verb=%s", verb)
                 if verb in ['SELECT', 'DESCRIBE', 'SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
@@ -497,8 +462,10 @@ class DBMySQL(DBSQL):
                 c.close()  # close the cursor
                 if i>2:
                     logging.warning(f"Success with i={i}")
+                if debug:
+                    logging.warning(" result=%s", json.dumps(result))
                 return result
-            except errors.OperationalError as e:
+            except pymysql.OperationalError as e:
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise(e)
@@ -508,12 +475,15 @@ class DBMySQL(DBSQL):
                 elif e.args[0]==1049:
                     print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
                     raise(e)
+                elif e.args[0]==1298:
+                    print(e.args[1],file=sys.stderr)
+                    raise(e)
                 if i>1:
                     logging.warning(e)
                     logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
-            except errors.InternalError as e:
+            except pymysql.InternalError as e:
                 se = str(e)
                 if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
                     logging.error(se)
