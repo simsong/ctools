@@ -225,7 +225,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self, fname=None, *args, **kwargs):
+    def __init__(self, time_zone=None, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
@@ -357,7 +357,7 @@ class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
     def __init__(self, auth, time_zone=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(time_zone=time_zone, *args, **kwargs)
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
