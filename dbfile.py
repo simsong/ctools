@@ -166,7 +166,7 @@ def hostname():
 
 
 class DBSQL(ABC):
-    def __init__(self, dicts=True, debug=False):
+    def __init__(self, dicts=True, time_zone=None, debug=False):
         self.dicts = dicts
         self.debug = debug
         self.MySQLError = sql_MySQLError()
@@ -225,7 +225,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self, fname=None, *args, **kwargs):
+    def __init__(self, time_zone=None, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
@@ -356,8 +356,8 @@ RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
-    def __init__(self, auth, *args, **kwargs):
-        super().__init__(*args, time_zone=None, **kwargs)
+    def __init__(self, auth, time_zone=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
