@@ -296,7 +296,7 @@ connection. """
     def GetBashEnv(filename):
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
-        ret   = {}
+        ret = {}
         with open(filename) as f:
             for line in f:
                 m = DB_RE.search(line.strip())
