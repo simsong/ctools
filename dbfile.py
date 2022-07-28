@@ -357,7 +357,7 @@ class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
     def __init__(self, auth, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, time_zone=None, **kwargs)
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
@@ -369,11 +369,13 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        # Census standard TZ is America/New_York
-        try:
-            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except self.internalError as e:
-            pass
+
+        if time_zone:
+            try:
+                self.cursor().execute('SET @@session.time_zone = "%s', time_zone)
+                pass
+            except self.internalError as e:
+                pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
