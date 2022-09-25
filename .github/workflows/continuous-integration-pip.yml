@@ -67,11 +67,7 @@ jobs:
           make coverage
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-20.04' && matrix.python-version == '3.9'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         uses: codecov/codecov-action@v1
-<<<<<<< HEAD
-=======
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
->>>>>>> main
