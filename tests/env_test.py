@@ -6,7 +6,7 @@ import io
 from os.path import dirname,basename,abspath
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
-from ctools.env import env
+import ctools.env as env
 
 ENV_TEST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "env_test_file.bash")
 TEST_FILES_DIR = os.path.join(dirname(abspath(__file__)), "test_files")
