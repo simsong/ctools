@@ -25,11 +25,17 @@ and search for the value of 'name' going to the current environment (e.g. E1), a
 
 import os
 import re
-import pwd
 import sys
 import glob
 import json
 import logging
+
+try:
+    import pwd
+except ImportError:
+    pass
+
+
 from os.path import dirname,basename,abspath
 
 VARS_RE   = re.compile(r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
@@ -85,8 +91,11 @@ def get_census_env():
     return get_env(profile_dir = '/etc/profile.d', prefix = 'census')
 
 def get_home():
-    """Return the current user's home directory without using the HOME variable. """
-    return pwd.getpwuid(os.getuid()).pw_dir
+    """Return the current user's home directory without using the HOME variable on Unix; use HOME on windows. """
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except NameError:
+        return os.environ['HOME']
 
 def dump(out):
     print("==== ENV ====",file=out)
