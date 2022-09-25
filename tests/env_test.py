@@ -47,12 +47,11 @@ def test_dump():
     assert "FOO=BAR" in f.getvalue()
 
 
+
 def test_searchFile():
     env_in_test_files_dir = os.path.join(TEST_FILES_DIR,"env.py")
-    env_in_etc            = "/etc/env.py"
     assert env.JSONConfigReader.searchFile(env_in_test_files_dir) == abspath(env.__file__)
     assert env.JSONConfigReader.searchFile(env_in_etc) == abspath(env.__file__)
-    assert env.JSONConfigReader.searchFile("/etc/motd") == "/etc/motd"
 
 
 def test_JSONConfigReader():
