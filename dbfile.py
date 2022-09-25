@@ -166,7 +166,7 @@ def hostname():
 
 
 class DBSQL(ABC):
-    def __init__(self, dicts=True, debug=False):
+    def __init__(self, dicts=True, time_zone=None, debug=False):
         self.dicts = dicts
         self.debug = debug
         self.MySQLError = sql_MySQLError()
@@ -296,7 +296,7 @@ connection. """
     def GetBashEnv(filename):
         """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
         DB_RE = re.compile("export (.+)=(.+)")
-        ret   = {}
+        ret = {}
         with open(filename) as f:
             for line in f:
                 m = DB_RE.search(line.strip())
@@ -356,8 +356,8 @@ RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
-    def __init__(self, auth, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, auth, time_zone=None, *args, **kwargs):
+        super().__init__(*args, **kwargs) # test
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
@@ -369,11 +369,13 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        # Census standard TZ is America/New_York
-        try:
-            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except self.internalError as e:
-            pass
+
+        if time_zone:
+            try:
+                self.cursor().execute('SET @@session.time_zone = "%s', time_zone)
+                pass
+            except self.internalError as e:
+                pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
