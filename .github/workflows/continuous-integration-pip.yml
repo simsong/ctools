@@ -12,13 +12,33 @@ name: CI (pytest and c++)
 on: [push, pull_request]
 
 jobs:
-  build:
+  # https://github.com/marketplace/actions/skip-duplicate-actions
+  pre_job:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['windows-latest', 'macos-latest', 'ubuntu-latest']
+        python-version: [3.9]
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v4
+        with:
+          # All of these options are optional, so you can remove them if you are happy with the defaults
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+          paths_ignore: '["**/README.md", "**/docs/**"]'
+          do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
+
+  main_job:
+    needs: pre_job
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: ['windows-latest', 'ubuntu-latest', 'macos-latest']
         python-version: [3.9]
-
-    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
