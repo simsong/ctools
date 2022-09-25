@@ -1,0 +1,9 @@
+boto3
+bottle
+pylint
+pytest
+pytest-cov
+pytest-env
+markdown
+pymysql
+coverage

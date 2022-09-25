@@ -357,7 +357,7 @@ class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
     def __init__(self, auth, time_zone=None, *args, **kwargs):
-        super().__init__(time_zone=time_zone, *args, **kwargs)
+        super().__init__(*args, **kwargs) # test
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.mysql = sql_mysql()
