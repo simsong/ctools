@@ -225,7 +225,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self, fname=None, *args, **kwargs):
+    def __init__(self, time_zone=None, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
