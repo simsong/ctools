@@ -4,11 +4,9 @@ import ctools.env
 import sys
 import io
 from os.path import dirname,basename,abspath
-import env
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
+from ctools.env import env
 
 ENV_TEST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "env_test_file.bash")
 TEST_FILES_DIR = os.path.join(dirname(abspath(__file__)), "test_files")
@@ -28,7 +26,7 @@ def test_get_env():
     assert len(d)==2
     assert d['FOO'] == 'bar'
     assert d['NOFOO'] == 'nope'
-    
+
 def test_get_env2():
     ret = env.get_env(TEST_BASH_FILE)
     assert ret['FIRST']=='1'

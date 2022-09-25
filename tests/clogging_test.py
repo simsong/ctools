@@ -14,14 +14,13 @@ import time
 import platform
 import warnings
 
-from os.path import abspath
-from os.path import dirname
+from os.path import abspath,dirname,basename
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
+import ctools.clogging as clogging
 
 LOCAL1_LOG = '/var/log/local1.log'
 
-import ctools.clogging as clogging
 
 def test_logging_to_syslog():
     if platform.system()=='Windows' or platform.system()=='Darwin':

@@ -12,10 +12,9 @@ import platform
 import warnings
 import platform
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-from ctools.gzfile import GZFile 
+from ctools.gzfile import GZFile
 
 TEST_STRING="this is a test\n"
 
@@ -35,4 +34,3 @@ def test_gzfile():
         data = f.read()
     assert data==TEST_STRING
     os.unlink("test.gz")
-        
