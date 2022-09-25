@@ -5,10 +5,8 @@ import sys
 import io
 from os.path import dirname,basename,abspath
 
-#sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-#sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
-from .. import env
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
+import ctools.env as env
 
 ETC_TEST_FILE = '/etc/hosts'    # a file that should always be present
 ENV_TEST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "env_test_file.bash")
@@ -50,12 +48,21 @@ def test_dump():
     assert "FOO=BAR" in f.getvalue()
 
 
+
 def test_searchFile():
     env_in_test_files_dir = os.path.join(TEST_FILES_DIR,"env.py")
+<<<<<<< HEAD
     env_in_etc            = "/etc/env.py"
     assert env.JSONConfigReader.searchFile( env_in_test_files_dir) == abspath( env.__file__ )
     assert env.JSONConfigReader.searchFile( env_in_etc ) == abspath( env.__file__)
     assert env.JSONConfigReader.searchFile( ETC_TEST_FILE ) == ETC_TEST_FILE
+=======
+    assert env.JSONConfigReader.searchFile(env_in_test_files_dir) == abspath(env.__file__)
+    # fix these to use a file known to exist
+    #env_in_etc            = "/etc/env.py"
+    #assert env.JSONConfigReader.searchFile(env_in_etc) == abspath(env.__file__)
+    #assert env.JSONConfigReader.searchFile("/etc/motd") == "/etc/motd"
+>>>>>>> main
 
 
 def test_JSONConfigReader():

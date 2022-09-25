@@ -121,7 +121,7 @@ def hostname():
 
 
 class DBSQL(ABC):
-    def __init__(self, dicts=True, debug=False):
+    def __init__(self, dicts=True, time_zone=None, debug=False):
         self.dicts = dicts
         self.debug = debug
 
@@ -179,7 +179,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self, fname=None, *args, **kwargs):
+    def __init__(self, time_zone=None, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
@@ -321,8 +321,8 @@ RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
-    def __init__(self, auth, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, auth, time_zone=None, *args, **kwargs):
+        super().__init__(*args, **kwargs) # test
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.conn = pymysql.connect(host=auth.host,
@@ -332,11 +332,12 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        # Census standard TZ is America/New_York
-        try:
-            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except pymysql.err.InternalError as e:
-            pass
+        if time_zone:
+            try:
+                self.cursor().execute('SET @@session.time_zone = "%s', time_zone)
+                pass
+            except self.internalError as e:
+                pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1

@@ -2,16 +2,15 @@
 #
 
 import os
-from os.path import dirname,abspath
 import sys
 import pytest
+from os.path import dirname,basename,abspath
 
 MYDIR=dirname( abspath( __file__))
-sys.path.append( dirname( MYDIR ))
 
-from hierarchical_configparser import *
+sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-
+from ctools.hierarchical_configparser import *
 
 def fname(path):
     return os.path.join( os.path.abspath(MYDIR),path)
