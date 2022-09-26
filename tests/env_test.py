@@ -51,18 +51,11 @@ def test_dump():
 
 def test_searchFile():
     env_in_test_files_dir = os.path.join(TEST_FILES_DIR,"env.py")
-<<<<<<< HEAD
-    env_in_etc            = "/etc/env.py"
-    assert env.JSONConfigReader.searchFile( env_in_test_files_dir) == abspath( env.__file__ )
-    assert env.JSONConfigReader.searchFile( env_in_etc ) == abspath( env.__file__)
-    assert env.JSONConfigReader.searchFile( ETC_TEST_FILE ) == ETC_TEST_FILE
-=======
     assert env.JSONConfigReader.searchFile(env_in_test_files_dir) == abspath(env.__file__)
     # fix these to use a file known to exist
     #env_in_etc            = "/etc/env.py"
     #assert env.JSONConfigReader.searchFile(env_in_etc) == abspath(env.__file__)
     #assert env.JSONConfigReader.searchFile("/etc/motd") == "/etc/motd"
->>>>>>> main
 
 
 def test_JSONConfigReader():
