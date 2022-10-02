@@ -40,6 +40,5 @@ def get_instance_tags(instanceId=None):
         taglist = response['Reservations'][0]['Instances'][0]['Tags']
         return {d['Key']: d['Value'] for d in taglist}
 
-
 if __name__=="__main__":
     print("Instance tags:\n", json.dumps(get_instance_tags(), indent=4))

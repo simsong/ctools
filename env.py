@@ -1,4 +1,10 @@
-"""Interface between environment variables, configuration variables, and Python.
+"""
+env.py:
+
+Read a bash script and learn the environment variables into a python dictionary.
+This allows MySQL database host, database, username and password to be set in
+environment variables for both bash scripts and Python programs.
+
 
 Can read environment variables in bash scripts such as:
 
@@ -19,11 +25,17 @@ and search for the value of 'name' going to the current environment (e.g. E1), a
 
 import os
 import re
-import pwd
 import sys
 import glob
 import json
 import logging
+
+try:
+    import pwd
+except ImportError:
+    pass
+
+
 from os.path import dirname,basename,abspath
 
 VARS_RE   = re.compile(r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
@@ -79,15 +91,16 @@ def get_census_env():
     return get_env(profile_dir = '/etc/profile.d', prefix = 'census')
 
 def get_home():
-    """Return the current user's home directory without using the HOME variable. """
-    return pwd.getpwuid(os.getuid()).pw_dir
-
+    """Return the current user's home directory without using the HOME variable on Unix; use HOME on windows. """
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except NameError:
+        return os.environ['HOME']
 
 def dump(out):
     print("==== ENV ====",file=out)
     for (key,val) in os.environ.items():
         print(f"{key}={val}",file=out)
-
 
 class JSONConfigReader:
     @classmethod
@@ -167,3 +180,15 @@ class JSONConfigReader:
                 pass
         print(f"config:\n{json.dumps(self.config,default=str,indent=4)}",file=sys.stderr)
         raise KeyError(f"{variable_name} not in {check} or '*' in {self.path}")
+
+if __name__=="__main__":
+    """Read a file and print the learned variables"""
+    import argparse
+    parser = argparse.ArgumentParser(description='Import the Digital Corpora logs.',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("envfile",help="File with environment variables set by bash")
+    args = parser.parse_args()
+
+    d = get_vars(args.envfile)
+    for (k,v) in d.items():
+        print(f"{k}={v}")
