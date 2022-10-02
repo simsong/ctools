@@ -369,11 +369,6 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        # Census standard TZ is America/New_York
-        try:
-            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except self.internalError as e:
-            pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
@@ -507,6 +502,10 @@ class DBMySQL(DBSQL):
                     raise(e)
                 elif e.args[0]==1049:
                     print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
+                    raise(e)
+                elif e.args[0]==1242:
+                    print(f"Subquery returns more than 1 row: {cmd}",file=sys.stderr)
+                    print(e,dir(e))
                     raise(e)
                 if i>1:
                     logging.warning(e)
