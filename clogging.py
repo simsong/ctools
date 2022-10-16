@@ -67,8 +67,8 @@ DEVLOG_MAC = "/var/run/syslog"
 
 # YEAR is used in callers
 YEAR=str(datetime.datetime.now().year)
-LOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 SYSLOG_FORMAT="%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+LOG_FORMAT="%(asctime)s " + SYSLOG_FORMAT
 
 # Global state variables. Keep track as to whether or not syslog
 # handler was added and whether or not the basicConfig was setup.
