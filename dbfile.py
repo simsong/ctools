@@ -303,6 +303,13 @@ connection. """
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
+    @staticmethod
+    def FromConfigFile(fname, section, debug=None):
+        config = configparser.ConfigParser()
+        config.read(fname)
+        return self.FromConfig(config[section], debug=debug)
+
+
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db
 
