@@ -6,7 +6,9 @@ import io
 from os.path import dirname,basename,abspath
 import env
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
@@ -28,7 +30,7 @@ def test_get_env():
     assert len(d)==2
     assert d['FOO'] == 'bar'
     assert d['NOFOO'] == 'nope'
-    
+
 def test_get_env2():
     ret = env.get_env(TEST_BASH_FILE)
     assert ret['FIRST']=='1'
