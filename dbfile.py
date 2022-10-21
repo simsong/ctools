@@ -121,7 +121,7 @@ def hostname():
 
 
 class DBSQL(ABC):
-    def __init__(self, dicts=True, debug=False):
+    def __init__(self, dicts=True, time_zone=None, debug=False):
         self.dicts = dicts
         self.debug = debug
 
@@ -179,7 +179,7 @@ class DBSQL(ABC):
 
 
 class DBSqlite3(DBSQL):
-    def __init__(self, fname=None, *args, **kwargs):
+    def __init__(self, time_zone=None, fname=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
             self.conn = sqlite3.connect(fname)
@@ -267,15 +267,22 @@ connection. """
                 ret[name] = os.environ[name]
         return ret
 
-    @staticmethod
-    def FromEnv(filename):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script"""
+    auth_cache = {}
+
+    @classmethod
+    def FromEnv(this, filename, cache=True):
+        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
+        if cache and filename in this.auth_cache:
+            return this.auth_cache[filename]
         env = DBMySQLAuth.GetBashEnv(filename)
         try:
-            return DBMySQLAuth(host = env[MYSQL_HOST],
+            auth = DBMySQLAuth(host = env[MYSQL_HOST],
                                user = env[MYSQL_USER],
                                password = env[MYSQL_PASSWORD],
                                database = env[MYSQL_DATABASE])
+            if cache:
+                this.auth_cache[filename] = auth
+            return auth
         except KeyError as e:
             logging.error("filename: %s",filename)
             for var in env:
@@ -296,6 +303,13 @@ connection. """
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
+    @staticmethod
+    def FromConfigFile(fname, section, debug=None):
+        config = configparser.ConfigParser()
+        config.read(fname)
+        return self.FromConfig(config[section], debug=debug)
+
+
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db
 
@@ -314,8 +328,8 @@ RETRY_DELAY_TIME = 1
 class DBMySQL(DBSQL):
     """MySQL Database Connection"""
 
-    def __init__(self, auth, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, auth, time_zone=None, *args, **kwargs):
+        super().__init__(*args, **kwargs) # test
         self.auth  = auth
         self.debug = self.debug or auth.debug
         self.conn = pymysql.connect(host=auth.host,
@@ -325,11 +339,6 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        # Census standard TZ is America/New_York
-        try:
-            self.cursor().execute('SET @@session.time_zone = "America/New_York"')
-        except pymysql.err.InternalError as e:
-            pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
@@ -467,6 +476,12 @@ class DBMySQL(DBSQL):
                     raise(e)
                 elif e.args[0]==1049:
                     print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
+                    raise(e)
+                elif e.args[0]==1242:
+                    print(f"Subquery returns more than 1 row: {cmd}",file=sys.stderr)
+                    raise(e)
+                elif e.args[0]==1298:
+                    print(e.args[1],file=sys.stderr)
                     raise(e)
                 if i>1:
                     logging.warning(e)

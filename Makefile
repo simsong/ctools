@@ -8,3 +8,13 @@ awsome_demo:
 
 check:
 	pytest
+
+# These are used by the CI pipeline:
+install-dependencies:
+	if [ -r requirements.txt ]; then pip3 install --user -r requirements.txt ; fi
+
+pytest:
+	pytest .
+
+coverage:
+	pytest --debug -v --cov=. --cov-report=xml tests/ || echo pytest failed
