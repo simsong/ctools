@@ -470,19 +470,27 @@ class DBMySQL(DBSQL):
             except pymysql.OperationalError as e:
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
-                    raise(e)
+                    raise
                 elif e.args[0]==1054:  # invalid column
                     print(f"Invalid Column in CMD: {cmd}",file = sys.stderr)
-                    raise(e)
+                    raise
+                elif e.args[0]==1191:
+                    print(f"Can't find FULLTEXT index matching the column list CMD: {cmd}",file=sys.stderr)
+                    raise
                 elif e.args[0]==1049:
                     print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
-                    raise(e)
+                    raise
                 elif e.args[0]==1242:
                     print(f"Subquery returns more than 1 row: {cmd}",file=sys.stderr)
-                    raise(e)
+                    raise
                 elif e.args[0]==1298:
                     print(e.args[1],file=sys.stderr)
-                    raise(e)
+                    raise
+                elif e.args[0]==1210:
+                    print(f"Incorrect arguments to AGAINST: {cmd}",file=sys.stderr)
+                    print("e",e)
+                    print(dir(e))
+                    raise
                 if i>1:
                     logging.warning(e)
                     logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
