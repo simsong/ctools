@@ -465,7 +465,7 @@ class DBMySQL(DBSQL):
                 if i>2:
                     logging.warning(f"Success with i={i}")
                 if debug:
-                    logging.warning(" result=%s", json.dumps(result))
+                    logging.warning(" result=%s", json.dumps(result, default=str))
                 return result
             except pymysql.OperationalError as e:
                 if e.args[0] in (1044,1045):  # access denied
