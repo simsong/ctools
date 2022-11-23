@@ -85,7 +85,7 @@ command line, but hold that thought), you can then test out the dbreader account
 
 You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
 
-   auth = ctools.dbfile.DBMySQLAuth.FromEnv("/home/www/dbreader.bash")
+   auth = ctools.dbfile.DBMySQLAuth.GetBashEnvFromFile("/home/www/dbreader.bash")
 
 Then you can use auth as the first parameter in the .csfr() method.
 
