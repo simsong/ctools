@@ -16,6 +16,7 @@ import socket
 import re
 import resource
 import pymysql
+import configparser
 
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
@@ -96,6 +97,12 @@ Note: Currently, the end of this module also a methods for a remote system load
 management system that was used to debug the persistent
 connections. That's no longer and will be removed at a later date.
 
+The following methods are available:
+
+GetBashEnvFromFile( fname )
+FromBashEnvFile( fname )
+FromConfig( section )
+FromConfigFIle( fname, section)
 
 """
 
@@ -225,8 +232,9 @@ class DBSqlite3(DBSQL):
 
 
 class DBMySQLAuth:
-    """Class that represents MySQL credentials. Will cache the
-connection. """
+    """Class that represents MySQL credentials. Will cache the connection. """
+
+    __slots__ = ['host', 'database', 'user', 'password', 'debug', 'dbcache']
 
     def __init__(self, *, host, database, user, password, debug=False):
         self.host     = host
@@ -246,13 +254,14 @@ connection. """
     def __repr__(self):
         return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:debug={self.debug}>"
 
-    @staticmethod
-    def GetBashEnv(filename):
-        """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
+    @classmethod
+    def GetBashEnvFromFile(this, filename):
+        """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it.
+        Take whatever variables not in that file from the Linux environment."""
         DB_RE = re.compile("export (.+)=(.+)")
         ret   = {}
         if filename is not None:
-            with open( filename ) as f:
+            with open( filename, "r" ) as f:
                 for line in f:
                     m = DB_RE.search(line.strip())
                     if m:
@@ -262,19 +271,24 @@ connection. """
                         if val[0] in "'\"" and val[0]==val[-1]:
                             val = val[1:-1]
                         ret[name] = val
+        print("filename: %s ret: %s" % (filename,ret))
         for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
             if name not in ret:
-                ret[name] = os.environ[name]
+                try:
+                    ret[name] = os.environ[name]
+                except KeyError as e:
+                    logging.error("%s not in environment not in %s",name,filename)
+                    raise
         return ret
 
     auth_cache = {}
 
     @classmethod
-    def FromEnv(this, filename, cache=True):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
+    def FromBashEnvFile(this, filename, cache=True):
+        """Returns a DBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
         if cache and filename in this.auth_cache:
             return this.auth_cache[filename]
-        env = DBMySQLAuth.GetBashEnv(filename)
+        env = DBMySQLAuth.GetBashEnvFromFile(filename)
         try:
             auth = DBMySQLAuth(host = env[MYSQL_HOST],
                                user = env[MYSQL_USER],
@@ -289,16 +303,15 @@ connection. """
                 logging.error("env[%s] = %s",var,env[var])
             raise e
 
-
     @staticmethod
     def FromConfig(section, debug=None):
         """Returns from the section of a config file"""
         try:
-            return DBMySQLAuth(host=section[MYSQL_HOST],
-                               user=section[MYSQL_USER],
-                               password=section[MYSQL_PASSWORD],
-                               database=section[MYSQL_DATABASE],
-                               debug=debug)
+            return DBMySQLAuth(host = section[MYSQL_HOST],
+                               user = section[MYSQL_USER],
+                               password = section[MYSQL_PASSWORD],
+                               database = section[MYSQL_DATABASE],
+                               debug = debug)
         except KeyError as e:
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
@@ -308,7 +321,6 @@ connection. """
         config = configparser.ConfigParser()
         config.read(fname)
         return self.FromConfig(config[section], debug=debug)
-
 
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db

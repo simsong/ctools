@@ -5,7 +5,6 @@ import sys
 import io
 from os.path import dirname,basename,abspath
 
-import env
 
 from os.path import dirname
 
