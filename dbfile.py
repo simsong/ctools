@@ -271,7 +271,6 @@ class DBMySQLAuth:
                         if val[0] in "'\"" and val[0]==val[-1]:
                             val = val[1:-1]
                         ret[name] = val
-        print("filename: %s ret: %s" % (filename,ret))
         for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
             if name not in ret:
                 try:
