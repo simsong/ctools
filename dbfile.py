@@ -234,19 +234,22 @@ class DBSqlite3(DBSQL):
 class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the connection. """
 
-    __slots__ = ['host', 'database', 'user', 'password', 'debug', 'dbcache']
+    __slots__ = ['host', 'database', 'user', 'password', 'debug', 'dbcache', 'prefix']
 
-    def __init__(self, *, host, database, user, password, debug=False):
+    def __init__(self, *, host, database, user, password, prefix="", debug=False):
         self.host     = host
         self.database = database
         self.user     = user
         self.password = password
         self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
+        self.prefix   = prefix  # available for use
 
     def __eq__(self, other):
         return ((self.host==other.host) and (self.database==other.database)
-                and (self.user==other.user) and (self.password==other.password))
+                and (self.user==other.user) and (self.password==other.password)
+                and (self.prefix==other.prefix) and (self.debug==other.debug))
+
 
     def __hash__(self):
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
