@@ -255,7 +255,7 @@ class DBMySQLAuth:
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
     def __repr__(self):
-        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:debug={self.debug}>"
+        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:{self.prefix}:debug={self.debug}>"
 
     @classmethod
     def GetBashEnvFromFile(this, filename):
@@ -482,7 +482,7 @@ class DBMySQL(DBSQL):
                     logging.warning(" result=%s", json.dumps(result, default=str))
                 return result
             except pymysql.OperationalError as e:
-                printf(e.args[0],e.args[1],file=sys.stderr)
+                print(e.args[0],e.args[1],file=sys.stderr)
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise
