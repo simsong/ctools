@@ -482,25 +482,23 @@ class DBMySQL(DBSQL):
                     logging.warning(" result=%s", json.dumps(result, default=str))
                 return result
             except pymysql.OperationalError as e:
+                # https://mariadb.com/kb/en/mariadb-error-codes/
                 print(e.args[0],e.args[1],file=sys.stderr)
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise
-                elif e.args[0]==1054:  # invalid column
-                    print(f"Invalid Column in CMD: {cmd}",file = sys.stderr)
+                elif e.args[0] in (1049,1051,1054,1191):  # Unknown something
+                    print(f"{e} in CMD: {cmd}",file = sys.stderr)
                     raise
                 elif e.args[0]==1142:     # INSERT COMMAND DENIED
                     raise
                 elif e.args[0]==1191:
                     print(f"Can't find FULLTEXT index matching the column list CMD: {cmd}",file=sys.stderr)
                     raise
-                elif e.args[0]==1049:
-                    print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
-                    raise
                 elif e.args[0]==1242:
                     print(f"Subquery returns more than 1 row: {cmd}",file=sys.stderr)
                     raise
-                elif e.args[0]==1298:
+                elif e.args[0]==1298:   # Unknown time zone
                     print(e.args[1],file=sys.stderr)
                     raise
                 elif e.args[0]==1210:
