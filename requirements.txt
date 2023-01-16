@@ -7,3 +7,4 @@ pytest-env
 markdown
 pymysql
 coverage
+PyPDF2

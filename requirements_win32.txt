@@ -1,3 +1,4 @@
+boto3
 pywin32
 win32com
 pywintypes

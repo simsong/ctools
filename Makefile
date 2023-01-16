@@ -6,6 +6,9 @@ awsome_demo:
 	python3 tydoc_awsome_demo.py tydoc_awsome_demo.html
 	cp tydoc_awsome_demo.html $$HOME/public_html/
 
+check:
+	pytest
+
 # These are used by the CI pipeline:
 install-dependencies:
 	if [ -r requirements.txt ]; then pip3 install --user -r requirements.txt ; fi

@@ -41,6 +41,12 @@ from os.path import dirname,basename,abspath
 VARS_RE   = re.compile(r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
 EXPORT_RE = re.compile(r"^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
 
+def unquote(value):
+    while (len(value)>0) and (value[0] in ['"', "'"]) and (value[0]==value[-1]):
+        value = value[1:-1]
+    return value
+
+
 def get_vars(fname):
     """Read the bash EXPORT variables in fname and return them in a dictionary
     :param fname: the name of a bash script
@@ -50,10 +56,8 @@ def get_vars(fname):
         for line in f:
             m = VARS_RE.search(line)
             if m:
-                name  = m.group('name')
-                value = m.group('value')
-                if (len(value)>0) and (value[0] in ['"', "'"]) and (value[0]==value[-1]):
-                    value = value[1:-1]
+                name  = unquote(m.group('name'))
+                value = unquote(m.group('value'))
                 ret[name] = value
     return ret
 
