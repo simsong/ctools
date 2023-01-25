@@ -154,8 +154,8 @@ class DBSQL(ABC):
             print(f"time: {t1-t0}", file=sys.stderr)
         return res
 
-    def cursor(self):
-        return self.conn.cursor()
+    def cursor(self, *args, **kwargs):
+        return self.conn.cursor(*args, **kwargs)
 
     def commit(self):
         self.conn.commit()
