@@ -487,8 +487,8 @@ class DBMySQL(DBSQL):
                 if e.args[0] in (1044,1045):  # access denied
                     print(f"Access denied: auth:{auth}", file=sys.stderr)
                     raise
-                elif e.args[0] in (1049,1051,1054,1191):  # Unknown something
-                    print(f"{e} in CMD: {cmd}",file = sys.stderr)
+                elif e.args[0] in (1049,1051,1054,1055, 1191):  # Unknown something
+                    logging.error("%s %s in CMD: %s  explained: %s",e.args[0],e.args[1],cmd,DBMySQL.explain(cmd,vals))
                     raise
                 elif e.args[0]==1142:     # INSERT COMMAND DENIED
                     raise
