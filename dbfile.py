@@ -481,44 +481,13 @@ class DBMySQL(DBSQL):
                 if debug:
                     logging.warning(" result=%s", json.dumps(result, default=str))
                 return result
-            except pymysql.OperationalError as e:
-                # https://mariadb.com/kb/en/mariadb-error-codes/
-                print(e.args[0],e.args[1],file=sys.stderr)
-                if e.args[0] in (1044,1045):  # access denied
-                    print(f"Access denied: auth:{auth}", file=sys.stderr)
+            except (pymysql.OperationalError,pymysql.InternalError) as e:
+                # These errors we do not retry
+                logging.error("%s %s in CMD: %s  explained: %s",e.args[0],e.args[1],cmd,DBMySQL.explain(cmd,vals))
+                RETRY_ERRORS = [0]
+                if e.args[0] not in RETRY_ERRORS:
                     raise
-                elif e.args[0] in (1049,1051,1054,1055, 1191):  # Unknown something
-                    logging.error("%s %s in CMD: %s  explained: %s",e.args[0],e.args[1],cmd,DBMySQL.explain(cmd,vals))
-                    raise
-                elif e.args[0]==1142:     # INSERT COMMAND DENIED
-                    raise
-                elif e.args[0]==1191:
-                    print(f"Can't find FULLTEXT index matching the column list CMD: {cmd}",file=sys.stderr)
-                    raise
-                elif e.args[0]==1242:
-                    print(f"Subquery returns more than 1 row: {cmd}",file=sys.stderr)
-                    raise
-                elif e.args[0]==1298:   # Unknown time zone
-                    print(e.args[1],file=sys.stderr)
-                    raise
-                elif e.args[0]==1210:
-                    print(f"Incorrect arguments to AGAINST: {cmd}",file=sys.stderr)
-                    print("e",e)
-                    print(dir(e))
-                    raise
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cache_clear()
-                pass
-            except pymysql.InternalError as e:
-                se = str(e)
-                if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
-                    logging.error(se)
-                    raise e
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except BlockingIOError as e:
