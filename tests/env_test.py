@@ -5,6 +5,12 @@ import sys
 import io
 from os.path import dirname,basename,abspath
 
+
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 import ctools.env as env
 

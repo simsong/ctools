@@ -67,8 +67,8 @@ DEVLOG_MAC = "/var/run/syslog"
 
 # YEAR is used in callers
 YEAR=str(datetime.datetime.now().year)
-LOG_FORMAT="%(asctime)s %(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 SYSLOG_FORMAT="%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+LOG_FORMAT="%(asctime)s " + SYSLOG_FORMAT
 
 # Global state variables. Keep track as to whether or not syslog
 # handler was added and whether or not the basicConfig was setup.
@@ -129,7 +129,7 @@ def shutdown():
 def add_argument(parser, *, loglevel_default='INFO'):
     """Add the --loglevel argument to the ArgumentParser"""
     parser.add_argument("--loglevel", help="Set logging level",
-                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='WARNING')
+                        choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default=loglevel_default)
     try:
         parser.add_argument("--logfilename", help="output filename for logfile")
     except argparse.ArgumentError as e:
@@ -192,7 +192,7 @@ def setup(level='INFO',
     global called_basicConfig
     if not called_basicConfig:
         # getLevelName sometimes returns a string and sometimes returns an int, and we want it always to be an integer
-        loglevel: int = level if isinstance(level, int) else logging.getLevelName(level)
+        loglevel = level if isinstance(level, int) else logging.getLevelName(level)
         filename_to_use = None if filename is None else filename
 
         # Check to see if the logger already has handlers.

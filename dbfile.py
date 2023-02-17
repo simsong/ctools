@@ -16,6 +16,7 @@ import socket
 import re
 import resource
 import pymysql
+import configparser
 
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
@@ -84,7 +85,7 @@ command line, but hold that thought), you can then test out the dbreader account
 
 You can also use this bash script to provide credentials to your program using the DBMySQLAuth class:
 
-   auth = ctools.dbfile.DBMySQLAuth.FromEnv("/home/www/dbreader.bash")
+   auth = ctools.dbfile.DBMySQLAuth.GetBashEnvFromFile("/home/www/dbreader.bash")
 
 Then you can use auth as the first parameter in the .csfr() method.
 
@@ -96,6 +97,12 @@ Note: Currently, the end of this module also a methods for a remote system load
 management system that was used to debug the persistent
 connections. That's no longer and will be removed at a later date.
 
+The following methods are available:
+
+GetBashEnvFromFile( fname )
+FromBashEnvFile( fname )
+FromConfig( section )
+FromConfigFIle( fname, section)
 
 """
 
@@ -147,8 +154,8 @@ class DBSQL(ABC):
             print(f"time: {t1-t0}", file=sys.stderr)
         return res
 
-    def cursor(self):
-        return self.conn.cursor()
+    def cursor(self, *args, **kwargs):
+        return self.conn.cursor(*args, **kwargs)
 
     def commit(self):
         self.conn.commit()
@@ -225,34 +232,39 @@ class DBSqlite3(DBSQL):
 
 
 class DBMySQLAuth:
-    """Class that represents MySQL credentials. Will cache the
-connection. """
+    """Class that represents MySQL credentials. Will cache the connection. """
 
-    def __init__(self, *, host, database, user, password, debug=False):
+    __slots__ = ['host', 'database', 'user', 'password', 'debug', 'dbcache', 'prefix']
+
+    def __init__(self, *, host, database, user, password, prefix="", debug=False):
         self.host     = host
         self.database = database
         self.user     = user
         self.password = password
         self.debug    = debug   # enable debugging
         self.dbcache  = dict()  # dictionary of cached connections.
+        self.prefix   = prefix  # available for use
 
     def __eq__(self, other):
         return ((self.host==other.host) and (self.database==other.database)
-                and (self.user==other.user) and (self.password==other.password))
+                and (self.user==other.user) and (self.password==other.password)
+                and (self.prefix==other.prefix) and (self.debug==other.debug))
+
 
     def __hash__(self):
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
     def __repr__(self):
-        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:debug={self.debug}>"
+        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:{self.prefix}:debug={self.debug}>"
 
-    @staticmethod
-    def GetBashEnv(filename):
-        """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it"""
+    @classmethod
+    def GetBashEnvFromFile(this, filename):
+        """Loads the bash environment variables specified by 'export NAME=VALUE' into a dictionary and returns it.
+        Take whatever variables not in that file from the Linux environment."""
         DB_RE = re.compile("export (.+)=(.+)")
         ret   = {}
         if filename is not None:
-            with open( filename ) as f:
+            with open( filename, "r" ) as f:
                 for line in f:
                     m = DB_RE.search(line.strip())
                     if m:
@@ -264,17 +276,21 @@ connection. """
                         ret[name] = val
         for name in (MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE):
             if name not in ret:
-                ret[name] = os.environ[name]
+                try:
+                    ret[name] = os.environ[name]
+                except KeyError as e:
+                    logging.error("%s not in environment not in %s",name,filename)
+                    raise
         return ret
 
     auth_cache = {}
 
     @classmethod
-    def FromEnv(this, filename, cache=True):
-        """Returns a DDBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
+    def FromBashEnvFile(this, filename, cache=True):
+        """Returns a DBMySQLAuth formed by reading MYSQL_USER, MYSQL_PASSWORD, MYSQL_HOST and MYSQL_DATABASE envrionemnt variables from a bash script. Caches by default"""
         if cache and filename in this.auth_cache:
             return this.auth_cache[filename]
-        env = DBMySQLAuth.GetBashEnv(filename)
+        env = DBMySQLAuth.GetBashEnvFromFile(filename)
         try:
             auth = DBMySQLAuth(host = env[MYSQL_HOST],
                                user = env[MYSQL_USER],
@@ -289,19 +305,24 @@ connection. """
                 logging.error("env[%s] = %s",var,env[var])
             raise e
 
-
     @staticmethod
     def FromConfig(section, debug=None):
         """Returns from the section of a config file"""
         try:
-            return DBMySQLAuth(host=section[MYSQL_HOST],
-                               user=section[MYSQL_USER],
-                               password=section[MYSQL_PASSWORD],
-                               database=section[MYSQL_DATABASE],
-                               debug=debug)
+            return DBMySQLAuth(host = section[MYSQL_HOST],
+                               user = section[MYSQL_USER],
+                               password = section[MYSQL_PASSWORD],
+                               database = section[MYSQL_DATABASE],
+                               debug = debug)
         except KeyError as e:
             pass
         raise KeyError(f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
+
+    @staticmethod
+    def FromConfigFile(fname, section, debug=None):
+        config = configparser.ConfigParser()
+        config.read(fname)
+        return self.FromConfig(config[section], debug=debug)
 
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db
@@ -332,12 +353,6 @@ class DBMySQL(DBSQL):
                                        autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
-        if time_zone:
-            try:
-                self.cursor().execute('SET @@session.time_zone = "%s', time_zone)
-                pass
-            except self.internalError as e:
-                pass
 
     RETRIES = 10
     RETRY_DELAY_TIME = 1
@@ -464,34 +479,15 @@ class DBMySQL(DBSQL):
                 if i>2:
                     logging.warning(f"Success with i={i}")
                 if debug:
-                    logging.warning(" result=%s", json.dumps(result))
+                    logging.warning(" result=%s", json.dumps(result, default=str))
                 return result
-            except pymysql.OperationalError as e:
-                if e.args[0] in (1044,1045):  # access denied
-                    print(f"Access denied: auth:{auth}", file=sys.stderr)
-                    raise(e)
-                elif e.args[0]==1054:  # invalid column
-                    print(f"Invalid Column in CMD: {cmd}",file = sys.stderr)
-                    raise(e)
-                elif e.args[0]==1049:
-                    print(f"Unknown database in CMD: {cmd}",file=sys.stderr)
-                    raise(e)
-                elif e.args[0]==1298:
-                    print(e.args[1],file=sys.stderr)
-                    raise(e)
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
-                auth.cache_clear()
-                pass
-            except pymysql.InternalError as e:
-                se = str(e)
-                if ("Unknown column" in se) or ("Column count" in se) or ("JSON" in se):
-                    logging.error(se)
-                    raise e
-                if i>1:
-                    logging.warning(e)
-                    logging.warning(f"InternalError. threadid={threading.get_ident()} RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+            except (pymysql.OperationalError,pymysql.InternalError) as e:
+                # These errors we do not retry
+                logging.error("%s %s in CMD: %s  explained: %s",e.args[0],e.args[1],cmd,DBMySQL.explain(cmd,vals))
+                RETRY_ERRORS = [0]
+                if e.args[0] not in RETRY_ERRORS:
+                    raise
+                logging.warning(f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except BlockingIOError as e:
