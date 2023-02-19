@@ -390,6 +390,7 @@ class DBMySQL(DBSQL):
         :param ignore:    - array of error codes to silently ignore.
         """
 
+        assert auth is not None
         debug = (debug or auth.debug)
 
         for i in range(1, RETRIES):
