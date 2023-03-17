@@ -375,7 +375,7 @@ class DBMySQL(DBSQL):
     @staticmethod
     def csfr(auth, cmd, vals=None, *,
              quiet=True, rowcount=None, time_zone=None, setup=None, setup_vals=(),
-             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[], ignore=[]):
+             get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[], ignore=[], autocommit=True):
         """Connect, select, fetchall, and retry as necessary.
         :param auth:      - authentication otken
         :param cmd:       - SQL query
@@ -404,7 +404,8 @@ class DBMySQL(DBSQL):
                     auth.cache_store(db)
                 result = None
                 c      = db.cursor()
-                c.execute('SET autocommit=1')
+                if autocommit:
+                    c.execute('SET autocommit=1')
                 if time_zone is not None:
                     c.execute('SET @@session.time_zone = "{}"'.format(time_zone))  # MySQL
 
