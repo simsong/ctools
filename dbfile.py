@@ -448,7 +448,7 @@ class DBMySQL(DBSQL):
                         logging.error("vals: %s", vals)
                         logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
                         logging.error(str(e))
-                    raise e
+                    raise
 
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
