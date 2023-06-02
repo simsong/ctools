@@ -14,7 +14,6 @@ import json
 import sqlite3
 import socket
 import re
-import resource
 import pymysql
 import configparser
 
