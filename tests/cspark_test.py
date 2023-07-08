@@ -1,6 +1,6 @@
 import sys
 import os
-import py.test
+import pytest
 import io
 
 from os.path import abspath
@@ -26,7 +26,7 @@ def test_spark_submit_cmd():
     cmd = cspark.spark_submit_cmd(configdict=config['spark'])
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
-    
+
 
 TEST_RUN_SPARK_FILENAME='TEST_RUN_SPARK_FILENAME'
 def test_spark_submit():
@@ -87,8 +87,7 @@ def test_spark_submit():
     """
 
 if __name__=="__main__":
-    # This is solely so that we can run under py.test
+    # This is solely so that we can run under pytest
     # Don't remove it! You can also just run this program to see what happens
     # It should print "spark ran successfully."
     test_spark_submit_cmd()
-    

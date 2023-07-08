@@ -6,7 +6,7 @@
 
 
 import sys
-import py.test
+import pytest
 import os
 import os.path
 import logging

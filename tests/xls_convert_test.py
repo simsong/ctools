@@ -1,4 +1,4 @@
-import py.test
+import pytest
 import os
 import sys
 import warnings

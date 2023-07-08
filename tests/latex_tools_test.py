@@ -3,7 +3,7 @@
 # Some tools for manipulating PDF files
 
 
-import py.test
+import pytest
 import os
 import os.path
 import sys
@@ -48,7 +48,7 @@ def parse_nested_braces_test():
 def test_label_parser():
     assert latex_tools.label_parser(LINE1)==("","1 Cover Sheet","1",6)
     assert latex_tools.label_parser(LINE2)==("EOF","1 Cover Sheet","1",99)
-    
+
 ################################################################
 ## These tools require running LaTeX
 
@@ -64,7 +64,7 @@ def test_run_latex():
     assert os.path.exists(HELLO_TEX)
 
     # Make sure that the output file does not exist
-    if os.path.exists(HELLO_PDF): 
+    if os.path.exists(HELLO_PDF):
         os.unlink(HELLO_PDF)
 
     # Run LaTeX. Make sure that delete_tempfiles=False leaves temp files
@@ -113,7 +113,7 @@ def test_count_pdf_pages():
     except latex_tools.LatexException as e:
         warnings.warn("LatexException: "+str(e))
         return
-                      
+
     assert pages==5
 
     assert os.path.exists(FIVEPAGES_PDF) # make sure file is still there
