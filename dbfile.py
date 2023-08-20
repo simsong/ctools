@@ -456,8 +456,6 @@ class DBMySQL(DBSQL):
                     raise e
 
                 verb = cmd.split()[0].upper()
-                if debug:
-                    logging.warning(" verb=%s", verb)
                 if verb in ['SELECT', 'DESCRIBE', 'SHOW']:
                     result = c.fetchall()
                     if asDicts and get_column_names is None:
@@ -468,19 +466,15 @@ class DBMySQL(DBSQL):
                             get_column_names.append(name)
                     if asDicts:
                         result =[OrderedDict(zip(get_column_names, row)) for row in result]
-                    if debug:
-                        logging.warning("   SELECTED ROWS count=%s  row[0]=%s", len(result), result[0] if len(result)>0 else None)
-                if verb in ['INSERT']:
+                elif verb in ['INSERT']:
                     result = c.lastrowid
-                    if debug:
-                        logging.warning("   INSERT c.lastworid=%s", c.lastrowid)
-                if verb in ['UPDATE']:
+                elif verb in ['UPDATE', 'DELETE', 'UPDATE']:
                     result = c.rowcount
                 c.close()  # close the cursor
-                if i>2:
-                    logging.warning(f"Success with i={i}")
                 if debug:
                     logging.warning(" result=%s", json.dumps(result, default=str))
+                if i>2:
+                    logging.warning(f"Success with i={i}")
                 return result
             except (pymysql.OperationalError,pymysql.InternalError) as e:
                 # These errors we do not retry
