@@ -154,6 +154,7 @@ class DBSQL(ABC):
         return res
 
     def cursor(self, *args, **kwargs):
+        self.conn.ping()        # may need to reconnect
         return self.conn.cursor(*args, **kwargs)
 
     def commit(self):
@@ -176,6 +177,7 @@ class DBSQL(ABC):
 
     def execselect(self, sql, vals=()):
         """Execute a SQL query and return the first line"""
+        self.conn.ping()
         c = self.conn.cursor()
         c.execute(sql, vals)
         return c.fetchone()
