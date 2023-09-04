@@ -251,12 +251,11 @@ class DBMySQLAuth:
                 and (self.user==other.user) and (self.password==other.password)
                 and (self.prefix==other.prefix) and (self.debug==other.debug))
 
-
     def __hash__(self):
         return hash(self.host) ^ hash(self.database) ^ hash(self.user) ^ hash(self.password)
 
     def __repr__(self):
-        return f"<DBMySQLAuth:{self.host}:{self.database}:{self.user}:*****:{self.prefix}:debug={self.debug}>"
+        return f"<DBMySQLAuth host={self.host} database={self.database} user={self.user} prefix={self.prefix} debug={self.debug}>"
 
     @classmethod
     def GetBashEnvFromFile(this, filename):
@@ -391,8 +390,9 @@ class DBMySQL(DBSQL):
         :param ignore:    - array of error codes to silently ignore.
         """
 
-        assert isinstance(auth,DBMySQLAuth)
-        debug = (debug or auth.debug)
+        for name in DBMySQLAuth.__slots__:
+            if not hasattr(auth,name):
+                raise TypeError(f"auth (val={auth}) (type {type(auth)}) does not have {name} slot")
 
         for i in range(1, RETRIES):
             try:
