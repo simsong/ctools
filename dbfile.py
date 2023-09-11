@@ -96,12 +96,13 @@ Note: Currently, the end of this module also a methods for a remote system load
 management system that was used to debug the persistent
 connections. That's no longer and will be removed at a later date.
 
-The following methods are available:
+The following static methods are available:
 
 GetBashEnvFromFile( fname )
 FromBashEnvFile( fname )
 FromConfig( section )
-FromConfigFIle( fname, section)
+FromConfigFile( fname, section)
+FromEnv()
 
 """
 
@@ -323,6 +324,14 @@ class DBMySQLAuth:
         config = configparser.ConfigParser()
         config.read(fname)
         return self.FromConfig(config[section], debug=debug)
+
+    @staticmethod
+    def FromEnv(debug=None):
+        return DBMySQLAuth(host = os.environ[MYSQL_HOST],
+                               user = os.environ[MYSQL_USER],
+                               password = os.environ[MYSQL_PASSWORD],
+                               database = os.environ[MYSQL_DATABASE],
+                               debug = debug)
 
     def cache_store(self, db):
         self.dbcache[(os.getpid(), threading.get_ident())] = db
