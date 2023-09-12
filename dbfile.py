@@ -323,7 +323,7 @@ class DBMySQLAuth:
     def FromConfigFile(fname, section, debug=None):
         config = configparser.ConfigParser()
         config.read(fname)
-        return self.FromConfig(config[section], debug=debug)
+        return DBMySQLAuth.FromConfig(config[section], debug=debug)
 
     @staticmethod
     def FromEnv(debug=None):
