@@ -106,8 +106,8 @@ FromEnv()
 
 """
 
-MYSQL_HOST = 'MYSQL_HOST'
-MYSQL_USER = 'MYSQL_USER'
+MYSQL_HOST     = 'MYSQL_HOST'
+MYSQL_USER     = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
 
@@ -323,7 +323,11 @@ class DBMySQLAuth:
     def FromConfigFile(fname, section, debug=None):
         config = configparser.ConfigParser()
         config.read(fname)
-        return DBMySQLAuth.FromConfig(config[section], debug=debug)
+        try:
+            return DBMySQLAuth.FromConfig(config[section], debug=debug)
+        except KeyError as e:
+            logging.error("No section %s in file %s",section,fname)
+            raise
 
     @staticmethod
     def FromEnv(debug=None):
