@@ -17,7 +17,7 @@ import ctools.env as env
 ETC_TEST_FILE = '/etc/hosts'    # a file that should always be present
 ENV_TEST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "env_test_file.bash")
 TEST_FILES_DIR = os.path.join(dirname(abspath(__file__)), "test_files")
-TEST_BASH_FILE = os.path.join(TEST_FILES_DIR,"env_test.sh")
+TEST_BASH_PATH = os.path.join(TEST_FILES_DIR,"env_test.sh")
 
 test_config = {"*": {"FOO":"default_foo",
                      "BAR":"default_bar"},
@@ -35,13 +35,13 @@ def test_get_env():
     assert d['NOFOO'] == 'nope'
 
 def test_get_env2():
-    ret = env.get_env(TEST_BASH_FILE)
+    ret = env.get_env(TEST_BASH_PATH)
     assert ret['FIRST']=='1'
     assert ret['FILE']=='the file'
     assert os.environ['FIRST'] == '1'
     assert os.environ['FILE'] == 'the file'
 
-    ret2 = env.get_env(profile_dir=dirname(TEST_BASH_FILE), prefix='ctools')
+    ret2 = env.get_env(profile_dir=dirname(TEST_BASH_PATH), prefix='ctools')
     print(ret2)
     assert ret2['CTOOLS']=='YES'
 
