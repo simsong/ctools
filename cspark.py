@@ -97,6 +97,7 @@ def detach(logdir=os.getcwd()):
 
     # Most daemon implementations close all FDs. But that is not what we want, so just return
 
+
 def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
                      executor_cores=None,
                      conf=[], configdict=None, properties_file=None):
@@ -106,8 +107,8 @@ def spark_submit_cmd(*, zipfiles=[], pyfiles=[], pydirs=[], num_executors=None,
     """
 
     for pydir in pydirs:
-        if pydir=="":
-            pydir="."
+        if pydir == "":
+            pydir = "."
         for (dirpath, dirnames, filenames) in os.walk(pydir):
             for filename in filenames:
                 if filename.endswith(".py"):
@@ -159,10 +160,12 @@ def spark_make_logLevel_file(logLevel="error"):
         f.close()
         return f.name
 
+
 def spark_set_logLevel(logLevel='error'):
     from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
     spark.sparkContext.setLogLevel(logLevel)
+
 
 def spark_submit(*, logLevel=None, files_to_zip=[], pyfiles=[], pydirs=[], num_executors=None, executor_cores=None, conf=[], configdict={},
                  properties_file=None, argv):
@@ -193,14 +196,12 @@ def spark_submit(*, logLevel=None, files_to_zip=[], pyfiles=[], pydirs=[], num_e
 
     if files_to_zip:
         td = tempfile.mkdtemp()
-        zfpath = os.path.join(td,'cspark.zip')
-        zf = zipfile.ZipFile( zfpath, 'w')
+        zfpath = os.path.join(td, 'cspark.zip')
+        zf = zipfile.ZipFile(zfpath, 'w')
         for path in files_to_zip:
-            zf.write( os.path.abspath(path), path)
+            zf.write(os.path.abspath(path), path)
         pyfiles.append(zfpath)
         zf.close()
-
-
 
     cmd = spark_submit_cmd(pyfiles=pyfiles, pydirs=pydirs,
                            num_executors=num_executors, executor_cores=executor_cores, conf=conf,
@@ -208,15 +209,14 @@ def spark_submit(*, logLevel=None, files_to_zip=[], pyfiles=[], pydirs=[], num_e
 
     if logLevel:
         tfname = spark_make_logLevel_file(logLevel)
-        cmd += ['--conf', 'spark.driver.extraJavaOptions=-Dlog4j.configuration=file:' +tfname,
-                '--conf', 'spark.executor.extraJavaOptions=-Dlog4j.configuration=file:' +tfname]
+        cmd += ['--conf', 'spark.driver.extraJavaOptions=-Dlog4j.configuration=file:' + tfname,
+                '--conf', 'spark.executor.extraJavaOptions=-Dlog4j.configuration=file:' + tfname]
 
-    assert isinstance(argv,list)
+    assert isinstance(argv, list)
     cmd += argv
-    assert isinstance(cmd,list)
+    assert isinstance(cmd, list)
     for s in cmd:
-        assert isinstance(s,str)
-
+        assert isinstance(s, str)
 
     print("\n\n")
     print("=== cspark.spark_submit RUNNING SPARK ===")
@@ -260,7 +260,9 @@ def spark_session(*, logLevel=None, pyfiles=[], pydirs=[], num_executors=None,
 
 
 SPARK_PORT_START = 4040
-SPARK_PORT_END   = 4050
+SPARK_PORT_END = 4050
+
+
 def get_spark_info(host=None, port=None):
     import requests
     import ssl
@@ -270,29 +272,30 @@ def get_spark_info(host=None, port=None):
     urllib3.disable_warnings()
 
     if not host:
-        host       = os.environ.get("SPARK_LOCAL_IP", "localhost")
+        host = os.environ.get("SPARK_LOCAL_IP", "localhost")
 
     if port:
         ports = [port]
     else:
-        ports = range(SPARK_PORT_START, SPARK_PORT_END +1)
+        ports = range(SPARK_PORT_START, SPARK_PORT_END + 1)
 
     for port in ports:
         try:
             url = 'http://{}:{}/api/v1/applications/'.format(host, port)
-            resp  = urlopen(url, context=ssl._create_unverified_context())
+            resp = urlopen(url, context=ssl._create_unverified_context())
             spark_data = resp.read()
             break
         except (ConnectionError, ConnectionRefusedError, urllib.error.URLError) as e:
             continue
-    if port>=SPARK_PORT_END:
-        raise RuntimeError(f"No spark listener found on {host} ports {SPARK_PORT_START}-{SPARK_PORT_END}")
+    if port >= SPARK_PORT_END:
+        raise RuntimeError(
+            f"No spark listener found on {host} ports {SPARK_PORT_START}-{SPARK_PORT_END}")
         return
 
     # Looks like we have spark!
     ret = {'spark': []}
     for app in json.loads(spark_data):
-        app_id   = app['id']
+        app_id = app['id']
         app_name = app['name']
 
         r2 = {'application': app}
@@ -312,16 +315,19 @@ if __name__ == "__main__":
                             description="Demo program for cspark module")
     parser.add_argument('--debug', action='store_true')
     parser.add_argument("--detach", action="store_true")
-    parser.add_argument("--spark", action="store_true", help="Run a sample program with spark")
+    parser.add_argument("--spark", action="store_true",
+                        help="Run a sample program with spark")
 
     args = parser.parse_args()
     if args.detach:             # must be checked before Spark
         print("Detaching...")
         detach()
-        sys.stdout.write("This was written to stdout at {}...\n".format(time.asctime()))
+        sys.stdout.write(
+            "This was written to stdout at {}...\n".format(time.asctime()))
         sys.stderr.write("This was written to stderr...\n")
         time.sleep(600)
-        sys.stdout.write("This was written to stdout 600 seconds later at {}...\n".format(time.asctime()))
+        sys.stdout.write(
+            "This was written to stdout 600 seconds later at {}...\n".format(time.asctime()))
         sys.stderr.write("This was written to stderr 600 seconds later...\n")
 
     if args.spark:

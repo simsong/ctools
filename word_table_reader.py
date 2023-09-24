@@ -28,11 +28,12 @@ PARA = WORD_NAMESPACE + 'p'
 TEXT = WORD_NAMESPACE + 't'
 TBLPR = WORD_NAMESPACE + "tblPr"               # table properties?
 
-TBL      = WORD_NAMESPACE + "tbl"
-TBLGRID  = WORD_NAMESPACE + "tblGrid"          # table grid
+TBL = WORD_NAMESPACE + "tbl"
+TBLGRID = WORD_NAMESPACE + "tblGrid"          # table grid
 GRIDCOL = WORD_NAMESPACE + "gridCol"
-TR = WORD_NAMESPACE +"tr"                       # table row?
-TC = WORD_NAMESPACE +"tc"                       # table cell?
+TR = WORD_NAMESPACE + "tr"                       # table row?
+TC = WORD_NAMESPACE + "tc"                       # table cell?
+
 
 def get_docx_table(path):
     """
@@ -50,7 +51,8 @@ def get_docx_table(path):
             # Each cell consists of one or more paragraph
             text = ""
             for paragraph in xml_cell.iter(PARA):
-                texts = [node.text for node in paragraph.iter(TEXT) if node.text]
+                texts = [node.text for node in paragraph.iter(
+                    TEXT) if node.text]
                 paragraph_text = "".join(texts)
                 if paragraph_text:
                     text += paragraph_text + "\n"
@@ -59,6 +61,7 @@ def get_docx_table(path):
             row.append(text)
         rows.append(row)
     return rows
+
 
 def get_text_for_table(table):
     """
@@ -71,7 +74,8 @@ def get_text_for_table(table):
             # Each cell consists of one or more paragraph
             text = ""
             for paragraph in xml_cell.iter(PARA):
-                texts = [node.text for node in paragraph.iter(TEXT) if node.text]
+                texts = [node.text for node in paragraph.iter(
+                    TEXT) if node.text]
                 paragraph_text = "".join(texts)
                 if paragraph_text:
                     text += paragraph_text + "\n"
@@ -80,6 +84,7 @@ def get_text_for_table(table):
             row.append(text)
         rows.append(row)
     return rows
+
 
 def get_docx_tables(path):
     """
@@ -92,11 +97,14 @@ def get_docx_tables(path):
     for tbl in tree.iter(TBL):
         yield tbl
 
+
 def get_table_rows(tbl):
     return [row for row in tbl.iter(TR)]
 
+
 def get_row_cells(row):
     return [cell for cell in row.iter(TC)]
+
 
 def get_docx_text(path):
     """
@@ -108,13 +116,14 @@ def get_docx_text(path):
     tree = XML(xml_content)
     text = []
     for paragraph in tree.iter(PARA):
-        current_paragraphs = [node.text for node in paragraph.iter(TEXT) if node.text]
+        current_paragraphs = [
+            node.text for node in paragraph.iter(TEXT) if node.text]
         if len(current_paragraphs) > 0:
             text.append(current_paragraphs)
     return text
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import sys
     print("get_docx_tables:")
     tables = list(get_docx_tables(sys.argv[1]))

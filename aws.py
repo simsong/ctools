@@ -18,24 +18,27 @@ import socket
 import boto3
 import sys
 
-HTTP_PROXY='HTTP_PROXY'
-HTTPS_PROXY='HTTPS_PROXY'
-BCC_HTTP_PROXY  = 'BCC_HTTP_PROXY'
+HTTP_PROXY = 'HTTP_PROXY'
+HTTPS_PROXY = 'HTTPS_PROXY'
+BCC_HTTP_PROXY = 'BCC_HTTP_PROXY'
 BCC_HTTPS_PROXY = 'BCC_HTTPS_PROXY'
-NO_PROXY='NO_PROXY'
-debug=False
+NO_PROXY = 'NO_PROXY'
+debug = False
+
 
 def proxy_on(http=True, https=True):
     if http:
-        os.environ[HTTP_PROXY]  = os.environ[BCC_HTTP_PROXY]
+        os.environ[HTTP_PROXY] = os.environ[BCC_HTTP_PROXY]
     if https:
         os.environ[HTTPS_PROXY] = os.environ[BCC_HTTPS_PROXY]
+
 
 def proxy_off():
     if HTTP_PROXY in os.environ:
         del os.environ[HTTP_PROXY]
     if HTTPS_PROXY in os.environ:
         del os.environ[HTTPS_PROXY]
+
 
 class Proxy:
     """Context manager that enables the Census proxy. By default http is not proxied and https is proxied.
@@ -93,14 +96,17 @@ def get_url(url, context=None, ignore_cert=False, timeout=None):
     with urllib.request.urlopen(url, context=context, timeout=timeout) as response:
         return response.read().decode('utf-8')
 
+
 def get_url_json(url, **kwargs):
     return json.loads(get_url(url, **kwargs))
+
 
 def user_data():
     try:
         return get_url_json("http://169.254.169.254/2016-09-02/user-data/")
     except (TimeoutError, urllib.error.URLError) as e:
         return {}
+
 
 def instance_identity():
     try:
@@ -124,6 +130,7 @@ def instance_identity():
                 "region": "xx-xxxx-0",
                 "version": "2017-09-30"}
 
+
 def ami_id():
     return get_url('http://169.254.169.254/latest/meta-data/ami-id')
 
@@ -133,17 +140,19 @@ def show_credentials():
     subprocess.call(['printenv'])
     subprocess.call(['aws', 'configure', 'list'])
 
+
 def get_ipaddr():
     try:
         return get_url("http://169.254.169.254/latest/meta-data/local-ipv4")
     except (TimeoutError, urllib.error.URLError) as e:
         socket.gethostbyname(socket.gethostname())
 
+
 def instanceId():
     return instance_identity()['instanceId']
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     print("instance identity:")
     doc = instance_identity()
     for (k, v) in doc.items():

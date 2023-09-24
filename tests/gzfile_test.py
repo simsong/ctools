@@ -2,6 +2,7 @@
 gzfile test
 """
 
+from ctools.gzfile import GZFile
 import sys
 import pytest
 import os
@@ -11,27 +12,27 @@ import time
 import platform
 import warnings
 import platform
-from os.path import dirname,basename,abspath
+from os.path import dirname, basename, abspath
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-from ctools.gzfile import GZFile
 
-TEST_STRING="this is a test\n"
+TEST_STRING = "this is a test\n"
+
 
 def test_gzfile():
-    if platform.system()=='Windows':
+    if platform.system() == 'Windows':
         return
 
-    with GZFile("test.gz","w") as f:
+    with GZFile("test.gz", "w") as f:
         f.write(TEST_STRING)
 
-    with open("test.gz","rb") as f:
+    with open("test.gz", "rb") as f:
         data = f.read()
     assert len(data) > 0
     assert len(data) != len(TEST_STRING)
 
-    with GZFile("test.gz","r") as f:
+    with GZFile("test.gz", "r") as f:
         data = f.read()
-    assert data==TEST_STRING
+    assert data == TEST_STRING
     os.unlink("test.gz")

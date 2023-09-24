@@ -8,6 +8,7 @@ from .variable_assignment import VariableAssignment
 
 valid_expression_types = [WhileLoop, Conditional, VariableAssignment]
 
+
 class CodeSnippet:
     """
     Code Snippet
@@ -21,12 +22,13 @@ class CodeSnippet:
             you can use an indent_level=1 and indent_spaces=4, etc.
     """
 
-    __slots__ = ('desc','attrib','name','expressions','indent_spaces', 'variables', 'variable_to_validate')
+    __slots__ = ('desc', 'attrib', 'name', 'expressions',
+                 'indent_spaces', 'variables', 'variable_to_validate')
 
-    def __init__(self,*,desc="",attrib={},name='',expressions=[], indent_spaces=4):
+    def __init__(self, *, desc="", attrib={}, name='', expressions=[], indent_spaces=4):
 
-        self.desc        = desc          # description
-        self.attrib      = attrib
+        self.desc = desc          # description
+        self.attrib = attrib
         assert isinstance(name, str)
         if len(name) == 0:
             raise ValueError('name must be provided')
@@ -60,29 +62,28 @@ class CodeSnippet:
         single_level_indent = ' ' * self.indent_spaces
         # outputs a function representation of the snippet
         str_data = [f'def snippet_{self.name}(row):']
-        expressions = [single_level_indent + line \
-            for exp in self.expressions for line in str(exp).split('\n')]
+        expressions = [single_level_indent + line
+                       for exp in self.expressions for line in str(exp).split('\n')]
         str_data.extend(expressions)
 
         str_data += [f'    return row']
 
-
         return '\n'.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'Code Snippet(name: {self.name}, expressions: ', \
-                str([repr(exp) for exp in self.expressions]), ')'])
+        return ''.join([f'Code Snippet(name: {self.name}, expressions: ',
+                        str([repr(exp) for exp in self.expressions]), ')'])
 
     def json_dict(self):
         return {
-                "desc": self.desc,
-                "attrib": self.attrib,
-                "name": self.name,
-                "expressions": [str(elem) for elem in self.expressions],
-                "variables": [var for var in self.variables]
-               }
+            "desc": self.desc,
+            "attrib": self.attrib,
+            "name": self.name,
+            "expressions": [str(elem) for elem in self.expressions],
+            "variables": [var for var in self.variables]
+        }
 
-    def dump(self,func=print):
+    def dump(self, func=print):
         func(str(self))
 
 
@@ -96,4 +97,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

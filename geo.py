@@ -10,7 +10,7 @@ __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
 
 
-STATE_DATA=[
+STATE_DATA = [
     "Alabama/,Alabama,AL,01",
     "Alaska/,Alaska,AK,02",
     "Arizona/,Arizona,AZ,04",
@@ -62,15 +62,17 @@ STATE_DATA=[
     "West_Virginia/,West_Virginia,WV,54",
     "Wisconsin/,Wisconsin,WI,55",
     "Wyoming/,Wyoming,WY,56"]
-STATES=[dict(zip("dir_name,state_name,state_abbr,fips_state".split(","), line.split(","))) for line in STATE_DATA]
+STATES = [dict(zip("dir_name,state_name,state_abbr,fips_state".split(
+    ","), line.split(","))) for line in STATE_DATA]
+
 
 def state_rec(name=None, fips=None):
     for rec in STATES:
         if name:
-            if name.lower()==rec['state_name'].lower() or name.lower()==rec['state_abbr'].lower():
+            if name.lower() == rec['state_name'].lower() or name.lower() == rec['state_abbr'].lower():
                 return rec
         if fips:
-            if fips==rec['fips_state']:
+            if fips == rec['fips_state']:
                 return rec
     raise ValueError(f"{name}: not a valid state name or abbreviation")
 
@@ -79,9 +81,11 @@ def state_fips(name):
     """Convert state name or abbreviation to FIPS code"""
     return state_rec(name=name)['fips_state']
 
+
 def state_abbr(fips):
     """Convert state FIPS code to the abbreviation"""
     return state_rec(fips=fips)['state_abbr']
+
 
 def all_state_abbrs():
     # Return a list of all the states

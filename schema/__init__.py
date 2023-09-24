@@ -10,20 +10,23 @@
 #   Recode   - A recode from one table to another
 #   Schema   - A set of Tables and recodes
 
-### NOTE: requires ctools, which must be in your PYTHONPATH
+# NOTE: requires ctools, which must be in your PYTHONPATH
 
 
 import re
 import logging
 import decimal
 
-unquote_re         = re.compile("[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
-type_width_re      = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]")  # matches a type and width specification
-note_re            = re.compile(r"Note([ 0-9])*:", re.I)
-assignVal_re       = re.compile(r"([^=]*)\s*=\s*(.*)")
-assignRange_re     = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
-range_re           = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)")  # handles unicode dashes
-integer_re         = re.compile(r"INTEGER ?\((\d+)\)", re.I)
+unquote_re = re.compile(
+    "[\u0022\u0027\u2018\u201c](.*)[\u0022\u0027\u2019\u201d]")
+# matches a type and width specification
+type_width_re = re.compile(r"([A-Z0-9]+)\s*[(](\d+)[)]")
+note_re = re.compile(r"Note([ 0-9])*:", re.I)
+assignVal_re = re.compile(r"([^=]*)\s*=\s*(.*)")
+assignRange_re = re.compile(r"(.*)\s*[\-\u2013\u2014]\s*([^=]*)(=\s*(.*))?")
+# handles unicode dashes
+range_re = re.compile(r"(\S*)\s*[\-\u2013\u2014]\s*(\S*)")
+integer_re = re.compile(r"INTEGER ?\((\d+)\)", re.I)
 
 
 SAS_TEMPLATE = """OPTIONS NOCENTER PAGENO=1 SOURCE MPRINT;
@@ -37,16 +40,16 @@ RUN;
 """
 
 
-TYPE_NUMBER        = "NUMBER"
-TYPE_INTEGER       = "INTEGER"
-TYPE_INT           = "INT"
-TYPE_VARCHAR       = "VARCHAR"
-TYPE_CHAR          = "CHAR"
-TYPE_DECIMAL       = "DECIMAL"
-TYPE_FLOAT         = "FLOAT"
-TYPE_DATE          = "DATE"
-TYPE_SDO_GEOMETRY  = "SDO_GEOMETRY"
-TYPE_STRING        = "STRING"
+TYPE_NUMBER = "NUMBER"
+TYPE_INTEGER = "INTEGER"
+TYPE_INT = "INT"
+TYPE_VARCHAR = "VARCHAR"
+TYPE_CHAR = "CHAR"
+TYPE_DECIMAL = "DECIMAL"
+TYPE_FLOAT = "FLOAT"
+TYPE_DATE = "DATE"
+TYPE_SDO_GEOMETRY = "SDO_GEOMETRY"
+TYPE_STRING = "STRING"
 # map SQL names to Python types
 PYTHON_TYPE_MAP = {TYPE_NUMBER: int,
                    TYPE_INTEGER: int,
@@ -66,17 +69,17 @@ SQL_TYPE_MAP = {int: {'type': TYPE_INTEGER, 'width': 8},
 
 
 DEFAULT_VARIABLE_WIDTH = 8
-WIDTH_MAX       = 255
+WIDTH_MAX = 255
 
-SAS7BDAT_EXT   = ".sas7bdat"
-CSV_EXT        = ".csv"
-TXT_EXT        = ".txt"
-PANDAS_EXTS    = {SAS7BDAT_EXT, CSV_EXT, TXT_EXT}
+SAS7BDAT_EXT = ".sas7bdat"
+CSV_EXT = ".csv"
+TXT_EXT = ".txt"
+PANDAS_EXTS = {SAS7BDAT_EXT, CSV_EXT, TXT_EXT}
 PANDAS_CHUNKSIZE = 1000
 
 # Special ranges
 RANGE_NULL = "NULL"           # if NULL, then interpret as the empty string
-RANGE_ANY  = "N/A"            # if N/A, allow any
+RANGE_ANY = "N/A"            # if N/A, allow any
 
 SQLITE3 = 'sqlite3'
 MYSQL = 'mysql'
@@ -176,7 +179,7 @@ def unquote(s):
 # Simson's cut-rate SQL parser
 #
 create_re = re.compile(r'CREATE TABLE (\S*) \(( .* )\)', re.I)
-var_re    = re.compile(r'(\S+) (\S+)')
+var_re = re.compile(r'(\S+) (\S+)')
 
 SQL_TABLE = 'table'
 SQL_COLUMNS = 'cols'

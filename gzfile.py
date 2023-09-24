@@ -9,28 +9,32 @@ import tempfile
 import subprocess
 import os
 
+
 class GZFile:
     def __init__(self, name, mode='r', level=6, buffering=-1, encoding=None, errors=None,
                  newline=None, closefd=True, opener=None, auto=False):
-        if auto==True and name.endswith(".gz")==False:
+        if auto == True and name.endswith(".gz") == False:
             self.passthrough = True
             self.f = open(self.name, mode=mode, buffering=buffering, encoding=encoding, errors=errors,
                           newline=newline, closefd=closefd, opener=opener)
             return
         self.passthrough = False
-        self.mode        = mode
+        self.mode = mode
         if ('r' in mode) and ('w' in mode):
-            raise ValueError('cannot open gz files for both reading and writing')
+            raise ValueError(
+                'cannot open gz files for both reading and writing')
         if 'r' in mode:
             if not os.path.exists(name):
                 raise FileNotFoundError(name)
-            encoding     = None if 'b' in mode else 'utf-8'
-            self.p       = subprocess.Popen(['gzip', '-c', '-q', '-d'], stdin=open(name, 'rb'), stdout=subprocess.PIPE, encoding=encoding)
+            encoding = None if 'b' in mode else 'utf-8'
+            self.p = subprocess.Popen(['gzip', '-c', '-q', '-d'], stdin=open(
+                name, 'rb'), stdout=subprocess.PIPE, encoding=encoding)
             self._fileno = self.p.stdout.fileno()
-            self.name    = f'/dev/fd/{self._fileno}'
-            self.f       = open(self.name, mode)
+            self.name = f'/dev/fd/{self._fileno}'
+            self.f = open(self.name, mode)
         if 'w' in mode:
-            self.p = subprocess.Popen(['gzip', f'-{level}'], stdin=subprocess.PIPE, stdout=open(name, 'wb'))
+            self.p = subprocess.Popen(
+                ['gzip', f'-{level}'], stdin=subprocess.PIPE, stdout=open(name, 'wb'))
             self.name = name
 
     def fileno(self):
@@ -80,7 +84,7 @@ class GZFile:
             del self.p
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     with GZFile("test.gz", "w") as f:
         f.write("this is a test\n")
 

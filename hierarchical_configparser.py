@@ -59,17 +59,18 @@ from configparser import ConfigParser, DuplicateOptionError, DuplicateSectionErr
 from copy import copy
 from collections import defaultdict, namedtuple
 
-DEFAULT='default'
-INCLUDE='include'
+DEFAULT = 'default'
+INCLUDE = 'include'
 
 Line = namedtuple('Line', ['filename', 'lineno', 'line'])
 
 SECTION_RE = re.compile(r'^\[([^\]]*)\]:?\s*$')
-OPTION_RE  = re.compile(r'^\s*([.\w]+)\s*[=:]\s*(.*)$')
+OPTION_RE = re.compile(r'^\s*([.\w]+)\s*[=:]\s*(.*)$')
 INCLUDE_RE = re.compile(r'^\s*include\s*=\s*([^\s]+)\s*(;.*)?$', re.I)
 
-HEAD_SECTION=""
-DEFAULT_SECTION="default"
+HEAD_SECTION = ""
+DEFAULT_SECTION = "default"
+
 
 def getOption(line):
     """
@@ -84,6 +85,7 @@ def getOption(line):
 def getAllOptions(lines):
     return set([option for option in [getOption(line) for line in lines] if option is not None])
 
+
 def getIncludeFile(line):
     """If the line has an INCLUDE= statementon it, return the the file included"""
     m = INCLUDE_RE.search(line)
@@ -91,14 +93,18 @@ def getIncludeFile(line):
         return m.group(1)
     return None
 
+
 class HierarchicalConfigParserError(RuntimeError):
     pass
+
 
 class RequiredOptionMissing(HierarchicalConfigParserError):
     pass
 
+
 class RegularExpressionValidationFailure(HierarchicalConfigParserError):
     pass
+
 
 class HCP:
     """This class implements the HiearchicalConfigFile includes. But it does not implement the generic configfile.
@@ -107,7 +113,7 @@ class HCP:
     """
 
     def __init__(self, *args, **kwargs):
-        self.sections   = collections.OrderedDict()  # section name is lowercased
+        self.sections = collections.OrderedDict()  # section name is lowercased
         self.seen_files = set()
 
     def read(self, filename, *, onlySection=None):
@@ -130,11 +136,12 @@ class HCP:
                 if m:
                     currentSection = m.group(1).lower()
                     if currentSection in seen_sections:
-                        raise ValueError(f"{seen_sections} appears twice in {filename}")
+                        raise ValueError(
+                            f"{seen_sections} appears twice in {filename}")
                     seen_sections.add(currentSection)
 
                 if onlySection is not None:
-                    if (onlySection.lower() != currentSection.lower()) and (currentSection!=DEFAULT_SECTION):
+                    if (onlySection.lower() != currentSection.lower()) and (currentSection != DEFAULT_SECTION):
                         #print(f"{self} reading {filename} skipping line in section {currentSection}")
                         continue
 
@@ -163,7 +170,8 @@ class HCP:
                     theIncludeFile = getIncludeFile(line)
                     if theIncludeFile:
                         h2 = HCP()
-                        theIncludePath = os.path.join(currentDirectory, theIncludeFile)
+                        theIncludePath = os.path.join(
+                            currentDirectory, theIncludeFile)
                         h2.read(theIncludePath)
                         self.seen_files.update(h2.seen_files)
 
@@ -171,8 +179,8 @@ class HCP:
                         # provided that we were not asked to read a specific section. In that case, we only add [default] and that section
                         for includedSection in h2.sections:
                             if ((includedSection not in self.sections) and
-                                (len(h2.sections[includedSection])>0) and
-                                    ((onlySection is None) or (includedSection==onlySection) or (includedSection==DEFAULT_SECTION))):
+                                (len(h2.sections[includedSection]) > 0) and
+                                    ((onlySection is None) or (includedSection == onlySection) or (includedSection == DEFAULT_SECTION))):
 
                                 lines = []
                                 lines.append(h2.sections[includedSection][0])
@@ -198,29 +206,35 @@ class HCP:
                 # to this section
                 if (section != DEFAULT_SECTION) and (section != HEAD_SECTION):
                     for fname in default_include_files:
-                        linesInSection.append(f"INCLUDE={fname} ; from [default]\n")
+                        linesInSection.append(
+                            f"INCLUDE={fname} ; from [default]\n")
 
                 for line in self.sections[section]:
                     theIncludeFile = getIncludeFile(line)
                     if theIncludeFile:
-                        newlines.append(f';{line}')  # {line} already ends with \n
+                        # {line} already ends with \n
+                        newlines.append(f';{line}')
                         h2 = HCP()
-                        theIncludePath = os.path.join(currentDirectory, theIncludeFile)
+                        theIncludePath = os.path.join(
+                            currentDirectory, theIncludeFile)
                         h2.read(theIncludePath, onlySection=section)
                         self.seen_files.update(h2.seen_files)
 
                         #print(f"Read {theIncludeFile} section {section} got {h2.sections}")
 
-                        if (section in h2.sections) and (len(h2.sections[section])>0):
-                            newlines.append(f'; begin include from {theIncludeFile}\n')
-                            for iLine in h2.sections[section][1:]:  # do not include the section label
+                        if (section in h2.sections) and (len(h2.sections[section]) > 0):
+                            newlines.append(
+                                f'; begin include from {theIncludeFile}\n')
+                            # do not include the section label
+                            for iLine in h2.sections[section][1:]:
                                 iLineOption = getOption(iLine)
                                 if iLineOption and (iLineOption in optionsForThisSection):
                                     newlines.append(f'; [SHADOWED] {iLine}\n')
                                 else:
                                     newlines.append(iLine)
                                     optionsForThisSection.add(iLineOption)
-                            newlines.append(f'; end include from {theIncludeFile}\n')
+                            newlines.append(
+                                f'; end include from {theIncludeFile}\n')
                     else:
                         newlines.append(line)
                 assert len(newlines) >= len(self.sections[section])
@@ -293,7 +307,8 @@ class HierarchicalConfigParser(ConfigParser):
                     option_name = option[:-len(".re")]
                     if option_name in self[section]:
                         option_value = self[section][option_name].strip()
-                        m = re.match(self[section][option], self[section][option_name])
+                        m = re.match(self[section][option],
+                                     self[section][option_name])
                         logging.warning("m=%s", m)
                         if not m:
                             raise RegularExpressionValidationFailure(
@@ -305,12 +320,14 @@ class HierarchicalConfigParser(ConfigParser):
                                 f"'{self[section][option_name]}' contains extra characters. "
                                 f"(expected {m.span()[1]} characters, got {len(option_value)}")
                     else:
-                        logging.warning("validated option %s is not present", option_name)
+                        logging.warning(
+                            "validated option %s is not present", option_name)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("configfile", help="read and print the config file")
     args = parser.parse_args()
 

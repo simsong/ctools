@@ -20,7 +20,7 @@ import sys
 import time
 import urllib.request
 
-from os.path import abspath,dirname,basename
+from os.path import abspath, dirname, basename
 
 # Beware!  An error occurred (ThrottlingException) in complete_cluster_info()
 # when calling the ListInstances operation (reached max retries: 4): Rate exceeded
@@ -28,7 +28,7 @@ from os.path import abspath,dirname,basename
 # We experienced throttling with DEFAULT_WORKERS=20
 #
 # So we use 4
-DEFAULT_WORKERS=4
+DEFAULT_WORKERS = 4
 
 # We also now implement exponential backoff
 MAX_RETRIES = 7
@@ -51,21 +51,23 @@ except ImportError as e:
 
 # Proxy is controlled in aws
 
-_isMaster  = 'isMaster'
-_isSlave   = 'isSlave'
+_isMaster = 'isMaster'
+_isSlave = 'isSlave'
 _clusterId = 'clusterId'
-_diskEncryptionConfiguration='diskEncryptionConfiguration'
-_encryptionEnabled='encryptionEnabled'
+_diskEncryptionConfiguration = 'diskEncryptionConfiguration'
+_encryptionEnabled = 'encryptionEnabled'
 
-Status='Status'
+Status = 'Status'
 
 
 def show_credentials():
     subprocess.call(['aws', 'configure', 'list'])
 
+
 def get_url(url):
     with urllib.request.urlopen(url) as response:
         return response.read().decode('utf-8')
+
 
 def decode_user_data(user_data_raw):
     """Decode the raw user data provided by the Amazon API. Previously this was a JSON value; now it is a base64-encoded GZIP file inside a YAML value."""
@@ -84,6 +86,7 @@ def decode_user_data(user_data_raw):
         print(str(e), file=sys.stderr)
         raise RuntimeError("Cannot find user_data in YAML file")
 
+
 def user_data():
     """user_data is only available on EMR nodes. Otherwise we get an
     error, which we turn into a FileNotFound error"""
@@ -99,24 +102,31 @@ def user_data():
 def releaseLabel():
     return json.loads(open("/emr/instance-controller/lib/info/extraInstanceData.json", "r").read())['releaseLabel']
 
+
 def encryptionEnabled():
     return user_data()['diskEncryptionConfiguration']['encryptionEnabled']
+
 
 def isMaster():
     """Returns true if running on master"""
     return user_data()['isMaster']
 
+
 def isSlave():
     """Returns true if running on master"""
     return user_data()['isSlave']
 
+
 def decode_status(meminfo):
-    return {line[:line.find(":")]: line[line.find(":") +1:].strip() for line in meminfo.split("\n")}
+    return {line[:line.find(":")]: line[line.find(":") + 1:].strip() for line in meminfo.split("\n")}
+
 
 def clusterId():
     return user_data()['clusterId']
 
 # https://docs.aws.amazon.com/general/latest/gr/api-retries.html
+
+
 def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
     """run the command and return the JSON output. implements retries"""
     for retries in range(retries):
@@ -124,16 +134,17 @@ def aws_emr_cmd(cmd, retries=MAX_RETRIES, decode=True):
             rcmd = ['aws', 'emr', '--output', 'json'] + cmd
             if debug:
                 print(f"aws_emr_cmd pid{os.getpid()}: {rcmd}")
-            p = subprocess.Popen(rcmd, encoding='utf-8', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(rcmd, encoding='utf-8',
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out, err) = p.communicate()
-            if p.poll()!=0:
+            if p.poll() != 0:
                 raise subprocess.CalledProcessError(f"p={p.poll()})")
             if decode:
                 return json.loads(out)
             else:
                 return p.poll()
         except subprocess.CalledProcessError as e:
-            delay = (2**retries * RETRY_MS_DELAY /1000)
+            delay = (2**retries * RETRY_MS_DELAY / 1000)
             logging.warning(f"aws emr subprocess.CalledProcessError. "
                             f"Retrying count={retries} delay={delay}")
             time.sleep(delay)
@@ -151,9 +162,11 @@ def list_clusters(*, state=None):
     data = aws_emr_cmd(cmd)
     return data['Clusters']
 
+
 def describe_cluster(clusterId):
     data = aws_emr_cmd(['describe-cluster', '--cluster', clusterId])
     return data['Cluster']
+
 
 def list_instances(clusterId=None):
     if clusterId is None:
@@ -161,15 +174,17 @@ def list_instances(clusterId=None):
     data = aws_emr_cmd(['list-instances', '--cluster-id', clusterId])
     return data['Instances']
 
+
 def add_cluster_info(cluster):
     clusterId = cluster['Id']
     cluster['describe-cluster'] = describe_cluster(clusterId)
-    cluster['instances']        = list_instances(clusterId)
-    cluster['terminated']       = 'EndDateTime' in cluster['Status']['Timeline']
+    cluster['instances'] = list_instances(clusterId)
+    cluster['terminated'] = 'EndDateTime' in cluster['Status']['Timeline']
     # Get the id of the master
     try:
         masterPublicDnsName = cluster['describe-cluster']['MasterPublicDnsName']
-        masterInstance = [i for i in cluster['instances'] if i['PrivateDnsName']==masterPublicDnsName][0]
+        masterInstance = [i for i in cluster['instances']
+                          if i['PrivateDnsName'] == masterPublicDnsName][0]
         masterInstanceId = masterInstance['Ec2InstanceId']
         # Get the master tags
         cluster['MasterInstanceTags'] = {}
@@ -179,6 +194,7 @@ def add_cluster_info(cluster):
         pass
     return cluster
 
+
 def complete_cluster_info(workers=DEFAULT_WORKERS, terminated=False):
     """Pull all of the information about all the clusters efficiently using the
     EMR cluster API and multithreading. If terminated=True, get
@@ -186,7 +202,7 @@ def complete_cluster_info(workers=DEFAULT_WORKERS, terminated=False):
     """
     clusters = list_clusters()
     for cluster in list(clusters):
-        if terminated==False and cluster['Status']['State']=='TERMINATED':
+        if terminated == False and cluster['Status']['State'] == 'TERMINATED':
             clusters.remove(cluster)
     with multiprocessing.Pool(workers) as p:
         clusters = p.map(add_cluster_info, clusters)
@@ -194,5 +210,5 @@ def complete_cluster_info(workers=DEFAULT_WORKERS, terminated=False):
     return clusters
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     print("user data test: ", user_data())
