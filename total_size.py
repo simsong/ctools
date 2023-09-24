@@ -9,6 +9,7 @@ except ImportError:
 
 # https://code.activestate.com/recipes/577504-compute-memory-footprint-of-an-object-and-its-cont/
 
+
 def total_size(o, handlers={}, verbose=False):
     """ Returns the approximate memory footprint an object and all of its contents.
 
@@ -30,7 +31,8 @@ def total_size(o, handlers={}, verbose=False):
                     }
     all_handlers.update(handlers)     # user handlers take precedence
     seen = set()                      # track which object id's have already been seen
-    default_size = getsizeof(0)       # estimate sizeof object without __sizeof__
+    # estimate sizeof object without __sizeof__
+    default_size = getsizeof(0)
 
     def sizeof(o):
         if id(o) in seen:       # do not double count the same object

@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from tydoc import tydoc
 import latex_tools
 
+
 def demo1():
     x1 = np.linspace(0.0, 5.0)
     x2 = np.linspace(0.0, 2.0)
@@ -43,12 +44,13 @@ def demo1():
     # Just for grins, let's also run LaTeX
     latex_tools.run_latex("demo1.tex", delete_tempfiles=True)
 
+
 def demo2():
     doc = tydoc()
     doc.h1("sin(x) graph")
     doc.p("Here is a little graph of sin(x) from 0 to 4π")
     doc.p("A second paragraph")
-    x = np.linspace(0, np.pi *4)
+    x = np.linspace(0, np.pi * 4)
     fig = Figure(figsize=(4, 2))
     FigureCanvasAgg(fig)
     ax = fig.add_subplot(111)
@@ -62,7 +64,7 @@ def demo2():
     fig = Figure(figsize=(4, 2))
     FigureCanvasAgg(fig)
     ax = fig.add_subplot(111)
-    ax.plot(x, np.sin(2 *x))
+    ax.plot(x, np.sin(2 * x))
     doc.append_matplotlib(fig, dpi=72, pad_inches=0.1)
     doc.save("demo2.html")
     doc.save("demo2.tex")
@@ -71,6 +73,6 @@ def demo2():
     latex_tools.run_latex("demo2.tex", delete_tempfiles=True)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     demo1()
     demo2()

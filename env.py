@@ -36,13 +36,17 @@ except ImportError:
     pass
 
 
-from os.path import dirname,basename,abspath
+from os.path import dirname, basename, abspath
 
-VARS_RE   = re.compile(r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
-EXPORT_RE = re.compile(r"^export ([a-zA-Z][a-zA-Z0-9_]*)=(.*)$")
+BASH_VARS_RE = re.compile(
+    r"^(export)?\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)=(?P<value>.*)$")
+PYTHON_VARS_RE = re.compile(
+    r"\s*(?P<name>[a-zA-Z][a-zA-Z0-9_]*)\s*=\s*(?P<value>.*)$")
+
+
 
 def unquote(value):
-    while (len(value)>0) and (value[0] in ['"', "'"]) and (value[0]==value[-1]):
+    while (len(value) > 0) and (value[0] in ['"', "'"]) and (value[0] == value[-1]):
         value = value[1:-1]
     return value
 
@@ -51,12 +55,13 @@ def get_vars(fname):
     """Read the bash EXPORT variables in fname and return them in a dictionary
     :param fname: the name of a bash script
     """
+    re_to_use = PYTHON_VARS_RE if fname.endswith('.py') else BASH_VARS_RE
     ret = {}
     with open(fname, 'r') as f:
         for line in f:
-            m = VARS_RE.search(line)
+            m = re_to_use.search(line)
             if m:
-                name  = unquote(m.group('name'))
+                name = unquote(m.group('name'))
                 value = unquote(m.group('value'))
                 ret[name] = value
     return ret
@@ -75,15 +80,17 @@ variables
     if (pathname is not None) and (profile_dir is not None):
         raise ValueError("pathname and profile_dir canot both be provided")
     if (profile_dir is not None) and (prefix is None):
-        raise ValueError("If profile_dir is provided, pathname must be provided.")
+        raise ValueError(
+            "If profile_dir is provided, pathname must be provided.")
     if profile_dir:
         names = sorted(glob.glob(os.path.join(profile_dir, prefix+"*")))
-        if len(names)==0:
-            raise FileNotFoundError(f"No file with prefix {prefix} in {profile_dir}")
+        if len(names) == 0:
+            raise FileNotFoundError(
+                f"No file with prefix {prefix} in {profile_dir}")
         pathname = names[0]
 
     ret = {}
-    for (key,val) in get_vars(pathname).items():
+    for (key, val) in get_vars(pathname).items():
         ret[key] = os.environ[key] = os.path.expandvars(val)
     return ret
 
@@ -92,7 +99,8 @@ def get_census_env():
     """Legacy to be deleted.
     Look for a script in /etc/profile.d/ beginning with 'census' and read the variables in it.
     """
-    return get_env(profile_dir = '/etc/profile.d', prefix = 'census')
+    return get_env(profile_dir='/etc/profile.d', prefix='census')
+
 
 def get_home():
     """Return the current user's home directory without using the HOME variable on Unix; use HOME on windows. """
@@ -101,33 +109,34 @@ def get_home():
     except NameError:
         return os.environ['HOME']
 
+
 def dump(out):
-    print("==== ENV ====",file=out)
-    for (key,val) in os.environ.items():
-        print(f"{key}={val}",file=out)
+    print("==== ENV ====", file=out)
+    for (key, val) in os.environ.items():
+        print(f"{key}={val}", file=out)
+
 
 class JSONConfigReader:
     @classmethod
-    def searchFile(self,path):
+    def searchFile(self, path):
         """Search for the file named by path in the current directory, and then in every directory up to the root.
         Then every directory from ctool's directory to root.
         When found, return it. Otherwise return path if the file exists, otherwise raise an exception
         """
         checked = []
-        name = os.path.join( os.getcwd(), basename(path))
+        name = os.path.join(os.getcwd(), basename(path))
         while dirname(name) != '/':
             checked.append(name)
             if os.path.exists(name):
                 return name
-            name = os.path.join( dirname(dirname(name)), basename(name))
+            name = os.path.join(dirname(dirname(name)), basename(name))
 
-        name = os.path.join( dirname(abspath(__file__)), basename(path))
+        name = os.path.join(dirname(abspath(__file__)), basename(path))
         while dirname(name) != '/':
             checked.append(name)
             if os.path.exists(name):
                 return name
-            name = os.path.join( dirname(dirname(name)), basename(name))
-
+            name = os.path.join(dirname(dirname(name)), basename(name))
 
         if os.path.exists(path):
             return path
@@ -135,8 +144,7 @@ class JSONConfigReader:
             logging.error(f"checked {check}")
         raise FileNotFoundError(path)
 
-
-    def __init__(self, *, path=None, search=True, config=None, environment=None, envar=None ):
+    def __init__(self, *, path=None, search=True, config=None, environment=None, envar=None):
         """
         :param path: location of JSON config file.
         :param search: Search from current directory up to root for a file with the same filename as `path` before using `path`.
@@ -144,7 +152,7 @@ class JSONConfigReader:
         :param environment: Specifies the environment inside the JSON dictionary that should be used, and then default to '*'.
         :param envar: Specifics an os.environ[] name that should be used for the environment.
         """
-        self.environment= '*'
+        self.environment = '*'
         self.path = None
         if (path is not None) and (config is not None):
             raise ValueError("Only path or config can be specified")
@@ -166,33 +174,35 @@ class JSONConfigReader:
         if envar:
             self.environment = os.environ[envar]
 
-
     def get_config(self, variable_name, environment=None):
         # Handle one layer deep of FOO.BAR to search in FOO's directory for BAR.
         if environment is None:
             environment = self.environment
 
         if "." in variable_name:
-            (name,ext) = variable_name.split(".",1)
+            (name, ext) = variable_name.split(".", 1)
             val = self.get_config(name, environment)
             return val[ext]
 
-        for check in [environment,'*']:
+        for check in [environment, '*']:
             try:
                 return self.config[check][variable_name]
             except KeyError:
                 pass
-        print(f"config:\n{json.dumps(self.config,default=str,indent=4)}",file=sys.stderr)
+        print(
+            f"config:\n{json.dumps(self.config,default=str,indent=4)}", file=sys.stderr)
         raise KeyError(f"{variable_name} not in {check} or '*' in {self.path}")
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     """Read a file and print the learned variables"""
     import argparse
     parser = argparse.ArgumentParser(description='Import the Digital Corpora logs.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("envfile",help="File with environment variables set by bash")
+    parser.add_argument(
+        "envfile", help="File with environment variables set by bash")
     args = parser.parse_args()
 
     d = get_vars(args.envfile)
-    for (k,v) in d.items():
+    for (k, v) in d.items():
         print(f"{k}={v}")

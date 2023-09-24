@@ -1,2 +1,2 @@
-FIRST=1
-FILE="the file"
+export FIRST=1
+export FILE="the file"

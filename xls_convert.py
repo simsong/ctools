@@ -5,6 +5,7 @@ import os
 import glob
 import warnings
 
+
 class NoExcel(Exception):
     def __init__(self, msg=''):
         Exception.__init__(self, msg)
@@ -28,13 +29,14 @@ format_number = {'.xlsx': 51,
                  '.xlsb': 50,
                  '.pdf': 57}
 
+
 def is_xls_xml(infile):
-    if os.path.splitext(infile)[1].lower()=='.xml':
+    if os.path.splitext(infile)[1].lower() == '.xml':
         with open(infile, "r") as f:
             lines = f.read(65536).split("\n")[0:5]
-            if (len(lines)>3 and
-                lines[0].strip()=='<?xml version="1.0"?>' and
-                    lines[1].strip()=='<?mso-application progid="Excel.Sheet"?>'):
+            if (len(lines) > 3 and
+                lines[0].strip() == '<?xml version="1.0"?>' and
+                    lines[1].strip() == '<?mso-application progid="Excel.Sheet"?>'):
                 return True
     return False
 
@@ -47,7 +49,8 @@ def excel_convert(infile, out_ext):
     import win32com.client
 
     if out_ext not in format_number:
-        raise ValueError("Unknown extension '{}': valid extensions: {}".format(out_ext, format_number.keys()))
+        raise ValueError("Unknown extension '{}': valid extensions: {}".format(
+            out_ext, format_number.keys()))
 
     infile_fullpath = os.path.abspath(infile)
     (base, in_ext) = os.path.splitext(infile_fullpath)
@@ -56,14 +59,15 @@ def excel_convert(infile, out_ext):
     if not os.path.isfile(infile_fullpath):
         raise FileNotFoundError(infile_fullpath)
 
-    outfile    = base +out_ext
+    outfile = base + out_ext
     if os.path.exists(outfile):
         raise FileExistsError(outfile)
 
-    if in_ext==out_ext:
-        raise ValueError(f"Input extension {in_ext} matches output extension {out_ext}")
+    if in_ext == out_ext:
+        raise ValueError(
+            f"Input extension {in_ext} matches output extension {out_ext}")
 
-    if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
+    if in_ext.lower() == '.xml' and not is_xls_xml(infile_fullpath):
         raise RuntimeError(f"{in_ext} is not an XLS XML file")
 
     excel = win32com.client.DispatchEx("Excel.Application")
@@ -80,7 +84,7 @@ def excel_convert(infile, out_ext):
             # Autofit the colums
             excel.ActiveSheet.Columns.AutoFit()
 
-            excel.PrintCommunication    = False
+            excel.PrintCommunication = False
             # Don't change the orientation
             # ws.PageSetup.Orientation    = 1     # 1=Portrait, 2=Landscape
 
@@ -99,7 +103,7 @@ def excel_convert(infile, out_ext):
             # We could limit the print area...
             # ws.PageSetup.PrintArea = 'A1:G50'
 
-            excel.PrintCommunication    = True
+            excel.PrintCommunication = True
 
     print("{} => {}".format(infile_fullpath, outfile))
 
@@ -112,7 +116,7 @@ def excel_convert(infile, out_ext):
     return True
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Convert files to .xlsx and .pdf',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)

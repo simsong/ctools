@@ -59,16 +59,16 @@ import uuid
 __author__ = "Simson L. Garfinkel"
 __version__ = "0.0.1"
 
-DEVLOG     = "/dev/log"
+DEVLOG = "/dev/log"
 DEVLOG_MAC = "/var/run/syslog"
 
 # Default log formats.
 #
 
 # YEAR is used in callers
-YEAR=str(datetime.datetime.now().year)
-SYSLOG_FORMAT="%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
-LOG_FORMAT="%(asctime)s " + SYSLOG_FORMAT
+YEAR = str(datetime.datetime.now().year)
+SYSLOG_FORMAT = "%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
+LOG_FORMAT = "%(asctime)s " + SYSLOG_FORMAT
 
 # Global state variables. Keep track as to whether or not syslog
 # handler was added and whether or not the basicConfig was setup.
@@ -80,7 +80,10 @@ called_basicConfig = False
 def applicationIdFromEnvironment():
     return "_".join(['application'] + os.environ['CONTAINER_ID'].split("_")[1:3])
 
-FAKE_APPLICATION_ID='FAKE_APPLICATION_ID'
+
+FAKE_APPLICATION_ID = 'FAKE_APPLICATION_ID'
+
+
 def applicationId():
     """Return the Yarn (or local) applicationID.
     The environment variables are only set if we are running in a Yarn container.
@@ -115,6 +118,7 @@ def applicationId():
     # Application ID cannot be determined.
     return f"unknown{os.getpid()}"
 
+
 def shutdown():
     """Turn off the logging system."""
     global added_syslog, called_basicConfig
@@ -131,9 +135,11 @@ def add_argument(parser, *, loglevel_default='INFO'):
     parser.add_argument("--loglevel", help="Set logging level",
                         choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default=loglevel_default)
     try:
-        parser.add_argument("--logfilename", help="output filename for logfile")
+        parser.add_argument(
+            "--logfilename", help="output filename for logfile")
     except argparse.ArgumentError as e:
         pass
+
 
 def syslog_default_address():
     if os.path.exists(DEVLOG):
@@ -143,9 +149,10 @@ def syslog_default_address():
     else:
         raise RuntimeError(f"Neither {DEVLOG} nor {DEVLOG_MAC} are present.")
 
+
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
                  syslog_address=None,
-                 syslog_format=YEAR +" " +SYSLOG_FORMAT,
+                 syslog_format=YEAR + " " + SYSLOG_FORMAT,
                  use_tcp=False):
     global added_syslog
     if not added_syslog:
@@ -167,7 +174,8 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
             socktype = socket.SOCK_DGRAM
             append_nul = True
 
-        handler   = logging.handlers.SysLogHandler(address=syslog_address, facility=facility, socktype=socktype)
+        handler = logging.handlers.SysLogHandler(
+            address=syslog_address, facility=facility, socktype=socktype)
         handler.append_nul = append_nul
         formatter = logging.Formatter(syslog_format)
         handler.setFormatter(formatter)
@@ -192,7 +200,8 @@ def setup(level='INFO',
     global called_basicConfig
     if not called_basicConfig:
         # getLevelName sometimes returns a string and sometimes returns an int, and we want it always to be an integer
-        loglevel = level if isinstance(level, int) else logging.getLevelName(level)
+        loglevel = level if isinstance(
+            level, int) else logging.getLevelName(level)
         filename_to_use = None if filename is None else filename
 
         # Check to see if the logger already has handlers.
@@ -209,14 +218,16 @@ def setup(level='INFO',
                 logging.getLogger().setLevel(loglevel)
         else:
             # logging.basicConfig only works if no handlers have been set
-            logging.basicConfig(filename=filename_to_use, format=log_format, level=loglevel)
+            logging.basicConfig(filename=filename_to_use,
+                                format=log_format, level=loglevel)
         called_basicConfig = True
 
     if syslog:
-        setup_syslog(facility=facility, syslog_address=syslog_address, syslog_format=syslog_format)
+        setup_syslog(facility=facility, syslog_address=syslog_address,
+                     syslog_format=syslog_format)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     setup_syslog()
-    assert added_syslog==True
+    assert added_syslog == True
     logging.error("By default, error gets logged but info doesn't")

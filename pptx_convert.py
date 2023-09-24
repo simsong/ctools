@@ -1,4 +1,6 @@
-import os,sys,glob
+import os
+import sys
+import glob
 from os import path
 
 from win32com import client
@@ -11,33 +13,34 @@ from win32com import client
 # http://stackoverflow.com/questions/24023518/using-python-to-autofit-all-columns-of-an-excel-sheet
 
 # FileFormat numbers
-format_number = {'.pptx':51,
-                 '.ppt':52,
-                 '.pdf':57}
+format_number = {'.pptx': 51,
+                 '.ppt': 52,
+                 '.pdf': 57}
 
 
 #
 # Uses Powerpoint to convert to .pptx and to .pdf
 # https://stackoverflow.com/questions/16683376/print-chosen-worksheets-in-excel-files-to-pdf-in-python
 # https://github.com/mwhit74/excel/blob/master/excel_to_pdf.py
-def powerpoint_convert(infile,out_ext):
+def powerpoint_convert(infile, out_ext):
     if out_ext not in format_number:
-        print("Unknown extension '{}': valid extensions: {}".format(out_ext,format_number.keys()))
+        print("Unknown extension '{}': valid extensions: {}".format(
+            out_ext, format_number.keys()))
 
     infile_fullpath = os.path.abspath(infile)
-    (base,in_ext) = os.path.splitext(infile_fullpath)
+    (base, in_ext) = os.path.splitext(infile_fullpath)
 
     powerpoint = None
     if not os.path.isfile(infile_fullpath):
-        print("{} does not exist".format(infile_fullpath));
+        print("{} does not exist".format(infile_fullpath))
         return False
 
-    outfile    = base+out_ext
+    outfile = base+out_ext
     if os.path.exists(outfile):
         print("   {} exists".format(outfile))
         return False
 
-    if in_ext==out_ext:
+    if in_ext == out_ext:
         return False
 
     # if in_ext.lower()=='.xml' and not is_xls_xml(infile_fullpath):
@@ -46,7 +49,6 @@ def powerpoint_convert(infile,out_ext):
     powerpoint = client.DispatchEx("Powerpoint.Application")
     powerpoint.Visible = 0
     powerpoint.DisplayAlerts = False
-
 
     print("Opening {}".format(infile_fullpath))
     presentation = powerpoint.Presentations.Open(infile_fullpath)
@@ -71,7 +73,7 @@ def powerpoint_convert(infile,out_ext):
             # We could limit the print area...
             # ws.PageSetup.PrintArea = 'A1:G50'
 
-    print("{} => {}".format(infile_fullpath,outfile))
+    print("{} => {}".format(infile_fullpath, outfile))
 
     # wb.Worksheets.Sheet()
     try:
@@ -86,7 +88,7 @@ def powerpoint_convert(infile,out_ext):
     return True
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Convert files to .pptx and .pdf',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -95,6 +97,6 @@ if __name__=="__main__":
     args = parser.parse_args()
     if "*" or "?" in args.infile:
         for fn in glob.glob(args.infile):
-            powerpoint_convert(fn,args.out_ext)
+            powerpoint_convert(fn, args.out_ext)
     else:
-        powerpoint_convert(args.infile,args.out_ext)
+        powerpoint_convert(args.infile, args.out_ext)

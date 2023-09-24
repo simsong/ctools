@@ -7,14 +7,14 @@ awsome_demo:
 	cp tydoc_awsome_demo.html $$HOME/public_html/
 
 check:
-	pytest
+	python -m pytest
 
 # These are used by the CI pipeline:
 install-dependencies:
 	if [ -r requirements.txt ]; then pip3 install --user -r requirements.txt ; fi
 
 pytest:
-	pytest .
+	python -m pytest . -v --log-cli-level=INFO
 
 coverage:
-	pytest --debug -v --cov=. --cov-report=xml tests/ || echo pytest failed
+	python -m --debug -v --cov=. --cov-report=xml tests/ || echo pytest failed

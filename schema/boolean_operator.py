@@ -2,6 +2,7 @@
 
 import logging
 
+
 class BooleanOperator:
     """
     Boolean Operator
@@ -11,11 +12,11 @@ class BooleanOperator:
     op_type = operator type
     """
 
-    __slots__ = ('desc','attrib','op_type')
+    __slots__ = ('desc', 'attrib', 'op_type')
 
-    def __init__(self,*,desc="",attrib={},op_type=None):
-        self.desc        = desc          # description
-        self.attrib      = attrib
+    def __init__(self, *, desc="", attrib={}, op_type=None):
+        self.desc = desc          # description
+        self.attrib = attrib
         self.set_type(op_type)
 
     def set_type(self, op_type):
@@ -24,8 +25,8 @@ class BooleanOperator:
             res = None
         else:
             op_type = op_type.strip()
-            if op_type in ["<=", ">=", "<", ">", "==", \
-                "!=", "not", "and", "or"]:
+            if op_type in ["<=", ">=", "<", ">", "==",
+                           "!=", "not", "and", "or"]:
                 res = op_type
             else:
                 raise ValueError(f'operator type {op_type} invalid')
@@ -46,13 +47,14 @@ class BooleanOperator:
 
     def json_dict(self):
         return {
-                "desc": self.desc,
-                "attrib": self.attrib,
-                "type": self.op_type
-               }
+            "desc": self.desc,
+            "attrib": self.attrib,
+            "type": self.op_type
+        }
 
-    def dump(self,func=print):
+    def dump(self, func=print):
         func(str(self))
+
 
 def main():
     operator = BooleanOperator(op_type="<=")
@@ -61,4 +63,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

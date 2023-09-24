@@ -17,25 +17,27 @@ from ctools.schema.code_snippet import CodeSnippet
 
 from types import ModuleType
 
+
 class Schema:
     """A Schema is a collection of tables and recodes and code snippets"""
+
     def __init__(self, name='', *, debug=False, attrib={}):
-        self.debug     = debug
+        self.debug = debug
         self.tabledict = OrderedDict()        # by table name
         self.recodes = OrderedDict()
         self.code_snippets = OrderedDict()
         self.tables_with_recodes = set()
-        self.name    = name
-        self.attrib  = attrib
+        self.name = name
+        self.attrib = attrib
         self.recode_module = ModuleType('recodemodule')
 
-
     def json_dict(self):
-        return {"tables":{table.name:table.json_dict() for table in self.tables()}}
+        return {"tables": {table.name: table.json_dict() for table in self.tables()}}
 
-    def dump(self,func=print):
+    def dump(self, func=print):
         func("Schema DUMP {}:".format(self.name))
-        func("Tables: {}  Recodes: {}".format(len(self.tables()),len(self.recodes)))
+        func("Tables: {}  Recodes: {}".format(
+            len(self.tables()), len(self.recodes)))
         for table in self.tables():
             table.dump(func)
         for recode in self.recodes.values():
@@ -59,7 +61,7 @@ class Schema:
         logging.info("Deleted code snippet {}".format(name))
 
     def add_code_snippet_named(self, *, name, **kwargs):
-        return self.add_code_snippet( CodeSnippet(name=name, **kwargs) )
+        return self.add_code_snippet(CodeSnippet(name=name, **kwargs))
 
     def get_code_snippet(self, name, create=False):
         """
@@ -73,8 +75,8 @@ class Schema:
                 code_snippet = CodeSnippet(name=name)
                 self.add_code_snippet(code_snippet)
                 return code_snippet
-            logging.error(f"Code Snippet {name} requested, " + \
-                            f"current code snippets: {self.code_snippet_names()}")
+            logging.error(f"Code Snippet {name} requested, " +
+                          f"current code snippets: {self.code_snippet_names()}")
             raise KeyError(f"Code Snippet {name} does not exist")
 
     def code_snippet_vals(self):
@@ -83,14 +85,12 @@ class Schema:
     def code_snippet_names(self):
         return self.code_snippets.keys()
 
-
-
     # TABLES
 
-    def has_table(self,name):
+    def has_table(self, name):
         return name in self.tabledict
 
-    def add_table(self,t):
+    def add_table(self, t):
         assert isinstance(t, Table)
         self.tabledict[t.name] = t
         logging.info("Added table {}".format(t.name))
@@ -101,9 +101,9 @@ class Schema:
         logging.info("Deleted table {}".format(name))
 
     def add_table_named(self, *, name, **kwargs):
-        return self.add_table( Table(name=name, **kwargs) )
+        return self.add_table(Table(name=name, **kwargs))
 
-    def get_table(self,name,create=False):
+    def get_table(self, name, create=False):
         """Get the named table. If create is true, create the table if it doesn't exist."""
         try:
             return self.tabledict[name]
@@ -112,7 +112,8 @@ class Schema:
                 table = Table(name=name)
                 self.add_table(table)
                 return table
-            logging.error("Table {} requested; current tables: {}".format(name,self.table_names()))
+            logging.error("Table {} requested; current tables: {}".format(
+                name, self.table_names()))
             raise KeyError("Table {} does not exist".format(name))
 
     def tables(self):
@@ -123,69 +124,71 @@ class Schema:
 
     def sql_schema(self):
         return "\n".join([table.sql_schema() for table in self.tables()])
-        
+
     ################################################################
-    ### SQL Support
+    # SQL Support
     ################################################################
-    def add_sql_table(self,stmt):
+    def add_sql_table(self, stmt):
         """Use the SQL parser to parse the create statement. Each parsed row is returned as a dictionary.
         The keys of the dictionary just happen to match the parameters for the Variable class.
         """
         sql = sql_parse_create(stmt)
         table = Table(name=sql[schema.SQL_TABLE])
         for vdef in sql[schema.SQL_COLUMNS]:
-            v = Variable(vtype=vdef['vtype'],name=vdef['name'])
+            v = Variable(vtype=vdef['vtype'], name=vdef['name'])
             table.add_variable(v)
         self.add_table(table)
 
-
     ################################################################
-    ### Pandas support
+    # Pandas support
     ################################################################
-    def get_pandas_file_reader(self,filename,chunksize=schema.PANDAS_CHUNKSIZE):
-        (base,ext) = os.path.splitext(filename)
+    def get_pandas_file_reader(self, filename, chunksize=schema.PANDAS_CHUNKSIZE):
+        (base, ext) = os.path.splitext(filename)
         import pandas
-        if ext==schema.SAS7BDAT_EXT:
-            return pandas.read_sas( dopen(filename), chunksize=chunksize, encoding='latin1')
-        if ext==schema.CSV_EXT:
-            return pandas.read_csv( dopen(filename), chunksize=chunksize, encoding='latin1')
-        if ext==schema.TXT_EXT:
+        if ext == schema.SAS7BDAT_EXT:
+            return pandas.read_sas(dopen(filename), chunksize=chunksize, encoding='latin1')
+        if ext == schema.CSV_EXT:
+            return pandas.read_csv(dopen(filename), chunksize=chunksize, encoding='latin1')
+        if ext == schema.TXT_EXT:
             # Get the first line and figure out the seperator
             with dopen(filename) as f:
                 line = f.readline()
             if line.count("|") > 2:
-                sep='|'
+                sep = '|'
             elif line.count("\t") > 2:
-                sep='\t'
+                sep = '\t'
             else:
-                sep=','
+                sep = ','
             logging.info('sep={}'.format(sep))
-            return pandas.read_csv( dopen(filename), chunksize=chunksize, sep=sep, encoding='latin1')
-        logging.error("get_pandas_file_reader: unknown extension: {}".format(ext))
-        raise RuntimeError("get_pandas_file_reader: unknown extension: {}".format(ext))
-
+            return pandas.read_csv(dopen(filename), chunksize=chunksize, sep=sep, encoding='latin1')
+        logging.error(
+            "get_pandas_file_reader: unknown extension: {}".format(ext))
+        raise RuntimeError(
+            "get_pandas_file_reader: unknown extension: {}".format(ext))
 
     ################################################################
-    ### Load tables from a specification file
+    # Load tables from a specification file
     ################################################################
-    def load_schema_from_file(self,filename):
+    def load_schema_from_file(self, filename):
 
         if filename.endswith(".docx"):
-            raise RuntimeError("Schema cannot read .docx files; you probably want to use CensusSpec")
+            raise RuntimeError(
+                "Schema cannot read .docx files; you probably want to use CensusSpec")
 
         if filename.endswith(".xlsx"):
-            raise RuntimeError("Schema cannot read .docx files; you probably want to use CensusSpec")
+            raise RuntimeError(
+                "Schema cannot read .docx files; you probably want to use CensusSpec")
 
         # Make a table
         table_name = os.path.splitext(os.path.split(filename)[1])[0]
-        table_name = table_name.replace("-","_")
+        table_name = table_name.replace("-", "_")
         table = Table(name=table_name)
         table.filename = filename
         table.add_comment("Parsed from {}".format(filename))
 
         # Load the schema from the data file.
         # This will use pandas to read a single record.
-        for chunk in self.get_pandas_file_reader(filename,chunksize=1):
+        for chunk in self.get_pandas_file_reader(filename, chunksize=1):
             for row in chunk.to_dict(orient='records'):
                 for colName in chunk.columns:
                     v = Variable()
@@ -196,17 +199,17 @@ class Schema:
                 return
 
     ################################################################
-    ### Read records support
+    # Read records support
     ################################################################
-    def read_records_as_dicts(self,*,filename=None,tablename,limit=None,random=False):
+    def read_records_as_dicts(self, *, filename=None, tablename, limit=None, random=False):
         table = self.get_table(tablename)
-        if filename==None and table.filename:
+        if filename == None and table.filename:
             filename = table.filename
         count = 0
-        
+
         if random:
             # Just make up random records
-            assert limit>0
+            assert limit > 0
             for count in range(limit):
                 yield table.random_dict_record()
             return
@@ -217,36 +220,36 @@ class Schema:
             for chunk in reader:
                 for row in chunk.to_dict(orient='records'):
                     yield(row)
-                    count +=1
-                    if limit and count>=limit:
+                    count += 1
+                    if limit and count >= limit:
                         return
         else:
-            with open(filename,"r") as f:
+            with open(filename, "r") as f:
                 for line in f:
                     data = table.parse_line_to_dict(line)
                     yield data
-                    count +=1 
-                    if limit and count>=limit:
+                    count += 1
+                    if limit and count >= limit:
                         break
 
     ################################################################
-    ### Recode support
+    # Recode support
     ################################################################
 
     def recode_names(self):
         """Return an array of all the recode names"""
         return [r.name for r in self.recodes.values()]
 
-    def add_recode(self,name,vtype,desc):
+    def add_recode(self, name, vtype, desc):
         """Add a recode, and create the variable for the recode in the destination table"""
-        assert type(name)==str
-        assert type(vtype)==str
-        assert type(desc)==str
-        assert desc.count("=")==1
+        assert type(name) == str
+        assert type(vtype) == str
+        assert type(desc) == str
+        assert desc.count("=") == 1
         r = Recode(name=name, desc=desc)
         v = Variable(name=r.dest_table_var, vtype=vtype)
         self.get_table(r.dest_table_name).add_variable(v)
-        self.recodes[name]=r
+        self.recodes[name] = r
         self.tables_with_recodes.add(r.dest_table_name)
 
     def compile_recodes(self):
@@ -262,64 +265,64 @@ class Schema:
         self.recode_func = "def recode():\n"
         for recode in self.recodes.values():
             self.recode_func += "    {}\n".format(recode.statement)
-        self.recode_func += "    return\n" # terminate the function (useful if there are no recodes)
+        # terminate the function (useful if there are no recodes)
+        self.recode_func += "    return\n"
         compiled = compile(self.recode_func, '', 'exec')
         exec(compiled, self.recode_module.__dict__)
         # Now create empty directories to receive the variables for the first recode
         for tablename in self.tables_with_recodes:
             self.recode_module.__dict__[tablename] = {}
 
-    def recode_load_data(self,tablename,data):
+    def recode_load_data(self, tablename, data):
         self.recode_module.__dict__[tablename] = data
 
-    def recode_execute(self,tablename,data):
+    def recode_execute(self, tablename, data):
         if tablename not in self.tables_with_recodes:
             return
         self.recode_module.__dict__[tablename] = data
         try:
             self.recode_module.recode()
         except Exception as e:
-            print("Error in executing recode.",file=sys.stderr)
-            print("tablename: {}  data: {}".format(tablename,data),file=sys.stderr)
-            print("Recode function:",file=sys.stderr)
-            print(self.recode_func,file=sys.stderr)
-            print(e,file=sys.stderr)
-            print("tables with recodes: {}".format(self.tables_with_recodes),file=sys.stderr)
-            print("recode environment:",file=sys.stderr)
-            print("defined variables:",file=sys.stderr)
-            for v in sorted(self.recode_module.__dict__.keys(),file=sys.stderr):
-                print("   ",v,file=sys.stderr)
+            print("Error in executing recode.", file=sys.stderr)
+            print("tablename: {}  data: {}".format(
+                tablename, data), file=sys.stderr)
+            print("Recode function:", file=sys.stderr)
+            print(self.recode_func, file=sys.stderr)
+            print(e, file=sys.stderr)
+            print("tables with recodes: {}".format(
+                self.tables_with_recodes), file=sys.stderr)
+            print("recode environment:", file=sys.stderr)
+            print("defined variables:", file=sys.stderr)
+            for v in sorted(self.recode_module.__dict__.keys(), file=sys.stderr):
+                print("   ", v, file=sys.stderr)
             raise e
 
-
     ################################################################
-    ### Overrides
+    # Overrides
     ################################################################
-    def create_overrides(self,keyword):
+    def create_overrides(self, keyword):
         """An override is a set of per-table values for variables. They are found by searching for a keyword
         in the description of allowable variables. Once found, they are automatically applied when records are written.
         """
         for table in self.tables():
             table.create_overrides(keyword)
 
-
-    ### Defaults
-    def find_default_from_allowable_range_descriptions(self,text):
+    # Defaults
+    def find_default_from_allowable_range_descriptions(self, text):
         """Call this for every table. We do that a lot; perhaps we need an @every decorator or something"""
         for table in self.tables():
             table.find_default_from_allowable_range_descriptions(text)
 
 
-if __name__=="__main__":
-    from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser( formatter_class = ArgumentDefaultsHelpFormatter,
-                             description="Test functions for the schema module" )
-    parser.add_argument("--dumpfile", help="examine a FILE and dump its schema")
+if __name__ == "__main__":
+    from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter,
+                            description="Test functions for the schema module")
+    parser.add_argument(
+        "--dumpfile", help="examine a FILE and dump its schema")
     args = parser.parse_args()
     if args.dumpfile:
         db = Schema()
         db.load_schema_from_file(args.dumpfile)
         db.dump(print)
         print(db.sql_schema())
-
-    
