@@ -110,6 +110,8 @@ MYSQL_HOST = 'MYSQL_HOST'
 MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
+# Errors we do not retry. This used to be a long list, but it got shortened?
+ERRORS_NO_RETRY = []
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -416,6 +418,9 @@ class DBMySQL(DBSQL):
                 raise TypeError(
                     f"auth (val={auth}) (type {type(auth)}) does not have {name} slot")
 
+        if cmd.count("%s") != len(vals):
+            raise ValueError(f"cmd={cmd} cmd.count('%s')={cmd.count('%s')} len(vals)={len(vals)}")
+
         for i in range(1, RETRIES):
             try:
                 try:
@@ -512,8 +517,7 @@ class DBMySQL(DBSQL):
                 # These errors we do not retry
                 logging.error("%s %s in CMD: %s  explained: %s",
                               e.args[0], e.args[1], cmd, DBMySQL.explain(cmd, vals))
-                RETRY_ERRORS = [0]
-                if e.args[0] not in RETRY_ERRORS:
+                if e.args[0] not in ERRORS_NO_RETRY:
                     raise
                 logging.warning(
                     f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
