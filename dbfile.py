@@ -110,6 +110,8 @@ MYSQL_HOST = 'MYSQL_HOST'
 MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
+MYSQL_PORT  = 'MYSQL_PORT'
+MYSQL_DEFAULT_PORT = 3306
 # Errors we do not retry. This used to be a long list, but it got shortened?
 ERRORS_NO_RETRY = []
 
@@ -242,9 +244,9 @@ class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the connection. """
 
     __slots__ = ['host', 'database', 'user',
-                 'password', 'debug', 'dbcache', 'prefix']
+                 'password', 'debug', 'dbcache', 'prefix', 'port']
 
-    def __init__(self, *, host, database, user, password, prefix="", debug=False):
+    def __init__(self, *, host, database, user, password, prefix="", debug=False, port=MYSQL_DEFAULT_PORT):
         self.host = host
         self.database = database
         self.user = user
@@ -252,6 +254,9 @@ class DBMySQLAuth:
         self.debug = debug   # enable debugging
         self.dbcache = dict()  # dictionary of cached connections.
         self.prefix = prefix  # available for use
+        self.port = port
+        if (self.port is None) or (self.port==0):
+            self.port = MYSQL_DEFAULT_PORT
 
     def __eq__(self, other):
         return ((self.host == other.host) and (self.database == other.database)
@@ -317,10 +322,18 @@ class DBMySQLAuth:
     def FromConfig(section, debug=None):
         """Returns from the section of a config file"""
         try:
-            return DBMySQLAuth(host=section[MYSQL_HOST],
-                               user=section[MYSQL_USER],
-                               password=section[MYSQL_PASSWORD],
-                               database=section[MYSQL_DATABASE],
+            if MYSQL_HOST in section:
+                return DBMySQLAuth(host=section[MYSQL_HOST],
+                                   user=section[MYSQL_USER],
+                                   password=section[MYSQL_PASSWORD],
+                                   database=section[MYSQL_DATABASE],
+                                   port=section.get(MYSQL_PORT,None),
+                                   debug=debug)
+            return DBMySQLAuth(host=section['host'],
+                               user=section['user'],
+                               password=section['password'],
+                               database=section['database'],
+                               port=section.get('port',None),
                                debug=debug)
         except KeyError as e:
             pass
@@ -373,6 +386,7 @@ class DBMySQL(DBSQL):
                                     database=auth.database,
                                     user=auth.user,
                                     password=auth.password,
+                                    port=int(auth.port),
                                     autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
