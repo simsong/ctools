@@ -319,20 +319,20 @@ class DBMySQLAuth:
             raise e
 
     @staticmethod
-    def FromConfig(section, debug=None):
+    def FromConfig(section, *, debug=None, database=None):
         """Returns from the section of a config file"""
         try:
             if MYSQL_HOST in section:
                 return DBMySQLAuth(host=section[MYSQL_HOST],
                                    user=section[MYSQL_USER],
                                    password=section[MYSQL_PASSWORD],
-                                   database=section[MYSQL_DATABASE],
+                                   database=section.get(MYSQL_DATABASE,database),
                                    port=section.get(MYSQL_PORT,None),
                                    debug=debug)
             return DBMySQLAuth(host=section['host'],
                                user=section['user'],
                                password=section['password'],
-                               database=section['database'],
+                               database=section.get('database',database),
                                port=section.get('port',None),
                                debug=debug)
         except KeyError as e:
@@ -341,11 +341,11 @@ class DBMySQLAuth:
             f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
     @staticmethod
-    def FromConfigFile(fname, section, debug=None):
+    def FromConfigFile(fname, section, debug=None, *, database=None):
         config = configparser.ConfigParser()
         config.read(fname)
         try:
-            return DBMySQLAuth.FromConfig(config[section], debug=debug)
+            return DBMySQLAuth.FromConfig(config[section], debug=debug, database=database)
         except KeyError as e:
             logging.error("No section %s in file %s", section, fname)
             raise
