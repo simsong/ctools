@@ -106,12 +106,19 @@ FromEnv()
 
 """
 
+# Original names
 MYSQL_HOST = 'MYSQL_HOST'
 MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
 # Errors we do not retry. This used to be a long list, but it got shortened?
 ERRORS_NO_RETRY = []
+
+# new names
+HOST = 'HOST'
+USER = 'USER'
+PASSWORD = 'PASSWORD'
+DATABASE = 'DATABASE'
 
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -315,7 +322,10 @@ class DBMySQLAuth:
 
     @staticmethod
     def FromConfig(section, debug=None):
-        """Returns from the section of a config file"""
+        """Returns from the section of a config file.
+        First tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
+        Then tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
+        """
         try:
             return DBMySQLAuth(host=section[MYSQL_HOST],
                                user=section[MYSQL_USER],
@@ -324,6 +334,16 @@ class DBMySQLAuth:
                                debug=debug)
         except KeyError as e:
             pass
+
+        try:
+            return DBMySQLAuth(host=section[HOST],
+                               user=section[USER],
+                               password=section[PASSWORD],
+                               database=section[DATABASE],
+                               debug=debug)
+        except KeyError as e:
+            pass
+
         raise KeyError(
             f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
