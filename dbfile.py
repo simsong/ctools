@@ -416,7 +416,7 @@ class DBMySQL(DBSQL):
             return cmd
 
     @staticmethod
-    def csfr(auth, cmd, vals=None, *,
+    def csfr(auth, cmd, vals=[], *,
              quiet=True, rowcount=None, time_zone=None, setup=None, setup_vals=(),
              get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[], ignore=[], autocommit=True):
         """Connect, select, fetchall, and retry as necessary.
