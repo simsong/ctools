@@ -330,7 +330,7 @@ class DBMySQLAuth:
             return DBMySQLAuth(host=section[MYSQL_HOST],
                                user=section[MYSQL_USER],
                                password=section[MYSQL_PASSWORD],
-                               database=section[MYSQL_DATABASE],
+                               database=section.get(MYSQL_DATABASE,None),
                                debug=debug)
         except KeyError as e:
             pass
@@ -339,7 +339,7 @@ class DBMySQLAuth:
             return DBMySQLAuth(host=section[HOST],
                                user=section[USER],
                                password=section[PASSWORD],
-                               database=section[DATABASE],
+                               database=section.get(DATABASE,None),
                                debug=debug)
         except KeyError as e:
             pass
