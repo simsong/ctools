@@ -17,6 +17,13 @@ import re
 import pymysql
 import configparser
 
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+except ImportError:
+    pass
+
+
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
 from abc import ABC, abstractmethod
@@ -120,6 +127,10 @@ USER = 'USER'
 PASSWORD = 'PASSWORD'
 DATABASE = 'DATABASE'
 
+AWS_SECRET_NAME = 'AWS_SECRET_NAME'
+AWS_REGION_NAME = 'AWS_REGION_NAME'
+
+DEFAULT_PORT = 3306
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
 
@@ -249,9 +260,9 @@ class DBMySQLAuth:
     """Class that represents MySQL credentials. Will cache the connection. """
 
     __slots__ = ['host', 'database', 'user',
-                 'password', 'debug', 'dbcache', 'prefix']
+                 'password', 'debug', 'dbcache', 'prefix', 'port']
 
-    def __init__(self, *, host, database, user, password, prefix="", debug=False):
+    def __init__(self, *, host, database, user, password, prefix="", port=DEFAULT_PORT, debug=False):
         self.host = host
         self.database = database
         self.user = user
@@ -259,6 +270,7 @@ class DBMySQLAuth:
         self.debug = debug   # enable debugging
         self.dbcache = dict()  # dictionary of cached connections.
         self.prefix = prefix  # available for use
+        self.port = port
 
     def __eq__(self, other):
         return ((self.host == other.host) and (self.database == other.database)
@@ -323,9 +335,32 @@ class DBMySQLAuth:
     @staticmethod
     def FromConfig(section, debug=None):
         """Returns from the section of a config file.
-        First tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
-        Then tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
+        First checks to see if there is an AWS_SECRET, and uses that if possible.
+        Then tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
+        Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
         """
+        try:
+            secret_name = section[AWS_SECRET_NAME]
+            region_name = section[AWS_REGION_NAME]
+            session = boto3.session.Session()
+            client = session.client(
+                service_name='secretsmanager',
+                region_name=region_name
+            )
+            get_secret_value_response = client.get_secret_value( SecretId=secret_name )
+            secret = json.loads(get_secret_value_response['SecretString'])
+            return DBMySQLAuth(host=secret['host'],
+                               user=secret['username'],
+                               password=secret['password'],
+                               database=secret['dbname'],
+                               port=int(secret['port']))
+
+        except KeyError as e:
+            pass
+        except (AttributeError,ClientError) as e:
+            logging.error("error accessing Amazon Secrets Manager: %s",e)
+
+
         try:
             return DBMySQLAuth(host=section[MYSQL_HOST],
                                user=section[MYSQL_USER],
@@ -349,6 +384,8 @@ class DBMySQLAuth:
 
     @staticmethod
     def FromConfigFile(fname, section, debug=None):
+        if not os.path.exists(fname):
+            raise FileNotFoundError(fname)
         config = configparser.ConfigParser()
         config.read(fname)
         try:
