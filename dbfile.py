@@ -138,6 +138,9 @@ sys.path.append(dirname(dirname(abspath(__file__))))
 
 # 2022-02-06 update to be pure pymysql
 
+class SecretsManagerError(Exception):
+    """ SecretsManagerError """
+
 
 def timet_iso(t=time.time()):
     """Report a time_t as an ISO-8601 time format. Defaults to now."""
@@ -305,8 +308,7 @@ class DBMySQLAuth:
                 try:
                     ret[name] = os.environ[name]
                 except KeyError as e:
-                    logging.error(
-                        "%s not in environment not in %s", name, filename)
+                    logging.error("%s not in environment not in %s", name, filename)
                     raise
         return ret
 
@@ -339,15 +341,17 @@ class DBMySQLAuth:
         Then tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
         Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
         """
-        try:
+        if (AWS_SECRET_NAME in section) and (AWS_REGION_NAME) in section:
             secret_name = section[AWS_SECRET_NAME]
             region_name = section[AWS_REGION_NAME]
             session = boto3.session.Session()
-            client = session.client(
-                service_name='secretsmanager',
-                region_name=region_name
-            )
-            get_secret_value_response = client.get_secret_value( SecretId=secret_name )
+            client = session.client( service_name='secretsmanager',
+                                     region_name=region_name)
+            try:
+                get_secret_value_response = client.get_secret_value( SecretId=secret_name )
+            except ClientError as e:
+                raise SecretsManagerError(e)
+
             secret = json.loads(get_secret_value_response['SecretString'])
             return DBMySQLAuth(host=secret['host'],
                                user=secret['username'],
@@ -355,12 +359,7 @@ class DBMySQLAuth:
                                database=secret['dbname'],
                                port=int(secret['port']))
 
-        except KeyError as e:
-            pass
-        except (AttributeError,ClientError) as e:
-            logging.error("error accessing Amazon Secrets Manager: %s",e)
-
-
+        # Look for
         try:
             return DBMySQLAuth(host=section[MYSQL_HOST],
                                user=section[MYSQL_USER],
@@ -430,6 +429,7 @@ class DBMySQL(DBSQL):
                                     database=auth.database,
                                     user=auth.user,
                                     password=auth.password,
+                                    port = auth.port,
                                     autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
