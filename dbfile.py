@@ -392,7 +392,10 @@ class DBMySQLAuth:
         config = configparser.ConfigParser()
         config.read(fname)
         try:
-            return DBMySQLAuth.FromConfig(config[section], debug=debug, database=database)
+            auth = DBMySQLAuth.FromConfig(config[section], debug=debug)
+            if database is not None:
+                auth.database = database
+            return auth
         except KeyError as e:
             logging.error("No section %s in file %s", section, fname)
             raise
