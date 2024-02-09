@@ -118,6 +118,8 @@ MYSQL_HOST = 'MYSQL_HOST'
 MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
 MYSQL_DATABASE = 'MYSQL_DATABASE'
+MYSQL_PORT  = 'MYSQL_PORT'
+MYSQL_DEFAULT_PORT = 3306
 # Errors we do not retry. This used to be a long list, but it got shortened?
 ERRORS_NO_RETRY = []
 
@@ -265,7 +267,7 @@ class DBMySQLAuth:
     __slots__ = ['host', 'database', 'user',
                  'password', 'debug', 'dbcache', 'prefix', 'port']
 
-    def __init__(self, *, host, database, user, password, prefix="", port=DEFAULT_PORT, debug=False):
+    def __init__(self, *, host, database, user, password, prefix="", debug=False, port=MYSQL_DEFAULT_PORT):
         self.host = host
         self.database = database
         self.user = user
@@ -274,6 +276,8 @@ class DBMySQLAuth:
         self.dbcache = dict()  # dictionary of cached connections.
         self.prefix = prefix  # available for use
         self.port = port
+        if (self.port is None) or (self.port==0):
+            self.port = MYSQL_DEFAULT_PORT
 
     def __eq__(self, other):
         return ((self.host == other.host) and (self.database == other.database)
@@ -382,13 +386,13 @@ class DBMySQLAuth:
             f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
     @staticmethod
-    def FromConfigFile(fname, section, debug=None):
+    def FromConfigFile(fname, section, *, debug=None, database=None):
         if not os.path.exists(fname):
             raise FileNotFoundError(fname)
         config = configparser.ConfigParser()
         config.read(fname)
         try:
-            return DBMySQLAuth.FromConfig(config[section], debug=debug)
+            return DBMySQLAuth.FromConfig(config[section], debug=debug, database=database)
         except KeyError as e:
             logging.error("No section %s in file %s", section, fname)
             raise
