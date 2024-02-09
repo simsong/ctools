@@ -17,6 +17,13 @@ import re
 import pymysql
 import configparser
 
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+except ImportError:
+    pass
+
+
 from os.path import basename, abspath, dirname
 from collections import OrderedDict
 from abc import ABC, abstractmethod
@@ -106,6 +113,7 @@ FromEnv()
 
 """
 
+# Original names
 MYSQL_HOST = 'MYSQL_HOST'
 MYSQL_USER = 'MYSQL_USER'
 MYSQL_PASSWORD = 'MYSQL_PASSWORD'
@@ -115,12 +123,25 @@ MYSQL_DEFAULT_PORT = 3306
 # Errors we do not retry. This used to be a long list, but it got shortened?
 ERRORS_NO_RETRY = []
 
+# new names
+HOST = 'HOST'
+USER = 'USER'
+PASSWORD = 'PASSWORD'
+DATABASE = 'DATABASE'
+
+AWS_SECRET_NAME = 'AWS_SECRET_NAME'
+AWS_REGION_NAME = 'AWS_REGION_NAME'
+
+DEFAULT_PORT = 3306
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
 
 sys.path.append(dirname(dirname(abspath(__file__))))
 
 # 2022-02-06 update to be pure pymysql
+
+class SecretsManagerError(Exception):
+    """ SecretsManagerError """
 
 
 def timet_iso(t=time.time()):
@@ -291,8 +312,7 @@ class DBMySQLAuth:
                 try:
                     ret[name] = os.environ[name]
                 except KeyError as e:
-                    logging.error(
-                        "%s not in environment not in %s", name, filename)
+                    logging.error("%s not in environment not in %s", name, filename)
                     raise
         return ret
 
@@ -319,29 +339,56 @@ class DBMySQLAuth:
             raise e
 
     @staticmethod
-    def FromConfig(section, *, debug=None, database=None):
-        """Returns from the section of a config file"""
+    def FromConfig(section, debug=None):
+        """Returns from the section of a config file.
+        First checks to see if there is an AWS_SECRET, and uses that if possible.
+        Then tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
+        Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
+        """
+        if (AWS_SECRET_NAME in section) and (AWS_REGION_NAME) in section:
+            secret_name = section[AWS_SECRET_NAME]
+            region_name = section[AWS_REGION_NAME]
+            session = boto3.session.Session()
+            client = session.client( service_name='secretsmanager',
+                                     region_name=region_name)
+            try:
+                get_secret_value_response = client.get_secret_value( SecretId=secret_name )
+            except ClientError as e:
+                raise SecretsManagerError(e)
+
+            secret = json.loads(get_secret_value_response['SecretString'])
+            return DBMySQLAuth(host=secret['host'],
+                               user=secret['username'],
+                               password=secret['password'],
+                               database=secret['dbname'],
+                               port=int(secret['port']))
+
+        # Look for
         try:
-            if MYSQL_HOST in section:
-                return DBMySQLAuth(host=section[MYSQL_HOST],
-                                   user=section[MYSQL_USER],
-                                   password=section[MYSQL_PASSWORD],
-                                   database=section.get(MYSQL_DATABASE,database),
-                                   port=section.get(MYSQL_PORT,None),
-                                   debug=debug)
-            return DBMySQLAuth(host=section['host'],
-                               user=section['user'],
-                               password=section['password'],
-                               database=section.get('database',database),
-                               port=section.get('port',None),
+            return DBMySQLAuth(host=section[MYSQL_HOST],
+                               user=section[MYSQL_USER],
+                               password=section[MYSQL_PASSWORD],
+                               database=section.get(MYSQL_DATABASE,None),
                                debug=debug)
         except KeyError as e:
             pass
+
+        try:
+            return DBMySQLAuth(host=section[HOST],
+                               user=section[USER],
+                               password=section[PASSWORD],
+                               database=section.get(DATABASE,None),
+                               debug=debug)
+        except KeyError as e:
+            pass
+
         raise KeyError(
             f"config file section must have {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_PASSWORD} and {MYSQL_DATABASE} options in section {section}. Only options found: {list(section.keys())}")
 
     @staticmethod
-    def FromConfigFile(fname, section, debug=None, *, database=None):
+    def FromConfigFile(fname, section, *, debug=None, database=None):
+        if not os.path.exists(fname):
+            raise FileNotFoundError(fname)
         config = configparser.ConfigParser()
         config.read(fname)
         try:
@@ -386,7 +433,7 @@ class DBMySQL(DBSQL):
                                     database=auth.database,
                                     user=auth.user,
                                     password=auth.password,
-                                    port=int(auth.port),
+                                    port = auth.port,
                                     autocommit=True)
         if self.debug:
             print(f"Successfully connected to {auth}", file=sys.stderr)
@@ -410,7 +457,7 @@ class DBMySQL(DBSQL):
             return cmd
 
     @staticmethod
-    def csfr(auth, cmd, vals=None, *,
+    def csfr(auth, cmd, vals=[], *,
              quiet=True, rowcount=None, time_zone=None, setup=None, setup_vals=(),
              get_column_names=None, asDicts=False, debug=False, dry_run=False, cache=True, nolog=[], ignore=[], autocommit=True):
         """Connect, select, fetchall, and retry as necessary.
