@@ -3,6 +3,7 @@
 
 from subprocess import Popen, PIPE
 
+
 def procfname(cmd, mode='r'):
     if 'r' in mode:
         p = Popen(cmd, stdout=PIPE, shell='/bin/sh')
@@ -19,7 +20,7 @@ def procfname(cmd, mode='r'):
     raise ValueError("mode ('{}') must contain a 'r' or a 'w'".format(mode))
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # test by opening the calendar program
     name = procfname("cal 2018", "r")
     print("name=", name)

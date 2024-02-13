@@ -6,6 +6,7 @@ from .variable import Variable
 # Z3 is now only imported if it is needed
 # to prevent errors when z3 is not available
 
+
 class VariableAssignment:
     """
     Variable Assignment
@@ -16,12 +17,13 @@ class VariableAssignment:
     value    = value of variable
     solver   = z3 solver object
     """
-    __slots__ = ('desc','attrib','variable','value','solver','z3_obj', 'second_element_is_variable', 'z3_enabled')
+    __slots__ = ('desc', 'attrib', 'variable', 'value', 'solver',
+                 'z3_obj', 'second_element_is_variable', 'z3_enabled')
 
-    def __init__(self,variable,value,desc="",attrib={},\
-                solver=None, second_element_is_variable=False, z3_enabled=False):
-        self.desc        = desc          # description
-        self.attrib      = attrib
+    def __init__(self, variable, value, desc="", attrib={},
+                 solver=None, second_element_is_variable=False, z3_enabled=False):
+        self.desc = desc          # description
+        self.attrib = attrib
         assert isinstance(variable, Variable)
         if variable.name is None:
             raise ValueError('variable name cannot be none')
@@ -54,7 +56,8 @@ class VariableAssignment:
             self.z3_obj = None
             return
         if not isinstance(value, self.variable.python_type):
-            raise ValueError(f'value is not of type {self.variable.python_type}')
+            raise ValueError(
+                f'value is not of type {self.variable.python_type}')
         if self.z3_enabled:
             if self.variable.python_type == int:
                 self.z3_obj = z3.Int(int(value))
@@ -69,26 +72,29 @@ class VariableAssignment:
 
     def __str__(self):
         if not self.second_element_is_variable:
-            str_data = [f"row['{self.variable.name.strip().lower()}']", ' = ', str(self.value).strip()]
+            str_data = [f"row['{self.variable.name.strip().lower()}']", ' = ', str(
+                self.value).strip()]
         else:
-            str_data = [f"row['{self.variable.name.strip().lower()}']", ' = ', f"row['{str(self.value).strip()}']"]
+            str_data = [f"row['{self.variable.name.strip().lower()}']",
+                        ' = ', f"row['{str(self.value).strip()}']"]
 
         return ''.join(str_data)
 
     def __repr__(self):
-        return ''.join([f'Variable Assignment(variable: {repr(self.variable)}, value: ', \
-                str(self.value)])
+        return ''.join([f'Variable Assignment(variable: {repr(self.variable)}, value: ',
+                        str(self.value)])
 
     def json_dict(self):
         return {
-                "desc": self.desc,
-                "attrib": self.attrib,
-                "variable": self.variable.json_dict(),
-                "value": str(self.value)
-               }
+            "desc": self.desc,
+            "attrib": self.attrib,
+            "variable": self.variable.json_dict(),
+            "value": str(self.value)
+        }
 
-    def dump(self,func=print):
+    def dump(self, func=print):
         func(str(self))
+
 
 def main():
     var = Variable(name='test')
@@ -96,6 +102,7 @@ def main():
     print(repr(assignment))
     print(assignment.json_dict())
     print(assignment)
+
 
 if __name__ == '__main__':
     main()

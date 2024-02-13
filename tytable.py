@@ -15,6 +15,7 @@ It can do fancy things like add commas to numbers and total columns.
 All of the formatting specifications need to be redone so that they are more flexbile
 """
 
+import latex_tools
 from typing import List, Dict, Any, Iterable
 import os.path
 import re
@@ -24,14 +25,12 @@ import xml.dom.minidom
 import xml.etree.ElementTree
 import xml.etree.ElementTree as ET
 
-from os.path import abspath,dirname,basename
+from os.path import abspath, dirname, basename
 
 MY_DIR = dirname(__file__)
 
 if MY_DIR not in sys.path:
     sys.path.append(MY_DIR)
-
-import latex_tools
 
 
 __version__ = "0.2.1"
@@ -159,7 +158,7 @@ class HorizontalRule(Row):
 # We must be told how many columns the data are.
 class Raw(Row):
     def __init__(self, rawdata, *, ncols):
-        self.data  = rawdata
+        self.data = rawdata
         self.ncols_ = ncols
 
     def ncols(self):
@@ -215,7 +214,8 @@ class ttable:
     omit_row: List[str]  # descriptions of rows that should be omitted
 
     cols: int  # Number of columns
-    col_widths: List[int]  # a list of how wide each of the formatted columns are
+    # a list of how wide each of the formatted columns are
+    col_widths: List[int]
     col_margin: int
     col_fmt_default: str  # default format gives numbers
     col_fmt: Dict[int, str]  # format for each column
@@ -254,10 +254,12 @@ class ttable:
     CENTER = "CENTER"
     NL = {TEXT: '\n', LATEX: "\\\\ \n", HTML: ''}  # new line
     VALID_MODES = {TEXT, LATEX, HTML}
-    VALID_OPTIONS = {OPTION_LONGTABLE, OPTION_TABULARX, SUPPRESS_ZERO, OPTION_TABLE}
+    VALID_OPTIONS = {OPTION_LONGTABLE,
+                     OPTION_TABULARX, SUPPRESS_ZERO, OPTION_TABLE}
     DEFAULT_ALIGNMENT_NUMBER = RIGHT
     DEFAULT_ALIGNMENT_STRING = LEFT
-    HTML_ALIGNMENT = {RIGHT: "style='text-align:right;'", LEFT: "style='text-align:left;'", CENTER: "style='text-align:center;'"}
+    HTML_ALIGNMENT = {RIGHT: "style='text-align:right;'",
+                      LEFT: "style='text-align:left;'", CENTER: "style='text-align:center;'"}
 
     def __init__(self, mode=None):
         self.set_mode(mode)
@@ -320,7 +322,7 @@ class ttable:
     def set_col_alignmnets(self, fmt):
         col = 0
         for ch in re.split(r'(l)|(r)|(p\{[^}]*\})', fmt):
-            if isinstance(ch, str) and len(ch)>0:
+            if isinstance(ch, str) and len(ch) > 0:
                 if ch == 'r':
                     self.set_col_alignment(col, self.RIGHT)
                     col += 1
@@ -334,7 +336,8 @@ class ttable:
                     col += 1
                     continue
                 else:
-                    raise RuntimeError("Invalid format string '{}' in '{}'".format(fmt, ch))
+                    raise RuntimeError(
+                        "Invalid format string '{}' in '{}'".format(fmt, ch))
 
     def set_col_totals(self, totals):
         self.col_totals = totals
@@ -351,7 +354,8 @@ class ttable:
 
     def add_head(self, values, annotations=None):
         """ Append a row of VALUES to the table header. The VALUES should be a list of columsn."""
-        assert isinstance(values, list) or isinstance(values, tuple) or values==self.HR
+        assert isinstance(values, list) or isinstance(
+            values, tuple) or values == self.HR
         self.col_headings.append(Head(values, annotations=annotations))
 
     def add_subhead(self, values, annotations=None):
@@ -383,11 +387,13 @@ class ttable:
             return "", self.LEFT
         if isnumber(value):
             try:
-                formatted_value = self.col_fmt.get(col_number, self.col_fmt_default).format(value)
+                formatted_value = self.col_fmt.get(
+                    col_number, self.col_fmt_default).format(value)
                 default_alignment = self.DEFAULT_ALIGNMENT_NUMBER
             except (ValueError, TypeError) as e:
                 print(str(e))
-                print("Format string: ", self.col_fmt.get(col_number, self.col_fmt_default))
+                print("Format string: ", self.col_fmt.get(
+                    col_number, self.col_fmt_default))
                 print("Value:         ", value)
                 print("Will use default formatting")
                 pass  # will be formatted below
@@ -402,12 +408,14 @@ class ttable:
         max_col_width = 0
         for r in self.col_headings:
             try:
-                max_col_width = max(max_col_width, len(self.format_cell(r[col_num], col_num)[0]))
+                max_col_width = max(max_col_width, len(
+                    self.format_cell(r[col_num], col_num)[0]))
             except IndexError:
                 pass
         for r in self.data:
             try:
-                max_col_width = max(max_col_width, len(self.format_cell(r[col_num], col_num)[0]))
+                max_col_width = max(max_col_width, len(
+                    self.format_cell(r[col_num], col_num)[0]))
             except IndexError:
                 pass
         return max_col_width
@@ -437,7 +445,8 @@ class ttable:
                 return latex_tools.latex_escape(formatted_value)
         if self.mode == self.TEXT:
             try:
-                fill = (self.col_formatted_widths[col_number] - len(formatted_value))
+                fill = (
+                    self.col_formatted_widths[col_number] - len(formatted_value))
             except IndexError:
                 fill = 0
             if align == self.RIGHT:
@@ -473,7 +482,8 @@ class ttable:
                     ret.append(row.annotations[colNumber])
                 ret.append(val.replace('%', '\\%'))
             elif self.mode == self.HTML:
-                ret.append(f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
+                ret.append(
+                    f'<{html_delim} {self.HTML_ALIGNMENT[just]}>{val}</{html_delim}>')
         if self.mode == self.HTML:
             ret.append("</tr>")
         ret.append(self.NL[self.mode])
@@ -582,7 +592,8 @@ class ttable:
         #
         if self.mode == self.LATEX:
             if self.fontsize:
-                ret.append("{\\fontsize{%d}{%d}\\selectfont" % (self.fontsize, self.fontsize + 1))
+                ret.append("{\\fontsize{%d}{%d}\\selectfont" %
+                           (self.fontsize, self.fontsize + 1))
             try:
                 colspec = self.latex_colspec
             except AttributeError:
@@ -614,10 +625,12 @@ class ttable:
                 ret += self.typeset_headings()
                 ret.append("\\hline\\endfirsthead\n")
                 if self.label:
-                    ret += [r'\multicolumn{', str(self.ncols()), r'}{c}{(Table \ref{', self.label, r'} continued)}\\', '\n']
+                    ret += [r'\multicolumn{', str(
+                        self.ncols()), r'}{c}{(Table \ref{', self.label, r'} continued)}\\', '\n']
                 ret += self.typeset_headings()
                 ret.append("\\hline\\endhead\n")
-                ret += ['\\multicolumn{', str(self.ncols()), '}{c}{(Continued on next page)}\\\\ \n']
+                ret += ['\\multicolumn{', str(self.ncols()),
+                        '}{c}{(Continued on next page)}\\\\ \n']
                 ret.append(self.footer)
                 ret.append("\\hline\\endfoot\n")
                 ret.append(self.footer)
@@ -627,7 +640,8 @@ class ttable:
             ret += self.typeset_headings()
         elif self.mode == self.TEXT:
             if self.caption:
-                ret.append("================ {} ================\n".format(self.caption))
+                ret.append(
+                    "================ {} ================\n".format(self.caption))
             if self.header:
                 ret.append(self.header)
                 ret.append("\n")

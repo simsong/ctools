@@ -3,6 +3,7 @@
 
 import re
 
+
 class Recode:
     """Represent a recode from one table to another.  A recode consists of two parts:
     DESTINATION=SOURCE
@@ -12,7 +13,7 @@ class Recode:
     """
     recode_re = re.compile(r"(\w+)\[(\w+)\]\s*=\s*(.*)")
 
-    def __init__(self,name,desc,*,attrib={}):
+    def __init__(self, name, desc, *, attrib={}):
         """@param name - The name of the recode, e.g. "recode1"
         @param desc - The description of the record, e.g. "A[T] = B[T]"
         """
@@ -20,7 +21,6 @@ class Recode:
         m = self.recode_re.search(desc)
         if not m:
             raise RuntimeError("invalid Recode description: '{}'".format(desc))
-        (self.dest_table_name,self.dest_table_var)  = m.group(1,2)
+        (self.dest_table_name, self.dest_table_var) = m.group(1, 2)
         self.statement = desc
-        self.attrib    = attrib
-        
+        self.attrib = attrib

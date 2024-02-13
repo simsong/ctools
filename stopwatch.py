@@ -1,5 +1,6 @@
 import time
 
+
 class stopwatch:
     def __init__(self):
         self.running = False
@@ -19,5 +20,3 @@ class stopwatch:
             return time.time() - self.t0
         else:
             return self.t1 - self.t0
-
-

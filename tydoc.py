@@ -84,6 +84,7 @@ Things still needed:
 
 """
 
+from latex_tools import latex_escape
 __version__ = "0.2.0"
 
 import xml.etree.ElementTree as ET
@@ -107,12 +108,10 @@ from collections import defaultdict
 
 from pprint import pformat
 
-from os.path import dirname,abspath
+from os.path import dirname, abspath
 MY_DIR = dirname(abspath(__file__))
 if MY_DIR not in sys.path:
-    sys.path.append( MY_DIR )
-
-from latex_tools import latex_escape
+    sys.path.append(MY_DIR)
 
 
 TAG_HEAD = 'HEAD'
@@ -125,16 +124,16 @@ TAG_H2 = 'H2'
 TAG_H3 = 'H3'
 TAG_DIV = 'DIV'
 TAG_HTML = 'HTML'
-TAG_PRE  = 'PRE'
-TAG_TR   = 'TR'
-TAG_TH   = 'TH'
-TAG_TD   = 'TD'
+TAG_PRE = 'PRE'
+TAG_TR = 'TR'
+TAG_TH = 'TH'
+TAG_TD = 'TD'
 TAG_TIGNORE = 'X:IGNORE'
-TAG_HR   = 'HR'
-TAG_UL   = 'UL'
-TAG_OL   = 'OL'
-TAG_LI   = 'LI'
-TAG_A    = 'A'
+TAG_HR = 'HR'
+TAG_UL = 'UL'
+TAG_OL = 'OL'
+TAG_LI = 'LI'
+TAG_A = 'A'
 TAG_TABLE = 'TABLE'
 TAG_TITLE = 'TITLE'
 TAG_CAPTION = 'CAPTION'
@@ -142,26 +141,26 @@ TAG_THEAD = 'THEAD'
 TAG_TBODY = 'TBODY'
 TAG_TFOOT = 'TFOOT'
 TAG_X_TOC = 'X-TOC'  # a custom tag; should not appear in output
-TAG_LINK  = 'LINK'
+TAG_LINK = 'LINK'
 TAG_SCRIPT = 'SCRIPT'
-TAG_SPAN   = 'SPAN'
+TAG_SPAN = 'SPAN'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 HTML_NO_NEWLINE_TAGS = set([TAG_B, TAG_I, TAG_TD, TAG_TH, TAG_A])
 
-ATTR_VAL  = 'v'               # where we keep the original values
+ATTR_VAL = 'v'               # where we keep the original values
 ATTR_TYPE = 't'              # the Python type of the value
 ATTR_COLSPAN = 'COLSPAN'
 
 ATTRIB_OPTIONS = 'OPTIONS'
 ATTRIB_ALIGN = 'ALIGN'
 
-FORMAT_HTML     = 'html'
-FORMAT_LATEX    = 'latex'
-FORMAT_TEX      = 'tex'
-FORMAT_JSON     = 'json'
+FORMAT_HTML = 'html'
+FORMAT_LATEX = 'latex'
+FORMAT_TEX = 'tex'
+FORMAT_JSON = 'json'
 FORMAT_MARKDOWN = 'md'
-FORMAT_CSV      = 'csv'
+FORMAT_CSV = 'csv'
 FORMAT_OPENPYXL = 'openpyxl'
 
 CUSTOM_RENDERER = 'custom_renderer'
@@ -169,7 +168,8 @@ CUSTOM_WRITE_TEXT = 'custom_write_text'
 
 # Automatically put a newline in the HTML stream after one of these tag blocks
 
-HTML_START_NEWLINE_TAGS = {TAG_HEAD, TAG_HTML, TAG_BODY, TAG_TABLE, TAG_CAPTION, TAG_THEAD, TAG_TBODY, TAG_TFOOT}
+HTML_START_NEWLINE_TAGS = {TAG_HEAD, TAG_HTML, TAG_BODY,
+                           TAG_TABLE, TAG_CAPTION, TAG_THEAD, TAG_TBODY, TAG_TFOOT}
 HTML_END_NO_NEWLINE_TAGS = {TAG_B, TAG_I, TAG_TD, TAG_TH, TAG_A}
 FLOAT_TYPES = set(['float', 'float32', 'float64'])
 INTEGER_TYPES = set(['int', 'int32', 'int64'])
@@ -210,13 +210,13 @@ MARKDOWN_TAGS = {TAG_HTML: ('', ''),
 
 # For the Python
 OPTION_LONGTABLE = 'longtable'  # use LaTeX {longtable} environment
-OPTION_TABLE     = 'table'    # use LaTeX {table} enviornment
-OPTION_TABULARX  = 'tabularx'  # use LaTeX {tabularx} environment
-OPTION_CENTER    = 'center'   # use LaTeX {center} environment
+OPTION_TABLE = 'table'    # use LaTeX {table} enviornment
+OPTION_TABULARX = 'tabularx'  # use LaTeX {tabularx} environment
+OPTION_CENTER = 'center'   # use LaTeX {center} environment
 OPTION_NO_ESCAPE = 'noescape'  # do not escape LaTeX values
-OPTION_SUPPRESS_ZERO    = "suppress_zero"  # suppress zeros
+OPTION_SUPPRESS_ZERO = "suppress_zero"  # suppress zeros
 
-ATTRIB_LATEX_COLSPEC  = 'latex_colspec'
+ATTRIB_LATEX_COLSPEC = 'latex_colspec'
 ATTRIB_TEXT_FORMAT = 'TEXT_FORMAT'
 ATTRIB_FLOAT_FORMAT = 'FLOAT_FORMAT'
 ATTRIB_INTEGER_FORMAT = 'INTEGER_FORMAT'
@@ -235,8 +235,8 @@ ALIGN_RIGHT = "RIGHT"
 DEFAULT_ALIGNMENT_NUMBER = ALIGN_RIGHT
 DEFAULT_ALIGNMENT_STRING = ALIGN_LEFT
 
-DEFAULT_TEXT_FORMAT    = '{}'
-DEFAULT_FLOAT_FORMAT   = '{:,}'
+DEFAULT_TEXT_FORMAT = '{}'
+DEFAULT_FLOAT_FORMAT = '{:,}'
 DEFAULT_INTEGER_FORMAT = '{:,}'
 
 
@@ -275,6 +275,7 @@ def is_empty(elem):
     if elem.tag.upper() in [TAG_SCRIPT, TAG_LINK]:
         return False
     return len(elem) == 0 and ((elem.text is None) or (len(elem.text) == 0))
+
 
 class Renderer:
     @staticmethod
@@ -321,13 +322,14 @@ class HTMLRenderer(Renderer):
 
     @staticmethod
     def write_tag_begin(doc, f):
-        if doc.tag==TAG_TIGNORE:
+        if doc.tag == TAG_TIGNORE:
             return True
 
         eflag = '/' if is_empty(doc) else ''
 
         if doc.attrib:
-            attribs = (" " + " ".join([f'{key}="{value}"' for (key, value) in doc.attrib.items()]))
+            attribs = (
+                " " + " ".join([f'{key}="{value}"' for (key, value) in doc.attrib.items()]))
         else:
             attribs = ''
 
@@ -340,7 +342,7 @@ class HTMLRenderer(Renderer):
 
     @staticmethod
     def write_tag_end(doc, f):
-        if doc.tag==TAG_TIGNORE:
+        if doc.tag == TAG_TIGNORE:
             return True
         if not is_empty(doc):
             f.write(f'</{doc.tag}>')
@@ -394,6 +396,7 @@ class LatexRenderer(Renderer):
             else:
                 f.write(tail)
 
+
 class MarkdownRenderer(Renderer):
     @staticmethod
     def format():
@@ -416,6 +419,7 @@ class MarkdownRenderer(Renderer):
         except KeyError as e:
             pass
         return True
+
 
 class JsonRenderer(Renderer):
     @staticmethod
@@ -593,12 +597,14 @@ class TyTag(ET.Element):
 
         if id is not None:
             if 'id' in attrib:
-                raise ValueError("id parameter specified and 'id' present in attrib: " +str(attrib))
+                raise ValueError(
+                    "id parameter specified and 'id' present in attrib: " + str(attrib))
             attrib['id'] = id
 
         if className is not None:
             if 'class' in attrib:
-                raise ValueError("id parameter specified and 'class' present in attrib: " +str(attrib))
+                raise ValueError(
+                    "id parameter specified and 'class' present in attrib: " + str(attrib))
             attrib['class'] = className
 
         # Mutable default value for attrib is ok, since we're not
@@ -611,7 +617,8 @@ class TyTag(ET.Element):
             e = tag
         else:
             if tag[0] == '<':
-                raise ValueError(f'tag {tag} should not include angle brackets.')
+                raise ValueError(
+                    f'tag {tag} should not include angle brackets.')
             e = TyTag(tag, attrib=attrib)
         if position == -1:
             self.append(e)
@@ -626,9 +633,9 @@ class TyTag(ET.Element):
                         e.text = ""
                     e.text += str(elem)
                 else:
-                    if lastTag.tail  == None:
+                    if lastTag.tail == None:
                         lastTag.tail = ""
-                    lastTag.tail  += str(elem)
+                    lastTag.tail += str(elem)
             else:
                 # Copy the tag into place
                 lastTag = copy.deepcopy(elem)
@@ -747,6 +754,7 @@ class EmbeddedImageTag(TyTag):
         else:
             raise RuntimeError("unknown format: {}".format(format))
 
+
 class tydoc(TyTag):
     """
     Python class for building HTML documents and rendering them into
@@ -757,23 +765,26 @@ class tydoc(TyTag):
     # We have a custom begin and end text for latex
 
     DEFAULT_LATEX_PACKAGES = ['graphicx', 'tabularx', 'longtable']
-    DEFAULT_META_TAGS = ['<meta http-equiv="Content-type" content="text/html; charset=utf-8">']
+    DEFAULT_META_TAGS = [
+        '<meta http-equiv="Content-type" content="text/html; charset=utf-8">']
 
     def __init__(self):
         super().__init__(TAG_HTML)
-        self.head    = self.add_tag_elems(TAG_HEAD)
-        self.body    = self.add_tag_elems(TAG_BODY)
+        self.head = self.add_tag_elems(TAG_HEAD)
+        self.body = self.add_tag_elems(TAG_BODY)
         self.latex_packages = self.DEFAULT_LATEX_PACKAGES
 
     def write_tag_begin(self, f, format=None):
         """Provide custom tags for writing document tag"""
         if format == FORMAT_LATEX:
             f.write("\n".join(["\\documentclass{article}"]
-                              + ['\\usepackage{%s}\n' % pkg for pkg in self.latex_packages]
+                              + ['\\usepackage{%s}\n' %
+                                  pkg for pkg in self.latex_packages]
                               + ["\\begin{document}"]))
             return True
         elif format == FORMAT_HTML:
-            f.write('\n'.join(['<!DOCTYPE html>', '<html lang="en">'] + self.DEFAULT_META_TAGS))
+            f.write(
+                '\n'.join(['<!DOCTYPE html>', '<html lang="en">'] + self.DEFAULT_META_TAGS))
             f.write('\n')
             return True
         else:
@@ -849,10 +860,13 @@ class tydoc(TyTag):
         body.insert(0, xtoc)
 
     def add_stylesheet(self, url):
-        self.head.append(TyTag('link', {'rel': "stylesheet", 'type': "text/css", 'href': url}))
+        self.head.append(
+            TyTag('link', {'rel': "stylesheet", 'type': "text/css", 'href': url}))
 
     def add_script(self, url):
-        self.head.append(TyTag('script', {'type': "text/javascript", 'src': url}))
+        self.head.append(
+            TyTag('script', {'type': "text/javascript", 'src': url}))
+
 
 class html(tydoc):
     """We can also call the tydoc an html file"""
@@ -863,6 +877,8 @@ class html(tydoc):
 # HTML and Markdown get passed through.
 # LaTeX gets changed to \maketableofcontents and ignores the content
 ################################################################
+
+
 class X_TOC(TyTag):
     def __init__(self, attrib={}, **extra):
         """Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses"""
@@ -910,15 +926,15 @@ class jsonTable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_FLOAT_FORMAT]  = DEFAULT_FLOAT_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT] = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
         self.caption = self.add_tag(TAG_CAPTION)
-        self.thead   = self.add_tag(TAG_THEAD)
-        self.tbody   = self.add_tag(TAG_TBODY)
-        self.tfoot   = self.add_tag(TAG_TFOOT)
+        self.thead = self.add_tag(TAG_THEAD)
+        self.tbody = self.add_tag(TAG_TBODY)
+        self.tfoot = self.add_tag(TAG_TFOOT)
 
         # Auto id support
         self.col_auto_ids = None
@@ -933,16 +949,18 @@ class jsonTable(TyTag):
         data = dict()
         for tr in self.findall("./TBODY/TR"):
             for cell in tr:
-                if cell.tag==TAG_TIGNORE:
+                if cell.tag == TAG_TIGNORE:
                     continue
                 if 'id' not in cell.attrib:  # no tag!
                     continue
                 try:
                     if ATTR_VAL in cell.attrib:
-                        if cell.attrib[ATTR_TYPE]=='int':
-                            data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                        elif cell.attrib[ATTR_TYPE]=='float':
-                            data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
+                        if cell.attrib[ATTR_TYPE] == 'int':
+                            data[cell.attrib['id']] = int(
+                                cell.attrib[ATTR_VAL])
+                        elif cell.attrib[ATTR_TYPE] == 'float':
+                            data[cell.attrib['id']] = float(
+                                cell.attrib[ATTR_VAL])
                         else:
                             data[cell.attrib['id']] = cell.attrib[ATTR_VAL]  # 936
                     else:
@@ -973,7 +991,7 @@ class jsonTable(TyTag):
 
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval  = urllib.parse.unquote(cell.attrib[ATTR_VAL])
+            typeval = urllib.parse.unquote(cell.attrib[ATTR_VAL])
         except KeyError:
             return cell
 
@@ -990,10 +1008,12 @@ class jsonTable(TyTag):
 
         try:
             if cell.attrib[ATTR_TYPE] == 'int':
-                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(
+                    int(value))
                 return cell
             elif cell.attrib[ATTR_TYPE] != 'str':
-                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(float(value))
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(
+                    float(value))
                 return cell
         except TypeError as e:
             pass
@@ -1079,9 +1099,11 @@ class jsonTable(TyTag):
             raise ValueError(
                 "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(len(tags), len(values), len(cell_attribs)))
 
-        cells = [self.make_cell(t, v, a) for (t, v, a) in zip(tags, values, cell_attribs)]
+        cells = [self.make_cell(t, v, a)
+                 for (t, v, a) in zip(tags, values, cell_attribs)]
 
-        self.add_row(where, cells, row_attrib=row_attrib, row_auto_id=row_auto_id)
+        self.add_row(where, cells, row_attrib=row_attrib,
+                     row_auto_id=row_auto_id)
 
     def add_head(self, values, row_attrib=None, cell_attribs=None, col_auto_ids=None, row_auto_id="head"):
         if col_auto_ids is not None:
@@ -1129,7 +1151,8 @@ class jsonTable(TyTag):
 
             return cell
 
-        cell = ET.Element(tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
+        cell = ET.Element(
+            tag, {**attrib, ATTR_VAL: str(value), ATTR_TYPE: str(type(value).__name__)})
 
         self.format_cell(cell)
         return cell
@@ -1171,6 +1194,8 @@ class jsonTable(TyTag):
 # It now uses the XML ETree to represent the table.
 # Tables can then be rendered into HTML or another form.
 ################################################################
+
+
 class tytable(TyTag):
     """
     Python class for representing a table that can be rendered into
@@ -1206,15 +1231,15 @@ class tytable(TyTag):
         # Mutable default value for attrib is ok, since we're not changing attrib here or in any subclasses
         super().__init__(TAG_TABLE, attrib=attrib, **extra)
 
-        self.attrib[ATTRIB_TEXT_FORMAT]    = DEFAULT_TEXT_FORMAT
-        self.attrib[ATTRIB_FLOAT_FORMAT]   = DEFAULT_FLOAT_FORMAT
+        self.attrib[ATTRIB_TEXT_FORMAT] = DEFAULT_TEXT_FORMAT
+        self.attrib[ATTRIB_FLOAT_FORMAT] = DEFAULT_FLOAT_FORMAT
         self.attrib[ATTRIB_INTEGER_FORMAT] = DEFAULT_INTEGER_FORMAT
 
         # Create the layout of the generic table and create easy methods for accessing
         self.caption = self.add_tag(TAG_CAPTION)
-        self.thead   = self.add_tag(TAG_THEAD)
-        self.tbody   = self.add_tag(TAG_TBODY)
-        self.tfoot   = self.add_tag(TAG_TFOOT)
+        self.thead = self.add_tag(TAG_THEAD)
+        self.tbody = self.add_tag(TAG_TBODY)
+        self.tfoot = self.add_tag(TAG_TFOOT)
 
         # Autoid support
         self.col_auto_ids = None
@@ -1266,7 +1291,8 @@ class tytable(TyTag):
             # Pad this row out if it needs padding
             # Markdown tables don't support col span
             if len(row_cells) < len(all_cols):
-                row_cells.extend([TyTag(TAG_TD)] * (len(all_cols) - len(row_cells)))
+                row_cells.extend([TyTag(TAG_TD)] *
+                                 (len(all_cols) - len(row_cells)))
 
             # Make up the format string for this row based on the cell attributes
 
@@ -1303,12 +1329,12 @@ class tytable(TyTag):
         data = dict()
         for tr in self.findall("./TBODY/TR"):
             for cell in tr:
-                if cell.tag==TAG_TIGNORE:
+                if cell.tag == TAG_TIGNORE:
                     continue
                 if ATTR_VAL in cell.attrib:
-                    if cell.attrib[ATTR_TYPE]=='int':
+                    if cell.attrib[ATTR_TYPE] == 'int':
                         data[cell.attrib['id']] = int(cell.attrib[ATTR_VAL])
-                    elif cell.attrib[ATTR_TYPE]=='float':
+                    elif cell.attrib[ATTR_TYPE] == 'float':
                         data[cell.attrib['id']] = float(cell.attrib[ATTR_VAL])
                     else:
                         data[cell.attrib['id']] = cell.attrib[ATTR_VAL]
@@ -1347,7 +1373,8 @@ class tytable(TyTag):
                 f.write("\\caption{%s}" % caption)
             try:
                 f.write(r"\label{%s}" % id(self))  # always put in ID
-                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])  # put in label if provided
+                # put in label if provided
+                f.write(r"\label{%s}" % self.attrib[ATTRIB_LABEL])
 
             except KeyError:
                 pass  # no caption
@@ -1374,16 +1401,19 @@ class tytable(TyTag):
                 self.render_latex_table_row(f, tr)
 
             f.write('\\hline\\endfirsthead\n')
-            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (self.max_cols(), id(self)))
+            f.write('\\multicolumn{%d}{c}{(Table \\ref{%s} continued)}\\\\\n' % (
+                self.max_cols(), id(self)))
             f.write('\\hline\\endhead\n')
-            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (self.max_cols()))
+            f.write('\\multicolumn{%d}{c}{(continued on next page)}\\\\\n' % (
+                self.max_cols()))
             f.write('\\hline\\endfoot\n')
             f.write('\\hline\\hline\n\\endlastfoot\n')
 
         else:
             # Not longtable, so regular table
             if self.option(OPTION_TABULARX):
-                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' % self.latex_colspec())
+                f.write('\\begin{tabularx}{\\textwidth}{%s}\n' %
+                        self.latex_colspec())
             else:
                 f.write('\\begin{tabular}{%s}\n' % self.latex_colspec())
             for tr in self.findall("./THEAD/TR"):
@@ -1439,7 +1469,7 @@ class tytable(TyTag):
         """Modify cell by setting its text to be its format. Uses eval, so it's not safe."""
         try:
             typename = cell.attrib[ATTR_TYPE]
-            typeval  = urllib.parse.unquote(cell.attrib[ATTR_VAL])
+            typeval = urllib.parse.unquote(cell.attrib[ATTR_VAL])
         except KeyError:
             return cell
 
@@ -1461,16 +1491,19 @@ class tytable(TyTag):
 
         try:
             if cell.attrib[ATTR_TYPE] in INTEGER_TYPES:
-                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(int(value))
+                cell.text = self.attrib[ATTRIB_INTEGER_FORMAT].format(
+                    int(value))
                 return cell
             elif cell.attrib[ATTR_TYPE] in FLOAT_TYPES:
-                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(float(value))
+                cell.text = self.attrib[ATTRIB_FLOAT_FORMAT].format(
+                    float(value))
                 return cell
             elif cell.attrib[ATTR_TYPE] == 'str':
                 cell.text = self.attrib[ATTRIB_TEXT_FORMAT].format(value)
                 return cell
             else:
-                raise ValueError("Unknown cell type: {}".format(cell.attrib[ATTR_TYPE]))
+                raise ValueError("Unknown cell type: {}".format(
+                    cell.attrib[ATTR_TYPE]))
         except TypeError as e:
             raise TypeError(f"TypeError in value: {value} cell: {cell}")
         except AttributeError as e:
@@ -1558,9 +1591,11 @@ class tytable(TyTag):
             raise ValueError(
                 "tags ({}) values ({}) and cell_attribs ({}) must all have same length".format(len(tags), len(values), len(cell_attribs)))
 
-        cells = [self.make_cell(t, v, a) for (t, v, a) in zip(tags, values, cell_attribs)]
+        cells = [self.make_cell(t, v, a)
+                 for (t, v, a) in zip(tags, values, cell_attribs)]
 
-        self.add_row(where, cells, row_attrib=row_attrib, row_auto_id=row_auto_id)
+        self.add_row(where, cells, row_attrib=row_attrib,
+                     row_auto_id=row_auto_id)
 
     def add_head(self, values, row_attrib=None, cell_attribs=None, col_auto_ids=None, row_auto_id="head"):
         if col_auto_ids is not None:
@@ -1687,22 +1722,26 @@ def a(*text, href=None, attrib={}, **kwargs):
         attrib['href'] = href
     return TyTag().a(*text, attrib=attrib, **kwargs)
 
+
 def i(text):
     """Return an itallic run """
     e = ET.Element(TAG_I)
     e.text = text
     return e
 
+
 def th(*text, attrib={}, **kwargs):
     """Return an th element """
     attrib = copy.copy(attrib)
     return TyTag().th(*text, attrib=attrib, **kwargs)
+
 
 def td(text):
     """Return an td element """
     e = ET.Element(TAG_TD)
     e.text = text
     return e
+
 
 def showcase(doc):
     print("---DOM---")
@@ -1718,7 +1757,8 @@ def showcase(doc):
 
 def demo1():
     # Verify that render works
-    doc = ET.fromstring("<html><p>First Paragraph</p><p>Second <b>bold</b> Paragraph</p></html>")
+    doc = ET.fromstring(
+        "<html><p>First Paragraph</p><p>Second <b>bold</b> Paragraph</p></html>")
     return doc
 
 
@@ -1769,7 +1809,8 @@ def tabdemo1():
     doc.p("")
     d2 = doc.table()
     d2.set_option(OPTION_LONGTABLE)
-    d2.add_head(['State', 'Abbreviation', 'Population'], cell_attribs={ATTRIB_ALIGN: ALIGN_CENTER})
+    d2.add_head(['State', 'Abbreviation', 'Population'],
+                cell_attribs={ATTRIB_ALIGN: ALIGN_CENTER})
     d2.add_data(['Virginia', 'VA', 8001045], cell_attribs=lcr)
     d2.add_data(['California', 'CA', 37252895], cell_attribs=lcr)
     return doc

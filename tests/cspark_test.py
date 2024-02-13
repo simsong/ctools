@@ -1,3 +1,4 @@
+import ctools.cspark as cspark
 import sys
 import os
 import pytest
@@ -8,9 +9,9 @@ from os.path import dirname
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
-import ctools.cspark as cspark
 
-CSPARK_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)),"cspark.py")
+CSPARK_PATH = os.path.join(os.path.dirname(
+    os.path.dirname(__file__)), "cspark.py")
 assert os.path.exists(CSPARK_PATH)
 
 fh_config = """
@@ -18,6 +19,7 @@ fh_config = """
 name1.key1=value1
 name2.key2: value2
 """
+
 
 def test_spark_submit_cmd():
     from configparser import ConfigParser
@@ -28,7 +30,9 @@ def test_spark_submit_cmd():
     assert "name2.key2=value2" in cmd
 
 
-TEST_RUN_SPARK_FILENAME='TEST_RUN_SPARK_FILENAME'
+TEST_RUN_SPARK_FILENAME = 'TEST_RUN_SPARK_FILENAME'
+
+
 def test_spark_submit():
     # Run a Spark job and then check to make sure we got the result.
     # To get the result back, we have to save it in a file. But we only want to call
@@ -37,7 +41,8 @@ def test_spark_submit():
 
     return
 
-    raise RuntimeWarning("""WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in the test""")
+    raise RuntimeWarning(
+        """WARNING: this test can make all test suite exit, likely because of the use of os.execvp in cspark.py. See comments inline in the test""")
 
     if not cspark.spark_available():
         return                  # don't test if no Spark is available
@@ -86,7 +91,8 @@ def test_spark_submit():
     os.unlink(os.environ[TEST_RUN_SPARK_FILENAME])
     """
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     # This is solely so that we can run under pytest
     # Don't remove it! You can also just run this program to see what happens
     # It should print "spark ran successfully."
