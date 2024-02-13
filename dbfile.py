@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import datetime
 import time
 import os
+import os.path
 import logging
 import sys
 import threading
@@ -308,7 +309,31 @@ class DBMySQLAuth:
 
     @staticmethod
     def FromConfig(section, debug=None):
-        """Returns from the section of a config file"""
+        """Returns from the section of a config file.
+        First checks to see if there is an AWS_SECRET, and uses that if possible.
+        Then tries with MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD and MYSQL_DATABASE, which is the standard used from 2005-2023.
+        Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
+        Environment variable expansion allows the name or region to be stored in an enviornment variable for multiple deployments.
+        """
+        if (AWS_SECRET_NAME in section) and (AWS_REGION_NAME) in section:
+            secret_name = os.path.expandvars(section[AWS_SECRET_NAME])
+            region_name = os.path.expandvars(section[AWS_REGION_NAME])
+            session = boto3.session.Session()
+            client = session.client( service_name='secretsmanager',
+                                     region_name=region_name)
+            try:
+                get_secret_value_response = client.get_secret_value( SecretId=secret_name )
+            except ClientError as e:
+                raise SecretsManagerError(e)
+
+            secret = json.loads(get_secret_value_response['SecretString'])
+            return DBMySQLAuth(host=secret['host'],
+                               user=secret['username'],
+                               password=secret['password'],
+                               database=secret['dbname'],
+                               port=int(secret['port']))
+
+        # Look for
         try:
             return DBMySQLAuth(host = section[MYSQL_HOST],
                                user = section[MYSQL_USER],
@@ -457,6 +482,7 @@ class DBMySQL(DBSQL):
                         logging.error("cmd: %s", cmd)
                         logging.error("vals: %s", vals)
                         logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
+                        logging.error("auth: %s", auth)
                         logging.error(str(e))
                     raise
 
