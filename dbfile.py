@@ -132,7 +132,7 @@ DATABASE = 'DATABASE'
 
 AWS_SECRET_NAME = 'AWS_SECRET_NAME'
 AWS_REGION_NAME = 'AWS_REGION_NAME'
-
+SECRETSMANAGER = 'secretsmanager'
 DEFAULT_PORT = 3306
 CACHE_SIZE = 2000000
 SQL_SET_CACHE = "PRAGMA cache_size = {};".format(CACHE_SIZE)
@@ -149,13 +149,16 @@ def get_aws_secret_for_section(section):
     if (AWS_SECRET_NAME in section) and (AWS_REGION_NAME) in section:
         secret_name = os.path.expandvars(section[AWS_SECRET_NAME])
         region_name = os.path.expandvars(section[AWS_REGION_NAME])
-        client = session.client( service_name='secretsmanager',
+        logging.info("secret_name=%s region_name=%s",secret_name, region_name)
+        session = boto3.session.Session()
+        client = session.client( service_name=SECRETSMANAGER,
                                  region_name=region_name)
         try:
             get_secret_value_response = client.get_secret_value( SecretId=secret_name )
         except ClientError as e:
-            raise dbfile.SecretsManagerError(e)
-        return json.loads(get_secret_value_response['SecretString'])
+            raise SecretsManagerError(e)
+        secret = json.loads(get_secret_value_response['SecretString'])
+        return secret
     return None
 
 
@@ -361,7 +364,8 @@ class DBMySQLAuth:
         Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
         Environment variable expansion allows the name or region to be stored in an enviornment variable for multiple deployments.
         """
-        if secret:= get_aws_secret_for_section( section ) is not None:
+        if (secret:= get_aws_secret_for_section( section )) is not None:
+            logging.error("secret: %s",secret)
             return DBMySQLAuth(host=secret['host'],
                                user=secret['username'],
                                password=secret['password'],
