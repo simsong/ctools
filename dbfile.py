@@ -542,8 +542,11 @@ class DBMySQL(DBSQL):
                         raise RuntimeError(
                             f"{cmd} {vals} expected rowcount={rowcount} != {c.rowcount}")
 
-                except (pymysql.ProgrammingError, pymysql.InternalError,
-                        pymysql.IntegrityError, pymysql.InterfaceError) as e:
+                except (pymysql.ProgrammingError,
+                        pymysql.InternalError,
+                        pymysql.IntegrityError,
+                        pymysql.InterfaceError,
+                        pymysql.OperationalError) as e:
                     if e.args[0] in ignore:
                         return DBMySQL.IGNORED
                     if e.args[0] not in nolog:
@@ -554,7 +557,7 @@ class DBMySQL(DBSQL):
                         logging.error("explained: %s ", DBMySQL.explain(cmd, vals))
                         logging.error("auth: %s", auth)
                         logging.error(str(e))
-                    raise
+                    raise       # re-raise so we can catch it outside
 
                 except TypeError as e:
                     logging.error(f"TYPE ERROR: cmd:{cmd} vals:{vals} {e}")
