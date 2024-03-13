@@ -193,7 +193,7 @@ class DBSQL(ABC):
         except (sqlite3.Error, pymysql.MySQLError) as e:
             print(cmd, *args, file=sys.stderr)
             print(e, file=sys.stderr)
-            exit(1)
+            raise
         if self.debug or debug:
             t1 = time.time()
             print(f"time: {t1-t0}", file=sys.stderr)
