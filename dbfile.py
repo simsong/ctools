@@ -364,8 +364,8 @@ class DBMySQLAuth:
         Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
         Environment variable expansion allows the name or region to be stored in an enviornment variable for multiple deployments.
         """
-        if (secret:= get_aws_secret_for_section( section )) is not None:
-            logging.error("secret: %s",secret)
+        if (secret := get_aws_secret_for_section( section )) is not None:
+            logging.info("retrieved secret for host %s username %s",secret['host'],secret['username'])
             return DBMySQLAuth(host=secret['host'],
                                user=secret['username'],
                                password=secret['password'],
