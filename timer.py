@@ -23,3 +23,6 @@ class Timer:
         self.interval = self.end - self.start
         if (self.message is not None) and (self.notifier is not None):
             self.notifier(self.message % self.interval)
+
+    def elapsed(self):
+        return time.time() - self.start
