@@ -15,7 +15,7 @@ import fcntl
 import logging
 
 
-def lock_script(lockfile=sys.argv[0]):
+def file_lock(fname, block=True):
     """Lock the script so that only one copy can run at once"""
     try:
         fd = os.open(lockfile, os.O_RDONLY)
@@ -24,8 +24,15 @@ def lock_script(lockfile=sys.argv[0]):
 
     if fd > 0:
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)  # non-blocking
+            flags = fcnt.LOCK_EX
+            if not block:
+                flags |= fcntl.LOCK_NB
+            fcntl.flock(fd, flags)
         except IOError:
             raise RuntimeError(f"Could not acquire lock on {lockfile}")
         return fd
     raise RuntimeError(f"Could not open {lockfile}")
+
+
+def lock_script(lockfile=sys.argv[0]):
+    return file_lock(lockfile, block=False)
