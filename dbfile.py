@@ -149,7 +149,7 @@ def get_aws_secret_for_section(section):
     if (AWS_SECRET_NAME in section) and (AWS_REGION_NAME) in section:
         secret_name = os.path.expandvars(section[AWS_SECRET_NAME])
         region_name = os.path.expandvars(section[AWS_REGION_NAME])
-        logging.info("secret_name=%s region_name=%s",secret_name, region_name)
+        logging.debug("secret_name=%s region_name=%s",secret_name, region_name)
         session = boto3.session.Session()
         client = session.client( service_name=SECRETSMANAGER,
                                  region_name=region_name)
@@ -364,8 +364,13 @@ class DBMySQLAuth:
         Finally tries with the modern MySQL varialbe names of HOST, USER, PASSWORD and DATABASE.
         Environment variable expansion allows the name or region to be stored in an enviornment variable for multiple deployments.
         """
+<<<<<<< Updated upstream
         if (secret:= get_aws_secret_for_section( section )) is not None:
             logging.error("secret: %s",secret)
+=======
+        if (secret := get_aws_secret_for_section( section )) is not None:
+            logging.debug("retrieved secret for host %s username %s",secret['host'],secret['username'])
+>>>>>>> Stashed changes
             return DBMySQLAuth(host=secret['host'],
                                user=secret['username'],
                                password=secret['password'],
