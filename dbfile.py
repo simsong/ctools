@@ -453,6 +453,7 @@ class DBMySQL(DBSQL):
     RETRIES = 10
     RETRY_DELAY_TIME = 1
     IGNORED = 'IGNORED'
+    MAX_EXPLAIN_LEN = 1000
 
     @staticmethod
     def explain(cmd, vals):
@@ -464,7 +465,7 @@ class DBMySQL(DBSQL):
                 return "'" + v + "'"
             return str(v)
         if vals is not None:
-            return cmd % tuple([myquote(v) for v in vals])
+            return (cmd % tuple([myquote(v) for v in vals]))[0:DBMySQL.MAX_EXPLAIN_LEN]
         else:
             return cmd
 
@@ -494,7 +495,7 @@ class DBMySQL(DBSQL):
         if cmd.count("%s") != len(vals):
             raise ValueError(f"cmd={cmd} cmd.count('%s')={cmd.count('%s')} len(vals)={len(vals)}")
 
-        for i in range(1, RETRIES):
+        for i in range(1, DBMySQL.RETRIES):
             try:
                 try:
                     db = auth.cache_get()
@@ -593,14 +594,14 @@ class DBMySQL(DBSQL):
                 if e.args[0] not in ERRORS_NO_RETRY:
                     raise
                 logging.warning(
-                    f"OperationalError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                    f"OperationalError. RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             except BlockingIOError as e:
                 if i > 1:
                     logging.warning(e)
                     logging.warning(
-                        f"BlockingIOError. RETRYING {i}/{RETRIES}: {cmd} {vals} ")
+                        f"BlockingIOError. RETRYING {i}/{DBMySQL.RETRIES}: {cmd} {vals} ")
                 auth.cache_clear()
                 pass
             time.sleep(RETRY_DELAY_TIME)

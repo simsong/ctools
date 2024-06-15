@@ -150,6 +150,20 @@ def syslog_default_address():
         raise RuntimeError(f"Neither {DEVLOG} nor {DEVLOG_MAC} are present.")
 
 
+# From ChatGPT 4o:
+class MaxLengthFormatter(logging.Formatter):
+    def __init__(self, fmt=None, datefmt=None, style='%', max_length=100):
+        super().__init__(fmt, datefmt, style)
+        self.max_length = max_length
+
+    def format(self, record):
+        original_message = record.getMessage()
+        if len(original_message) > self.max_length:
+            truncated_message = original_message[:self.max_length] + '...'
+            record.msg = truncated_message
+        return super().format(record)
+
+
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
                  syslog_address=None,
                  syslog_format=YEAR + " " + SYSLOG_FORMAT,
@@ -177,7 +191,7 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
         handler = logging.handlers.SysLogHandler(
             address=syslog_address, facility=facility, socktype=socktype)
         handler.append_nul = append_nul
-        formatter = logging.Formatter(syslog_format)
+        formatter = MaxLengthFormatter(fmt=syslog_format, max_length=1000)
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
         added_syslog = True
@@ -220,6 +234,7 @@ def setup(level='INFO',
             # logging.basicConfig only works if no handlers have been set
             logging.basicConfig(filename=filename_to_use,
                                 format=log_format, level=loglevel)
+            logging.getLogger().setFormatter(MaxLengthFormatter(max_length=1000))
         called_basicConfig = True
 
     if syslog:
