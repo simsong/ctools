@@ -69,6 +69,7 @@ DEVLOG_MAC = "/var/run/syslog"
 YEAR = str(datetime.datetime.now().year)
 SYSLOG_FORMAT = "%(filename)s:%(lineno)d (%(funcName)s) %(message)s"
 LOG_FORMAT = "%(asctime)s " + SYSLOG_FORMAT
+MAX_LENGTH = 1000
 
 # Global state variables. Keep track as to whether or not syslog
 # handler was added and whether or not the basicConfig was setup.
@@ -167,7 +168,8 @@ class MaxLengthFormatter(logging.Formatter):
 def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
                  syslog_address=None,
                  syslog_format=YEAR + " " + SYSLOG_FORMAT,
-                 use_tcp=False):
+                 use_tcp=False,
+                 max_length=MAX_LENGTH):
     global added_syslog
     if not added_syslog:
         # Make a second handler that logs to syslog
@@ -191,7 +193,7 @@ def setup_syslog(facility=logging.handlers.SysLogHandler.LOG_LOCAL1,
         handler = logging.handlers.SysLogHandler(
             address=syslog_address, facility=facility, socktype=socktype)
         handler.append_nul = append_nul
-        formatter = MaxLengthFormatter(fmt=syslog_format, max_length=1000)
+        formatter = MaxLengthFormatter(fmt=syslog_format, max_length=max_length)
         handler.setFormatter(formatter)
         logging.getLogger().addHandler(handler)
         added_syslog = True
@@ -234,7 +236,6 @@ def setup(level='INFO',
             # logging.basicConfig only works if no handlers have been set
             logging.basicConfig(filename=filename_to_use,
                                 format=log_format, level=loglevel)
-            logging.getLogger().setFormatter(MaxLengthFormatter(max_length=1000))
         called_basicConfig = True
 
     if syslog:
