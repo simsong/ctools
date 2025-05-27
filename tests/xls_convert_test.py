@@ -1,12 +1,18 @@
+<<<<<<< Updated upstream
 import re
 from ctools.xls_convert import excel_convert
 import pytest
+=======
+>>>>>>> Stashed changes
 import os
 import sys
 import warnings
 
 from os.path import abspath
 from os.path import dirname
+
+import pytest
+
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 print(sys.path)

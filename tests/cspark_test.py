@@ -7,6 +7,8 @@ import io
 from os.path import abspath
 from os.path import dirname
 
+import pytest
+
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 
@@ -28,7 +30,6 @@ def test_spark_submit_cmd():
     cmd = cspark.spark_submit_cmd(configdict=config['spark'])
     assert "name1.key1=value1" in cmd
     assert "name2.key2=value2" in cmd
-
 
 TEST_RUN_SPARK_FILENAME = 'TEST_RUN_SPARK_FILENAME'
 

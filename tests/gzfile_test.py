@@ -4,7 +4,6 @@ gzfile test
 
 from ctools.gzfile import GZFile
 import sys
-import pytest
 import os
 import os.path
 import logging
@@ -16,6 +15,9 @@ from os.path import dirname, basename, abspath
 
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
+import pytest
+
+from ctools.gzfile import GZFile
 
 TEST_STRING = "this is a test\n"
 

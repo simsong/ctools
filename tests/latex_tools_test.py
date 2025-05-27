@@ -14,6 +14,8 @@ import warnings
 from os.path import abspath
 from os.path import dirname
 
+import pytest
+
 sys.path.append(dirname(dirname(dirname(abspath(__file__)))))
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
@@ -124,7 +126,6 @@ def test_count_pdf_pages():
         return
 
     assert pages == 5
-
     assert os.path.exists(FIVEPAGES_PDF)  # make sure file is still there
     assert not os.path.exists(FIVEPAGES_AUX)  # we do not want this
     assert not os.path.exists(FIVEPAGES_OUT)  # we do not want this
