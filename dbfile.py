@@ -25,10 +25,6 @@ except ImportError:
     pass
 
 
-from os.path import basename, abspath, dirname
-from collections import OrderedDict
-from abc import ABC, abstractmethod
-
 """
 This is the dbfile.py (database file)
 
@@ -241,7 +237,7 @@ class DBSqlite3(DBSQL):
                 self.conn.row_factory = sqlite3.Row    # user wants dicts
 
         except sqlite3.OperationalError as e:
-            print(f"Cannot open database file: {fname}")
+            print(f"Cannot open database file: {fname} {e}")
             exit(1)
 
     def set_cache_bytes(self, b):
@@ -257,7 +253,7 @@ class DBSqlite3(DBSQL):
         cmd = cmd.replace("%s", "?")
         cmd = cmd.replace("INSERT IGNORE", "INSERT OR IGNORE")
 
-        if quiet == False:
+        if not quiet:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}")
         if debug or self.debug:
             print(f"PID{os.getpid()}: cmd:{cmd} vals:{vals}", file=sys.stderr)
@@ -329,7 +325,7 @@ class DBMySQLAuth:
             if name not in ret:
                 try:
                     ret[name] = os.environ[name]
-                except KeyError as e:
+                except KeyError:
                     logging.error("%s not in environment not in %s", name, filename)
                     raise
         return ret
@@ -379,7 +375,7 @@ class DBMySQLAuth:
                                password=section[MYSQL_PASSWORD],
                                database=section.get(MYSQL_DATABASE,None),
                                debug=debug)
-        except KeyError as e:
+        except KeyError:
             pass
 
         try:
@@ -388,7 +384,7 @@ class DBMySQLAuth:
                                password=section[PASSWORD],
                                database=section.get(DATABASE,None),
                                debug=debug)
-        except KeyError as e:
+        except KeyError:
             pass
 
         raise KeyError(
@@ -405,7 +401,7 @@ class DBMySQLAuth:
             if database is not None:
                 auth.database = database
             return auth
-        except KeyError as e:
+        except KeyError:
             logging.error("No section %s in file %s", section, fname)
             raise
 
@@ -426,7 +422,7 @@ class DBMySQLAuth:
     def cache_clear(self):
         try:
             del self.dbcache[(os.getpid(), threading.get_ident())]
-        except KeyError as e:
+        except KeyError:
             pass
 
 
@@ -457,7 +453,7 @@ class DBMySQL(DBSQL):
 
     @staticmethod
     def explain(cmd, vals):
-        if (not isinstance(vals, list)) and (not isinstance(vals, tuple)) and (not vals is None):
+        if (not isinstance(vals, list)) and (not isinstance(vals, tuple)) and (vals is not None):
             raise ValueError("vals is type %s expected list" % type(vals))
 
         def myquote(v):
@@ -514,7 +510,7 @@ class DBMySQL(DBSQL):
                         'SET @@session.time_zone = "{}"'.format(time_zone))
 
                 try:
-                    if quiet == False or debug:
+                    if (not quiet) or debug:
                         logging.warning(
                             "quiet:%s debug: %s cmd: %s  vals: %s", quiet, debug, cmd, vals)
                         logging.warning("EXPLAIN:")

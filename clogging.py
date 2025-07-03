@@ -91,7 +91,7 @@ def applicationId():
     """
     try:
         import cspark
-    except ImportError as e:
+    except ImportError:
         sys.path.append(os.path.dirname(__file__))
         import cspark
 

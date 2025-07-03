@@ -15,8 +15,6 @@ import os
 import subprocess
 import urllib.request
 import socket
-import boto3
-import sys
 
 HTTP_PROXY = 'HTTP_PROXY'
 HTTPS_PROXY = 'HTTPS_PROXY'
@@ -105,6 +103,7 @@ def user_data():
     try:
         return get_url_json("http://169.254.169.254/2016-09-02/user-data/")
     except (TimeoutError, urllib.error.URLError) as e:
+        logging.error("timeout: %s",e)
         return {}
 
 
@@ -113,6 +112,7 @@ def instance_identity():
         return get_url_json('http://169.254.169.254/latest/dynamic/instance-identity/document')
     except (TimeoutError, urllib.error.URLError) as e:
         # Not running on Amazon; return bogus info
+        logging.error("timeout: %s",e)
         null = None
         return {"accountId": "999999999999",
                 "architecture": "x86_64",
@@ -145,6 +145,7 @@ def get_ipaddr():
     try:
         return get_url("http://169.254.169.254/latest/meta-data/local-ipv4")
     except (TimeoutError, urllib.error.URLError) as e:
+        logging.error("timeout: %s",e)
         socket.gethostbyname(socket.gethostname())
 
 

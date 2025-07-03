@@ -15,7 +15,7 @@ import fcntl
 import logging
 
 
-def file_lock(fname, block=True):
+def file_lock(lockfile, block=True):
     """Lock the script so that only one copy can run at once"""
     try:
         fd = os.open(lockfile, os.O_RDONLY)
@@ -24,7 +24,7 @@ def file_lock(fname, block=True):
 
     if fd > 0:
         try:
-            flags = fcnt.LOCK_EX
+            flags = fcntl.LOCK_EX
             if not block:
                 flags |= fcntl.LOCK_NB
             fcntl.flock(fd, flags)

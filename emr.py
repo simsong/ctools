@@ -9,7 +9,6 @@
 #
 # Currently we manually sync the two; perhaps it should be moved to ctools.
 
-from pathlib import Path
 from subprocess import Popen, PIPE, call, check_call, check_output
 import json
 import logging

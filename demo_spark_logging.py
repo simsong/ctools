@@ -4,8 +4,6 @@
 
 import clogging
 import cspark
-from ctools import clogging
-from ctools import cspark
 import sys
 import os
 import socket
@@ -38,7 +36,6 @@ def applicationId():
 def square(x):
     """This is the map function. It's going to run on the executors.
     Log the hostname, the PID and X as a JSON object"""
-    from pyspark import SparkContext
     clogging.setup(level=logging.INFO, syslog='True')
     logging.info(json.dumps({'hostname': socket.gethostname(),
                              'pid': os.getpid(), 'x': x, 'func': 'square', 'applicationId': applicationId()}))
@@ -48,7 +45,6 @@ def square(x):
 def myadder(x, y):
     """This is the map function. It's going to run on the executors.
     Log the hostname, the PID and X as a JSON object"""
-    from pyspark import SparkContext
     clogging.setup(level=logging.INFO, syslog='True')
     logging.info(json.dumps({'hostname': socket.gethostname(), 'pid': os.getpid(),
                              'x': x, 'y': y, 'func': 'myadder', 'applicationId': applicationId()}))

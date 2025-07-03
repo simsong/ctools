@@ -21,14 +21,11 @@ This module also supports opening files on Amazon S3, with the s3:// notation.
 """
 
 from configparser import ConfigParser
-from subprocess import run, PIPE, Popen
 import os
 import os.path
 import logging
 import logging.handlers
 import datetime
-import argparse
-import csv
 import zipfile
 import io
 import glob
@@ -170,10 +167,10 @@ def dopen(path, mode='r', encoding='utf-8'):
             zip_file = zipfile.ZipFile(zipnames[0])
             zf = zip_file.open(filename, 'r')
             logging.info("  ({} found in {})".format(filename, zipnames[0]))
-            if encoding == None and ("b" not in mode):
+            if encoding is None and ("b" not in mode):
                 encoding = 'utf-8'
             return io.TextIOWrapper(zf, encoding=encoding)
-    if encoding == None:
+    if encoding is None:
         return open(path, mode=mode)
     else:
         return open(path, mode=mode, encoding=encoding)

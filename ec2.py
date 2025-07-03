@@ -39,7 +39,7 @@ def get_instance_tags(instanceId=None):
     import aws
     if instanceId is None:
         instanceId = aws.instanceId()
-    with aws.Proxy(https=True, http=False) as p:
+    with aws.Proxy(https=True, http=False):
         ec2_client = boto3.client('ec2')
         response = ec2_client.describe_instances(
             InstanceIds=[aws.instanceId()])

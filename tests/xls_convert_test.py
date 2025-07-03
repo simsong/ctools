@@ -1,9 +1,6 @@
-<<<<<<< Updated upstream
 import re
 from ctools.xls_convert import excel_convert
 import pytest
-=======
->>>>>>> Stashed changes
 import os
 import sys
 import warnings
