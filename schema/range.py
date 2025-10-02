@@ -30,7 +30,7 @@ def convertRange(a, b, desc=None, vtype=None):
 class Range:
     """Describe a range that a value can have, from a to b inclusive
     [a,b]
-    This is type-free, but we should have kept the type of the variable for which the range was made. 
+    This is type-free, but we should have kept the type of the variable for which the range was made.
     """
     RANGE_RE_LIST = [
         # used for grabbing vals with ! as that is a legal val
